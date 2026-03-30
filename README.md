@@ -1,149 +1,106 @@
-# SOLVIX – Kolam AI
+# 🌀 SOLVIX – Kolam AI
+> **Bridging Ancient Geometry with Advanced Artificial Intelligence**
 
-SOLVIX is a React + TypeScript + FastAPI project for analyzing, correcting, generating, and explaining traditional Kolam patterns.
+![SOLVIX Banner](./public/banner.png)
 
-It combines:
-- **computer-vision-based dot detection**
-- **interactive manual correction tools**
-- **procedural Kolam generation**
-- **educational walkthroughs**
-- **workspace save/load/export/import flow**
+SOLVIX is a comprehensive **React + TypeScript + FastAPI** platform designed to analyze, proceduralize, and celebrate the intricate art of traditional **Kolam** (Rangoli). By combining computer vision, interactive geometry tools, and educational walkthroughs, SOLVIX brings traditional heritage into the digital age.
 
-## Current capabilities
+---
 
-### Analyzer
-- upload PNG/JPEG kolam images
-- detection presets:
-  - `balanced`
-  - `clean-scan`
-  - `phone-photo`
-  - `noisy-background`
-- optional perspective correction
-- confidence estimate
-- click to add/remove dots
-- drag to reposition dots
-- undo / redo
-- zoom
-- auto-snap to cleaner lattice
-- export overlay PNG
+## ✨ Key Features
 
-### Workspace
-- save workspace snapshots in browser storage
-- load saved workspaces
-- delete saved workspaces
-- export workspace JSON
-- import workspace JSON
+### 🔍 Intelligent Analyzer
+- **CV-Powered Detection**: Advanced dot-detection algorithms for balanced scans, phone photos, and noisy backgrounds.
+- **Manual Correction**: Precision tools for adding, removing, and repositioning dots with perspective correction.
+- **Lattice Lattice Inference**: Automatic snapping and confidence estimation for cleaner pattern generation.
 
-### Generator
-- procedural Kolam generation
-- shared analyzer reference overlay
-- SVG export
-- workflow comparison details
+### 🎨 Procedural Generator
+- **Algorithm-to-Art**: Dynamically generate Kolam patterns based on detected lattice structures.
+- **Reference Overlays**: Compare generated patterns against the original analyzer reference.
+- **Vector Exports**: Export high-quality SVG and PNG versions of your creations.
 
-### Walkthrough
-- animated Kolam construction explanation
-- reflects active workspace state
+### 📂 Workspace Management
+- **Persistence**: Save and load snapshots directly in your browser's local storage.
+- **Portability**: Import and export workspaces as JSON for collaborative analysis.
 
-## Tech stack
+### 🎓 Educational Walkthroughs
+- **Dynamic Construction**: Animated explanations showing how specific Kolams are built step-by-step.
+- **Context-Aware**: Walkthroughs adapt in real-time to your active workspace dot-map.
 
-### Frontend
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
+---
 
-### Backend
-- FastAPI
-- OpenCV
-- NumPy
-- python-multipart
+## 🛠️ Technology Stack
 
-## Project structure
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS |
+| **Backend** | FastAPI, OpenCV, NumPy |
+| **Visualization** | SVG, Canvas API, Procedural Math |
+| **Storage** | LocalStorage API, Workspace JSON Export |
+
+---
+
+## 📂 Project Structure
 
 ```text
 E:\kolam-2
-├── backend/
-│   ├── main.py
+├── src/               # Main source code
+│   ├── components/    # Reusable UI components & feature logic
+│   ├── utils/         # Core geometric & procedural logic
+│   ├── App.tsx        # Main application entry point
+│   ├── main.tsx       # Vite entry point
+│   └── index.css      # Global styles & Tailwind directives
+├── backend/           # FastAPI backend server
+│   ├── main.py        # API endpoints & OpenCV logic
 │   └── requirements.txt
-├── components/
-│   ├── ui/
-│   ├── KolamAnalyzer.tsx
-│   ├── KolamGenerator.tsx
-│   ├── KolamWalkthrough.tsx
-│   ├── KolamContext.tsx
-│   └── ...other sections
-├── utils/
-│   └── kolamLogic.ts
-├── App.tsx
-├── index.tsx
-├── index.css
-├── index.html
-├── package.json
-└── vite.config.ts
+├── docs/              # Project documentation & summaries
+├── public/            # Static assets & banners
+├── scripts/           # Utility scripts (copy.js, copy.py)
+├── package.json       # Dependencies & NPM scripts
+└── vite.config.ts     # Project configuration
 ```
 
-## How to run
+---
 
-## 1. Frontend
+## 🚀 Getting Started
 
-From `E:\kolam-2`:
+### 1. Frontend Development
+Ensure you have **Node.js** installed.
 
 ```bash
+# Navigate to root
 npm install
 npm run dev
 ```
+> [!NOTE]
+> The frontend will be accessible at `http://localhost:3000`.
 
-Frontend runs on:
-- `http://localhost:3000`
-
-## 2. Backend
-
-From `E:\kolam-2\backend`:
+### 2. Backend Setup
+Ensure you have **Python 3.10+** installed.
 
 ```bash
+# Navigate to backend directory
+cd backend
 pip install -r requirements.txt
 python main.py
 ```
+> [!NOTE]
+> The backend will be accessible at `http://localhost:8000`.
 
-Backend runs on:
-- `http://localhost:8000`
+---
 
-## Optional frontend environment
+## 🔮 Roadmap
+- [ ] **Advanced Lattice Inference**: Stronger pattern prediction from sparse dot sets.
+- [ ] **Visual Comparison Mode**: Side-by-side "detected vs. generated" comparison overlays.
+- [ ] **Extended Styles**: Support for varied regional styles and pattern families.
+- [ ] **Dataset Export**: Tooling to contribute your corrected dot-maps to a shared open-source Kolam dataset.
 
-Create `.env.local` in `E:\kolam-2` if you want to override the backend URL:
+---
 
-```env
-VITE_API_BASE_URL=http://localhost:8000
-```
+## 📜 License
+*Project created as part of the SOLVIX – Kolam AI initiative. All rights reserved.*
 
-## Production build
-
-From `E:\kolam-2`:
-
-```bash
-npm run build
-```
-
-## Important notes
-
-- detection is **real**, not random
-- detection is still **prototype-grade**, not perfect for every photo
-- noisy, skewed, or cluttered images may still require manual correction
-- best results come from clear, high-contrast kolam images
-
-## Suggested next future improvements
-
-- stronger lattice inference
-- generated-vs-detected visual compare mode
-- backend debug mask preview
-- sample test dataset
-- more generator styles and pattern families
-
-## Summary
-
-SOLVIX is now a strong interactive prototype for:
-- **analyzing kolam images**
-- **correcting dot maps**
-- **saving reusable pattern workspaces**
-- **generating procedural references**
-- **explaining Kolam construction**
+---
+<p align="center">
+  <b>Built with ❤️ by the SOLVIX Team</b>
+</p>
