@@ -1,132 +1,423 @@
-
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
+import { useKolam } from './KolamContext';
 
-// Mock analysis results
-const mockAnalysis = {
-    dotGrid: `<circle cx="25" cy="25" r="2" fill="white"/><circle cx="50" cy="25" r="2" fill="white"/><circle cx="75" cy="25" r="2" fill="white"/><circle cx="25" cy="50" r="2" fill="white"/><circle cx="50" cy="50" r="2" fill="white"/><circle cx="75" cy="50" r="2" fill="white"/><circle cx="25" cy="75" r="2" fill="white"/><circle cx="50" cy="75" r="2" fill="white"/><circle cx="75" cy="75" r="2" fill="white"/>`,
-    loopTrace: `<path d="M25 25 C 50 0, 100 50, 75 75 S 0 50, 25 25" stroke="cyan" stroke-width="1.5" fill="none" class="kolam-path" style="animation-duration: 5s;" />`,
-    symmetry: `<line x1="50" y1="0" x2="50" y2="100" stroke="magenta" stroke-width="1" stroke-dasharray="4"/><path d="M25 25 L50 50 L25 75" stroke="lime" stroke-width="1.5" fill="none" /><path d="M75 25 L50 50 L75 75" stroke="lime" stroke-width="1.5" fill="none" opacity="0.5" />`,
-    regeneratedSvg: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50 15 C 75 15, 75 40, 75 40 L 75 60 C 75 85, 50 85, 50 85 S 25 85, 25 60 L 25 40 C 25 15, 50 15, 50 15 Z" stroke="#FFD700" stroke-width="2" fill="none" /><path d="M50 15 C 65 25, 65 40, 65 40 L 65 60 C 65 75, 50 75, 50 75 S 35 75, 35 60 L 35 40 C 35 25, 50 15, 50 15 Z" stroke="#FF9933" stroke-width="1.5" fill="none" /></svg>`,
-};
+interface Point {
+    x: number;
+    y: number;
+}
 
-type AnalysisResult = typeof mockAnalysis | null;
-type AnalysisStep = 'dotGrid' | 'loopTrace' | 'symmetry' | 'regeneratedSvg';
+interface AnalysisResponse {
+    width: number;
+    height: number;
+    dots: Point[];
+    message: string;
+    preset?: string;
+    confidence?: number;
+}
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const ZOOM_LEVELS = [1, 1.25, 1.5, 2];
+const PRESETS = ['balanced', 'clean-scan', 'phone-photo', 'noisy-background'] as const;
 
 const KolamAnalyzer: React.FC = () => {
     const [image, setImage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [analysisResult, setAnalysisResult] = useState<AnalysisResult>(null);
     const [error, setError] = useState<string | null>(null);
+    const [status, setStatus] = useState<string>('Upload a Kolam to begin analysis.');
+    const [imgDimensions, setImgDimensions] = useState<{ width: number, height: number } | null>(null);
+    const [history, setHistory] = useState<Point[][]>([]);
+    const [future, setFuture] = useState<Point[][]>([]);
+    const [zoomIndex, setZoomIndex] = useState(0);
+    const [preset, setPreset] = useState<(typeof PRESETS)[number]>('balanced');
+    const [deskew, setDeskew] = useState(true);
+    const [confidence, setConfidence] = useState<number | null>(null);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const {
+        analyzerDots,
+        setAnalyzerDots,
+        setSelectedDots,
+        setAnalysisSummary,
+        syncAnalyzerToGenerator,
+        saveWorkspace,
+        savedWorkspaces,
+        loadWorkspace,
+        removeWorkspace,
+        exportDots,
+        importWorkspace,
+        snapDotsToGrid,
+    } = useKolam();
+
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const imageRef = useRef<HTMLImageElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const dragIndexRef = useRef<number | null>(null);
+
+    const pushHistory = useCallback((dots: Point[]) => {
+        setHistory(prev => [...prev, dots]);
+        setFuture([]);
+    }, []);
+
+    const applyDots = useCallback((dots: Point[], message: string) => {
+        setAnalyzerDots(dots);
+        setSelectedDots(dots);
+        setAnalysisSummary({ message, source: 'manual' });
+        setStatus(message);
+    }, [setAnalyzerDots, setSelectedDots, setAnalysisSummary]);
+
+    const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (file) {
-            if (file.size > 5 * 1024 * 1024) { // 5MB limit
-                setError('File size must be less than 5MB.');
-                return;
-            }
-            if (!['image/png', 'image/jpeg'].includes(file.type)) {
-                setError('Only PNG and JPEG files are allowed.');
-                return;
-            }
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const payload = JSON.parse(text);
+            importWorkspace(payload);
+            setStatus('Workspace imported from JSON.');
             setError(null);
-            setAnalysisResult(null);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        } catch {
+            setError('Failed to import workspace JSON.');
         }
     };
-    
-    const analyzeImage = useCallback(() => {
-        if (!image) return;
-        setIsLoading(true);
-        // Simulate API call
-        setTimeout(() => {
-            setAnalysisResult(mockAnalysis);
-            setIsLoading(false);
-        }, 3000);
-    }, [image]);
 
-    const downloadSVG = useCallback(() => {
-        if (analysisResult?.regeneratedSvg) {
-            const blob = new Blob([analysisResult.regeneratedSvg], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'regenerated-kolam.svg';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+    const exportOverlayPng = () => {
+        const canvas = canvasRef.current;
+        const img = imageRef.current;
+        if (!canvas || !img) return;
+
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = canvas.width;
+        exportCanvas.height = canvas.height;
+        const ctx = exportCanvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
+        ctx.drawImage(canvas, 0, 0);
+
+        const link = document.createElement('a');
+        link.href = exportCanvas.toDataURL('image/png');
+        link.download = `kolam-overlay-${Date.now()}.png`;
+        link.click();
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            setError('File size must be less than 5MB.');
+            return;
         }
-    }, [analysisResult]);
-    
-    const analysisSteps = useMemo(() => [
-        { key: 'dotGrid' as AnalysisStep, title: 'Dot Grid Detection' },
-        { key: 'loopTrace' as AnalysisStep, title: 'Loop Tracing' },
-        { key: 'symmetry' as AnalysisStep, title: 'Symmetry Visualization' },
-    ], []);
+        if (!['image/png', 'image/jpeg'].includes(file.type)) {
+            setError('Only PNG and JPEG files are allowed.');
+            return;
+        }
+
+        setError(null);
+        setConfidence(null);
+        setIsLoading(true);
+        setHistory([]);
+        setFuture([]);
+        setAnalyzerDots([]);
+        setSelectedDots([]);
+        setStatus('Uploading image to analysis service...');
+
+        const objectUrl = URL.createObjectURL(file);
+        setImage(objectUrl);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('preset', preset);
+        formData.append('deskew', String(deskew));
+
+        try {
+            const response = await fetch(`${API_BASE}/analyze`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                throw new Error('Analysis failed');
+            }
+
+            const data: AnalysisResponse = await response.json();
+            setAnalyzerDots(data.dots);
+            setSelectedDots(data.dots);
+            setImgDimensions({ width: data.width, height: data.height });
+            setStatus(data.message || `Detected ${data.dots.length} potential dots.`);
+            setConfidence(data.confidence ?? null);
+            setAnalysisSummary({ message: data.message || `Detected ${data.dots.length} potential dots.`, source: 'upload' });
+        } catch (err) {
+            console.error(err);
+            setError('Failed to connect to analysis server. Make sure the Python backend is running.');
+            setStatus('Analyzer offline. You can still manually place and edit reference dots.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const draw = useCallback(() => {
+        const canvas = canvasRef.current;
+        const img = imageRef.current;
+        if (!canvas || !img || !imgDimensions) return;
+
+        const displayWidth = img.width;
+        const displayHeight = img.height;
+
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        analyzerDots.forEach((point, index) => {
+            const x = point.x * displayWidth;
+            const y = point.y * displayHeight;
+
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(253, 184, 19, 0.18)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(x, y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#138808';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(x, y, 2.5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+
+            ctx.fillStyle = '#FDB813';
+            ctx.font = '10px Poppins';
+            ctx.fillText(String(index + 1), x + 8, y - 8);
+        });
+    }, [analyzerDots, imgDimensions]);
+
+    useEffect(() => {
+        if (imageRef.current?.complete) {
+            draw();
+        } else {
+            imageRef.current?.addEventListener('load', draw);
+        }
+        return () => imageRef.current?.removeEventListener('load', draw);
+    }, [draw, analyzerDots, image]);
+
+    const getNormalizedCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement>) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / canvas.width;
+        const y = (e.clientY - rect.top) / canvas.height;
+        return { x, y };
+    };
+
+    const findNearbyDotIndex = (x: number, y: number, threshold = 0.02) => analyzerDots.findIndex(p => Math.hypot(p.x - x, p.y - y) < threshold);
+
+    const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (dragIndexRef.current !== null) return;
+        const coords = getNormalizedCoords(e);
+        if (!coords) return;
+
+        const existingDotIndex = findNearbyDotIndex(coords.x, coords.y);
+        pushHistory(analyzerDots);
+
+        const nextPoints = existingDotIndex >= 0
+            ? analyzerDots.filter((_, idx) => idx !== existingDotIndex)
+            : [...analyzerDots, coords];
+
+        applyDots(nextPoints, `Manual refinement active · ${nextPoints.length} dots in workspace.`);
+    };
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const coords = getNormalizedCoords(e);
+        if (!coords) return;
+        const existingDotIndex = findNearbyDotIndex(coords.x, coords.y, 0.025);
+        if (existingDotIndex >= 0) {
+            pushHistory(analyzerDots);
+            dragIndexRef.current = existingDotIndex;
+            (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+        }
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        if (dragIndexRef.current === null) return;
+        const coords = getNormalizedCoords(e);
+        if (!coords) return;
+        const next = analyzerDots.map((dot, idx) => idx === dragIndexRef.current ? { x: Math.min(1, Math.max(0, coords.x)), y: Math.min(1, Math.max(0, coords.y)) } : dot);
+        setAnalyzerDots(next);
+        setSelectedDots(next);
+    };
+
+    const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        if (dragIndexRef.current !== null) {
+            dragIndexRef.current = null;
+            (e.target as HTMLCanvasElement).releasePointerCapture(e.pointerId);
+            setAnalysisSummary({ message: `Dragged dot positions updated · ${analyzerDots.length} dots in workspace.`, source: 'manual' });
+            setStatus(`Dragged dot positions updated · ${analyzerDots.length} dots in workspace.`);
+        }
+    };
+
+    const clearPoints = () => {
+        pushHistory(analyzerDots);
+        applyDots([], 'Workspace points cleared.');
+    };
+
+    const handleSnap = () => {
+        pushHistory(analyzerDots);
+        snapDotsToGrid();
+        setStatus('Auto-snapped dots into a cleaner lattice.');
+    };
+
+    const undo = () => {
+        if (!history.length) return;
+        const previous = history[history.length - 1];
+        setHistory(prev => prev.slice(0, -1));
+        setFuture(prev => [analyzerDots, ...prev]);
+        applyDots(previous, `Undo applied · ${previous.length} dots in workspace.`);
+    };
+
+    const redo = () => {
+        if (!future.length) return;
+        const next = future[0];
+        setFuture(prev => prev.slice(1));
+        setHistory(prev => [...prev, analyzerDots]);
+        applyDots(next, `Redo applied · ${next.length} dots in workspace.`);
+    };
+
+    const cycleZoom = () => setZoomIndex(prev => (prev + 1) % ZOOM_LEVELS.length);
+    const zoom = ZOOM_LEVELS[zoomIndex];
 
     return (
         <section className="py-20 px-4 container mx-auto">
             <h2 className="font-heading text-4xl md:text-5xl text-center mb-12 gradient-text">Kolam Analyzer</h2>
-            <div className="max-w-2xl mx-auto">
+
+            <div className="max-w-6xl mx-auto space-y-8">
                 <Card>
-                    <div className="flex flex-col items-center space-y-4">
-                        <Label htmlFor="kolam-upload" className="text-xl">Upload a Kolam Image (PNG/JPEG)</Label>
-                        <input id="kolam-upload" type="file" accept="image/png, image/jpeg" onChange={handleFileChange} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-500/20 file:text-orange-300 hover:file:bg-orange-500/30 cursor-pointer"/>
-                        {error && <p className="text-red-500 text-sm">{error}</p>}
+                    <div className="grid md:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
+                        <div className="flex flex-col space-y-4">
+                            <Label htmlFor="kolam-upload" className="text-xl">Upload a Kolam Image (PNG/JPEG)</Label>
+                            <input
+                                id="kolam-upload"
+                                type="file"
+                                accept="image/png, image/jpeg"
+                                onChange={handleFileChange}
+                                className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-500/20 file:text-orange-300 hover:file:bg-orange-500/30 cursor-pointer"
+                            />
+                            <div className="grid sm:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="preset">Detection Preset</Label>
+                                    <select id="preset" value={preset} onChange={(e) => setPreset(e.target.value as (typeof PRESETS)[number])} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-orange-500 focus:border-orange-500 transition-colors">
+                                        {PRESETS.map(option => <option key={option} value={option}>{option}</option>)}
+                                    </select>
+                                </div>
+                                <div className="flex items-end">
+                                    <label className="flex items-center gap-3 text-sm text-gray-300">
+                                        <input type="checkbox" checked={deskew} onChange={(e) => setDeskew(e.target.checked)} className="accent-orange-500" />
+                                        Enable perspective correction
+                                    </label>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 flex-wrap">
+                                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>Import Workspace JSON</Button>
+                                <input ref={fileInputRef} type="file" accept="application/json" onChange={handleImportJson} className="hidden" />
+                                <Button variant="secondary" onClick={exportOverlayPng} disabled={!image || !analyzerDots.length}>Export Overlay PNG</Button>
+                            </div>
+                            {error && <p className="text-red-500 text-sm bg-red-900/20 px-4 py-2 rounded">{error}</p>}
+                            {isLoading && <p className="text-saffron animate-pulse font-medium">✨ Visualizing Kolam...</p>}
+                            <p className="text-sm text-gray-400">{status}</p>
+                            {confidence !== null && <p className="text-sm text-saffron">Estimated detection confidence: {(confidence * 100).toFixed(0)}%</p>}
+                        </div>
+
+                        <div className="bg-black/20 rounded-xl border border-white/5 p-5 space-y-4">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.2em] text-saffron mb-2">Workspace Summary</p>
+                                <p className="text-3xl font-heading text-white">{analyzerDots.length}</p>
+                                <p className="text-sm text-gray-400">active dots available for downstream generation</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button variant="secondary" className="w-full" onClick={syncAnalyzerToGenerator} disabled={!analyzerDots.length}>Sync</Button>
+                                <Button variant="secondary" className="w-full" onClick={cycleZoom}>Zoom {zoom}×</Button>
+                                <Button variant="secondary" className="w-full" onClick={undo} disabled={!history.length}>Undo</Button>
+                                <Button variant="secondary" className="w-full" onClick={redo} disabled={!future.length}>Redo</Button>
+                                <Button variant="secondary" className="w-full" onClick={handleSnap} disabled={!analyzerDots.length}>Auto-Snap</Button>
+                                <Button variant="secondary" className="w-full" onClick={saveWorkspace} disabled={!analyzerDots.length}>Save</Button>
+                                <Button variant="secondary" className="w-full" onClick={exportDots} disabled={!analyzerDots.length}>Export JSON</Button>
+                            </div>
+                            <Button variant="secondary" className="w-full" onClick={clearPoints} disabled={!analyzerDots.length}>Clear Workspace</Button>
+                        </div>
                     </div>
                 </Card>
 
-                {image && (
-                    <div className="mt-8 text-center space-y-6">
-                        <h3 className="text-2xl font-semibold">Image Preview</h3>
-                        <img src={image} alt="Kolam preview" className="max-w-sm w-full mx-auto rounded-lg shadow-lg shadow-indigo-900/20"/>
-                        <Button onClick={analyzeImage} disabled={isLoading}>
-                            {isLoading ? 'Analyzing...' : 'Analyze Kolam'}
-                        </Button>
-                    </div>
-                )}
-            </div>
+                <div className="grid lg:grid-cols-[1.3fr_0.7fr] gap-8">
+                    <div>
+                        {image && (
+                            <Card className="overflow-hidden">
+                                <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
+                                    <h3 className="text-xl font-semibold text-gray-200">Interactive Analysis</h3>
+                                    <div className="space-x-4 text-sm text-gray-400">
+                                        <span>Click to add/remove</span>
+                                        <span>·</span>
+                                        <span>Drag to reposition</span>
+                                        <span>·</span>
+                                        <span>{analyzerDots.length} dots in workspace</span>
+                                    </div>
+                                </div>
 
-            {isLoading && (
-                <div className="text-center mt-12">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
-                    <p className="mt-4 text-lg">AI is working its magic... Please wait.</p>
-                </div>
-            )}
+                                <div className="relative w-full overflow-auto bg-black/20 rounded-lg p-4">
+                                    <div className="relative inline-block origin-top-left" style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
+                                        <img
+                                            ref={imageRef}
+                                            src={image}
+                                            alt="Kolam Analysis"
+                                            className="max-w-full max-h-[70vh] object-contain block select-none pointer-events-none"
+                                        />
+                                        <canvas
+                                            ref={canvasRef}
+                                            onClick={handleCanvasClick}
+                                            onPointerDown={handlePointerDown}
+                                            onPointerMove={handlePointerMove}
+                                            onPointerUp={handlePointerUp}
+                                            onPointerLeave={handlePointerUp}
+                                            className="absolute top-0 left-0 w-full h-full cursor-crosshair touch-none"
+                                        />
+                                    </div>
+                                </div>
 
-            {analysisResult && (
-                <div className="mt-16">
-                    <h3 className="text-3xl font-heading text-center mb-8">Analysis Results</h3>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {analysisSteps.map(step => (
-                           <Card key={step.key}>
-                                <h4 className="text-xl font-bold text-center mb-4 text-orange-400">{step.title}</h4>
-                                <div className="aspect-square bg-indigo-900/20 rounded-lg p-4">
-                                    <svg viewBox="0 0 100 100" dangerouslySetInnerHTML={{ __html: analysisResult[step.key] || '' }} />
+                                <div className="mt-4 text-center text-sm text-gray-500">
+                                    Detected {analyzerDots.length} dots. Refine detection manually, switch presets for different image conditions, optionally auto-snap them into a cleaner lattice, then sync them into the generator reference layer.
                                 </div>
                             </Card>
-                        ))}
+                        )}
                     </div>
-                     <div className="mt-12 max-w-lg mx-auto">
-                        <Card>
-                            <h4 className="text-2xl font-bold text-center mb-4 text-green-400">Regenerated Kolam (SVG)</h4>
-                            <div className="aspect-square bg-indigo-900/20 rounded-lg p-4" dangerouslySetInnerHTML={{ __html: analysisResult.regeneratedSvg }} />
-                            <div className="text-center mt-6">
-                                <Button onClick={downloadSVG}>Download SVG</Button>
-                            </div>
-                        </Card>
-                    </div>
+
+                    <Card>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Saved Workspaces</h3>
+                        <div className="space-y-3 max-h-[480px] overflow-auto pr-1">
+                            {savedWorkspaces.length === 0 && <p className="text-sm text-gray-500">No saved workspaces yet.</p>}
+                            {savedWorkspaces.map((workspace) => (
+                                <div key={workspace.id} className="border border-white/10 rounded-lg p-3 bg-black/10">
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <div>
+                                            <div className="text-sm font-semibold text-white">{workspace.analyzerDots.length} dots · {workspace.gridSize}×{workspace.gridSize}</div>
+                                            <div className="text-xs text-gray-500">{new Date(workspace.createdAt).toLocaleString()}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => loadWorkspace(workspace.id)} className="text-xs text-saffron">Load</button>
+                                            <button onClick={() => removeWorkspace(workspace.id)} className="text-xs text-red-400">Delete</button>
+                                        </div>
+                                    </div>
+                                    {workspace.summary && <p className="text-xs text-gray-400">{workspace.summary.message}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
                 </div>
-            )}
+            </div>
         </section>
     );
 };

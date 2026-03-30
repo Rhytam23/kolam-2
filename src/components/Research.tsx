@@ -1,25 +1,30 @@
-
 import React from 'react';
 import { Card } from './ui/Card';
 
 const researchData = [
     {
-        title: "KolamNet: A Deep Learning Approach for Kolam Pattern Recognition and Generation",
-        authors: "Anuradha Sharma, et al.",
-        year: "2023-2024",
-        summary: "Introduced a novel convolutional neural network architecture for classifying and generating Kolam designs, achieving high accuracy in recognizing traditional patterns."
+        title: 'KolamNet: A Deep Learning Approach for Kolam Pattern Recognition and Generation',
+        authors: 'Anuradha Sharma, et al.',
+        year: '2023–2024',
+        summary: 'A modern research direction for learning-based Kolam recognition and generation, useful as a reference point for how future versions of SOLVIX could evolve beyond heuristic computer vision.',
     },
     {
-        title: "Symmetry in Computer Vision: A Survey",
-        authors: "Liu, Y., et al.",
-        year: "2021",
-        summary: "A comprehensive review of symmetry detection algorithms in computer vision, providing a foundational understanding for analyzing the geometric properties of Kolams."
+        title: 'Symmetry in Computer Vision: A Survey',
+        authors: 'Liu, Y., et al.',
+        year: '2021',
+        summary: 'A strong conceptual reference for how symmetry detection can support Kolam interpretation, especially in noisy or partially damaged visual inputs.',
     },
     {
-        title: "The Design System of Kolam: A Computational Perspective",
-        authors: "T. Robinson, G. Siromoney",
-        year: "2008",
-        summary: "Explores the mathematical and algorithmic underpinnings of Kolam, treating them as picture languages and formal grammars, crucial for procedural generation."
+        title: 'The Design System of Kolam: A Computational Perspective',
+        authors: 'T. Robinson, G. Siromoney',
+        year: '2008',
+        summary: 'A foundational computational view of Kolam as a formal visual system, directly relevant to procedural generation and grammar-based pattern understanding.',
+    },
+    {
+        title: 'Indian Knowledge Systems and Visual Pattern Logic',
+        authors: 'Curated project synthesis',
+        year: '2025',
+        summary: 'For this prototype, the project frames Kolam not only as image data but as embodied cultural logic—combining spatial rhythm, ritual repetition, and geometric decision-making.',
     },
 ];
 

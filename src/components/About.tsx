@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card } from './ui/Card';
 
@@ -9,26 +8,26 @@ const About: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-8 items-center">
                 <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
                     <p>
-                        <strong>SOLVIX – Kolam AI</strong> is a pioneering project for the Smart India Hackathon 2025. Our mission is to decode the intricate design principles embedded within traditional Kolam art, a cultural heritage of Tamil Nadu.
+                        <strong>SOLVIX – Kolam AI</strong> is a cultural-computing project focused on helping people analyze, preserve, and reinterpret traditional Kolam patterns through interactive software.
                     </p>
                     <p>
-                        By leveraging the power of Artificial Intelligence, Computer Vision, and advanced computational techniques, we aim to analyze, understand, and algorithmically recreate these beautiful geometric patterns.
+                        The project combines computer vision, procedural geometry, and correction tooling so a user can upload a Kolam image, detect its dot structure, refine that structure manually, and compare it against a generated procedural reference.
                     </p>
                     <p>
-                        This endeavor is not just a technical challenge; it's a journey to preserve and digitize a vital part of India's cultural fabric, making it accessible and understandable for generations to come.
+                        Instead of treating Kolam as decoration alone, SOLVIX approaches it as a living design system: a form of geometry, rhythm, and memory that can be documented, explained, and explored digitally without losing its cultural identity.
                     </p>
                 </div>
                 <div className="space-y-8">
                     <Card>
-                        <h3 className="text-2xl font-bold text-orange-400 mb-3">AI & Computer Vision</h3>
+                        <h3 className="text-2xl font-bold text-orange-400 mb-3">Computer Vision + Human Correction</h3>
                         <p className="text-gray-400">
-                            Utilizing Python libraries like OpenCV, scikit-image, and NetworkX to detect dot grids, trace loops, and identify symmetries in Kolam designs from images.
+                            The analyzer uses denoising, threshold blending, blob detection fallback, and geometric cleanup to produce a first-pass dot map, then gives the user correction tools like drag-editing, undo/redo, workspace save/load, and export.
                         </p>
                     </Card>
                     <Card>
-                        <h3 className="text-2xl font-bold text-blue-400 mb-3">Indian Knowledge Systems (IKS)</h3>
+                        <h3 className="text-2xl font-bold text-blue-400 mb-3">Tradition as Structured Knowledge</h3>
                         <p className="text-gray-400">
-                            Integrating mathematical and philosophical principles from IKS to understand the symbolic and structural significance of Kolam patterns, promoting cultural preservation through technology.
+                            SOLVIX treats Kolam as a structured visual language. The generator and walkthrough sections translate that language into interactive geometry so learners and judges can understand both the cultural importance and the computational logic behind the pattern.
                         </p>
                     </Card>
                 </div>

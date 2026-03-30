@@ -1,15 +1,15 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
 import { Input } from './ui/Input';
 
 const Contact: React.FC = () => {
-    
+    const [submitted, setSubmitted] = useState(false);
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        alert('Thank you for your feedback!');
+        setSubmitted(true);
     };
 
     return (
@@ -30,8 +30,9 @@ const Contact: React.FC = () => {
                             <Label htmlFor="message">Message</Label>
                             <textarea id="message" rows={4} placeholder="Your thoughts, questions, or feedback..." required className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-orange-500 focus:border-orange-500 transition-colors"></textarea>
                         </div>
-                        <div className="text-center">
+                        <div className="text-center space-y-4">
                             <Button type="submit">Send Message</Button>
+                            {submitted && <p className="text-green-400 text-sm">Thanks — your feedback has been captured in the current session.</p>}
                         </div>
                     </form>
                 </Card>
