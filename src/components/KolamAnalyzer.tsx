@@ -3,24 +3,11 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
 import { useKolam } from './KolamContext';
+import type { AnalysisPreset, AnalysisResponse, Point } from '../types/kolam';
+import { analyzeKolam } from '../lib/api/kolamApi';
 
-interface Point {
-    x: number;
-    y: number;
-}
-
-interface AnalysisResponse {
-    width: number;
-    height: number;
-    dots: Point[];
-    message: string;
-    preset?: string;
-    confidence?: number;
-}
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 const ZOOM_LEVELS = [1, 1.25, 1.5, 2];
-const PRESETS = ['balanced', 'clean-scan', 'phone-photo', 'noisy-background'] as const;
+const PRESETS: AnalysisPreset[] = ['balanced', 'clean-scan', 'phone-photo', 'noisy-background'];
 
 const KolamAnalyzer: React.FC = () => {
     const [image, setImage] = useState<string | null>(null);
@@ -54,6 +41,8 @@ const KolamAnalyzer: React.FC = () => {
     const imageRef = useRef<HTMLImageElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dragIndexRef = useRef<number | null>(null);
+    const imageUrlRef = useRef<string | null>(null);
+    const abortRef = useRef<AbortController | null>(null);
 
     const pushHistory = useCallback((dots: Point[]) => {
         setHistory(prev => [...prev, dots]);
@@ -124,24 +113,22 @@ const KolamAnalyzer: React.FC = () => {
         setStatus('Uploading image to analysis service...');
 
         const objectUrl = URL.createObjectURL(file);
+        if (imageUrlRef.current) {
+            URL.revokeObjectURL(imageUrlRef.current);
+        }
+        imageUrlRef.current = objectUrl;
         setImage(objectUrl);
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('preset', preset);
-        formData.append('deskew', String(deskew));
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
         try {
-            const response = await fetch(`${API_BASE}/analyze`, {
-                method: 'POST',
-                body: formData,
+            const data: AnalysisResponse = await analyzeKolam(file, {
+                preset,
+                deskew,
+                signal: controller.signal,
             });
-
-            if (!response.ok) {
-                throw new Error('Analysis failed');
-            }
-
-            const data: AnalysisResponse = await response.json();
             setAnalyzerDots(data.dots);
             setSelectedDots(data.dots);
             setImgDimensions({ width: data.width, height: data.height });
@@ -149,9 +136,11 @@ const KolamAnalyzer: React.FC = () => {
             setConfidence(data.confidence ?? null);
             setAnalysisSummary({ message: data.message || `Detected ${data.dots.length} potential dots.`, source: 'upload' });
         } catch (err) {
-            console.error(err);
-            setError('Failed to connect to analysis server. Make sure the Python backend is running.');
-            setStatus('Analyzer offline. You can still manually place and edit reference dots.');
+            if ((err as Error).name !== 'AbortError') {
+                console.error(err);
+                setError('Failed to connect to analysis server. Make sure the Python backend is running.');
+                setStatus('Analyzer offline. You can still manually place and edit reference dots.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -206,6 +195,15 @@ const KolamAnalyzer: React.FC = () => {
         }
         return () => imageRef.current?.removeEventListener('load', draw);
     }, [draw, analyzerDots, image]);
+
+    useEffect(() => {
+        return () => {
+            if (imageUrlRef.current) {
+                URL.revokeObjectURL(imageUrlRef.current);
+            }
+            abortRef.current?.abort();
+        };
+    }, []);
 
     const getNormalizedCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement>) => {
         const canvas = canvasRef.current;
