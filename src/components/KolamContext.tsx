@@ -1,26 +1,17 @@
 import React, { createContext, useEffect, useMemo, useState, useContext } from 'react';
-import { generateDots, generateKolamPath, Point } from '../utils/kolamLogic';
-
-interface AnalysisSummary {
-  message: string;
-  source: 'upload' | 'generator' | 'manual';
-}
-
-interface SavedWorkspace {
-  id: string;
-  createdAt: string;
-  gridSize: number;
-  analyzerDots: Point[];
-  selectedDots: Point[];
-  summary: AnalysisSummary | null;
-}
-
-interface ImportPayload {
-  gridSize?: number;
-  analyzerDots?: Point[];
-  selectedDots?: Point[];
-  summary?: AnalysisSummary | null;
-}
+import { generateDots, generateKolamPath } from '../utils/kolamLogic';
+import type {
+  AnalysisSummary,
+  Point,
+  WorkspaceImportPayload,
+  WorkspaceSnapshot,
+} from '../types/kolam';
+import {
+  loadSavedWorkspaces,
+  normalizeGridSize,
+  persistSavedWorkspaces,
+  sanitizeWorkspacePayload,
+} from '../lib/storage/workspaceStorage';
 
 interface KolamContextValue {
   gridSize: number;
@@ -35,17 +26,16 @@ interface KolamContextValue {
   setAnalysisSummary: (summary: AnalysisSummary | null) => void;
   syncAnalyzerToGenerator: () => void;
   resetWorkspace: () => void;
-  savedWorkspaces: SavedWorkspace[];
+  savedWorkspaces: WorkspaceSnapshot[];
   saveWorkspace: () => void;
   loadWorkspace: (id: string) => void;
   removeWorkspace: (id: string) => void;
   exportDots: () => void;
-  importWorkspace: (payload: ImportPayload) => void;
+  importWorkspace: (payload: WorkspaceImportPayload) => void;
   snapDotsToGrid: () => void;
 }
 
 const KolamContext = createContext<KolamContextValue | null>(null);
-const STORAGE_KEY = 'solvix_kolam_workspace_v1';
 
 const clusterCoordinates = (values: number[], tolerance = 0.03) => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -65,7 +55,10 @@ const clusterCoordinates = (values: number[], tolerance = 0.03) => {
 
 const snapPoint = (value: number, anchors: number[]) => {
   if (!anchors.length) return value;
-  return anchors.reduce((closest, anchor) => Math.abs(anchor - value) < Math.abs(closest - value) ? anchor : closest, anchors[0]);
+  return anchors.reduce(
+    (closest, anchor) => Math.abs(anchor - value) < Math.abs(closest - value) ? anchor : closest,
+    anchors[0],
+  );
 };
 
 export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -73,26 +66,18 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [analyzerDots, setAnalyzerDots] = useState<Point[]>([]);
   const [selectedDots, setSelectedDots] = useState<Point[]>([]);
   const [analysisSummary, setAnalysisSummary] = useState<AnalysisSummary | null>(null);
-  const [savedWorkspaces, setSavedWorkspaces] = useState<SavedWorkspace[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [savedWorkspaces, setSavedWorkspaces] = useState<WorkspaceSnapshot[]>(() => loadSavedWorkspaces());
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedWorkspaces));
+    persistSavedWorkspaces(savedWorkspaces);
   }, [savedWorkspaces]);
 
-  const normalizedGridSize = gridSize % 2 === 0 ? gridSize + 1 : gridSize;
+  const normalizedGridSize = normalizeGridSize(gridSize);
   const generatedDots = useMemo(() => generateDots(normalizedGridSize, 500, 500), [normalizedGridSize]);
   const generatedPath = useMemo(() => generateKolamPath(normalizedGridSize, 500, 500), [normalizedGridSize]);
 
   const setGridSize = (size: number) => {
-    const safeOdd = size % 2 === 0 ? size + 1 : size;
-    setGridSizeState(Math.min(15, Math.max(3, safeOdd)));
+    setGridSizeState(normalizeGridSize(size));
   };
 
   const syncAnalyzerToGenerator = () => {
@@ -108,7 +93,10 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!analyzerDots.length) return;
     const xAnchors = clusterCoordinates(analyzerDots.map(dot => dot.x));
     const yAnchors = clusterCoordinates(analyzerDots.map(dot => dot.y));
-    const snapped = analyzerDots.map(dot => ({ x: snapPoint(dot.x, xAnchors), y: snapPoint(dot.y, yAnchors) }));
+    const snapped = analyzerDots.map(dot => ({
+      x: snapPoint(dot.x, xAnchors),
+      y: snapPoint(dot.y, yAnchors),
+    }));
     setAnalyzerDots(snapped);
     setSelectedDots(snapped);
     setAnalysisSummary({
@@ -125,7 +113,7 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const saveWorkspace = () => {
-    const snapshot: SavedWorkspace = {
+    const snapshot: WorkspaceSnapshot = {
       id: `${Date.now()}`,
       createdAt: new Date().toISOString(),
       gridSize: normalizedGridSize,
@@ -145,11 +133,12 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAnalysisSummary(found.summary);
   };
 
-  const importWorkspace = (payload: ImportPayload) => {
-    setGridSizeState(payload.gridSize ?? 5);
-    setAnalyzerDots(payload.analyzerDots ?? []);
-    setSelectedDots(payload.selectedDots ?? payload.analyzerDots ?? []);
-    setAnalysisSummary(payload.summary ?? { message: 'Imported workspace from JSON.', source: 'manual' });
+  const importWorkspace = (payload: WorkspaceImportPayload) => {
+    const normalized = sanitizeWorkspacePayload(payload);
+    setGridSizeState(normalized.gridSize);
+    setAnalyzerDots(normalized.analyzerDots);
+    setSelectedDots(normalized.selectedDots.length ? normalized.selectedDots : normalized.analyzerDots);
+    setAnalysisSummary(normalized.summary);
   };
 
   const removeWorkspace = (id: string) => {
@@ -208,3 +197,4 @@ export const useKolam = () => {
   }
   return context;
 };
+
