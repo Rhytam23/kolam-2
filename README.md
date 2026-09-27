@@ -1,114 +1,133 @@
-# 🌀 SOLVIX – Kolam AI
-> **Bridging Ancient Geometry with Advanced Artificial Intelligence**
+<p align="center"><img src="docs/kolam.svg" width="220" alt="A single-line diamond kolam drawn by SOLVIX"></p>
 
-SOLVIX is a comprehensive **React + TypeScript + FastAPI** platform designed to analyze, proceduralize, and celebrate the intricate art of traditional **Kolam** (Rangoli). By combining computer vision, interactive geometry tools, and educational walkthroughs, SOLVIX brings traditional heritage into the digital age.
+# SOLVIX – Kolam AI
 
----
+**Identify the design principles behind a kolam and recreate it digitally.**
+Built for Smart India Hackathon problem statement **SIH25107**: *"Develop computer programs (in any
+language, preferably Python) to identify the design principles behind the Kolam designs and
+recreate the kolams."*
 
-## ✨ Key Features
+A pulli kolam is a grid of dots (*pulli*) with a line (*neli*) that loops around every dot without
+touching it. Between two neighbouring dots the line either **crosses** itself or **turns**, as if it
+bounced off a mirror. The dot grid plus that choice at every gap fully describes the kolam
+(the mirror-curve model of Gerdes, 1989). SOLVIX reads exactly that from a photo.
 
-### 🔍 Intelligent Analyzer
-- **CV-Powered Detection**: Advanced dot-detection algorithms for balanced scans, phone photos, and noisy backgrounds.
-- **Manual Correction**: Precision tools for adding, removing, and repositioning dots with perspective correction.
-- **Lattice Lattice Inference**: Automatic snapping and confidence estimation for cleaner pattern generation.
+## What it does
 
-### 🎨 Procedural Generator
-- **Algorithm-to-Art**: Dynamically generate Kolam patterns based on detected lattice structures.
-- **Reference Overlays**: Compare generated patterns against the original analyzer reference.
-- **Vector Exports**: Export high-quality SVG and PNG versions of your creations.
+| | |
+| --- | --- |
+| **Analyze** | Upload a photo or scan. OpenCV finds the dots, fits a (rotation- and perspective-tolerant) lattice, and reads the ink between every pair of dots as a crossing, a turn-back or a join. |
+| **Design principles** | Dot grid and orientation, dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of loops (1 = sikku, one continuous line), symmetry of the design and of the drawing, and a confidence score. |
+| **Recreate** | The kolam is redrawn as clean vector strands on top of your photo. Fix missed dots by hand (click, drag, undo) and recreate from your corrections. |
+| **Generate** | Square or diamond dot grids, with a one-click transform that joins all loops into a single line while keeping the design symmetric. |
+| **Share** | Export SVG, PNG, or the open `.kolam.json` format, and save kolams in the browser. |
+| **Learn** | A step-by-step walkthrough of dots → symmetry → strands → completion for the current design. |
 
-### 📂 Workspace Management
-- **Persistence**: Save and load snapshots directly in your browser's local storage.
-- **Portability**: Import and export workspaces as JSON for collaborative analysis.
+No sample photo at hand? Press **Try a sample** in the analyzer.
 
-### 🎓 Educational Walkthroughs
-- **Dynamic Construction**: Animated explanations showing how specific Kolams are built step-by-step.
-- **Context-Aware**: Walkthroughs adapt in real-time to your active workspace dot-map.
+## Run it
 
----
-
-## 🛠️ Technology Stack
-
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS |
-| **Backend** | FastAPI, OpenCV, NumPy |
-| **Visualization** | SVG, Canvas API, Procedural Math |
-| **Storage** | LocalStorage API, Workspace JSON Export |
-
----
-
-## 📂 Project Structure
-
-```text
-kolam-2/
-├── src/               # Main source code
-│   ├── components/    # Reusable UI components & feature logic
-│   ├── utils/         # Core geometric & procedural logic
-│   ├── App.tsx        # Main application entry point
-│   ├── main.tsx       # Vite entry point
-│   └── index.css      # Global styles & Tailwind directives
-├── backend/           # FastAPI backend server
-│   ├── main.py        # API endpoints & OpenCV logic
-│   └── requirements.txt
-├── docs/              # Project documentation & summaries
-├── public/            # Static assets & banners
-├── package.json       # Dependencies & NPM scripts
-└── vite.config.ts     # Project configuration
-```
-
----
-
-## 🚀 Getting Started
-
-### 1. Frontend Development
-Ensure you have **Node.js** installed.
+### One command (Docker)
 
 ```bash
-# Navigate to root
-npm install
-npm run dev
+docker build -t solvix-kolam .
+docker run -p 8000:8000 solvix-kolam
 ```
-> [!NOTE]
-> The frontend will be accessible at `http://localhost:3000`.
 
-### 2. Backend Setup
-Ensure you have **Python 3.10+** installed.
+Open http://localhost:8000. The container serves the web app and the API (`/api/...`) together.
+
+### Local development
+
+Requires Node.js 20+ and Python 3.10+.
 
 ```bash
-# Navigate to backend directory
+# terminal 1 – API on :8000
 cd backend
 pip install -r requirements.txt
 python main.py
-```
-> [!NOTE]
-> The backend will be accessible at `http://localhost:8000`.
 
-### 3. Environment Variables
-Copy `.env.example` to `.env.local` in the project root if you need to point the frontend at a
-backend running somewhere other than `http://localhost:8000`:
+# terminal 2 – web app on :3000 (proxies /api to :8000)
+npm install
+npm run dev
+```
+
+### Checks
 
 ```bash
-cp .env.example .env.local
+npm run typecheck && npm test && npm run build
+cd backend && pip install -r requirements-dev.txt && python -m pytest -q
 ```
 
-`.env.local` sets `VITE_API_BASE_URL`; it's gitignored, so your local value is never committed.
+CI runs the same checks and a Docker build on every push (`.github/workflows/ci.yml`).
 
----
+## Deploy
 
-## 🔮 Roadmap
-- [ ] **Advanced Lattice Inference**: Stronger pattern prediction from sparse dot sets.
-- [ ] **Visual Comparison Mode**: Side-by-side "detected vs. generated" comparison overlays.
-- [ ] **Extended Styles**: Support for varied regional styles and pattern families.
-- [ ] **Dataset Export**: Tooling to contribute your corrected dot-maps to a shared open-source Kolam dataset.
+The Docker image runs anywhere that runs containers (Render, Railway, Fly.io, Google Cloud Run,
+Hugging Face Spaces, a VPS). It listens on `$PORT` (default 8000) and has a health check at
+`/api/health`.
 
----
+To host the frontend separately (for example on a static host), build it with
+`VITE_API_BASE_URL=https://your-api.example.com npm run build`, and start the API with
+`CORS_ORIGINS=https://your-frontend.example.com`. See `.env.example`.
 
-## 📜 License
-MIT — see [LICENSE](LICENSE). Project created as part of the SOLVIX – Kolam AI initiative.
+## API
 
----
-<p align="center">
-  <b>Built with ❤️ by the SOLVIX Team</b>
-</p>
+`POST /api/analyze` (multipart form)
 
+| field | |
+| --- | --- |
+| `file` | PNG, JPEG or WebP, up to 8 MB |
+| `preset` | `balanced` (default), `clean-scan`, `phone-photo`, `noisy-background` |
+| `deskew` | `true` (default): straighten a photographed sheet. The corrected image is returned as `image` |
+| `dots` | optional JSON list of `{x, y}` (0–1): use these dots instead of detecting them |
+
+The response includes `dots`, `lattice` (grid size, origin and axes in image coordinates),
+`design` (see below), `symmetry` (drawing symmetry scores), `confidence` and `message`.
+
+## The `.kolam.json` format
+
+```json
+{
+  "format": "kolam", "version": 1, "createdAt": "2026-01-01T00:00:00.000Z",
+  "design": {
+    "rows": 3, "cols": 3,
+    "mask": ["010", "111", "010"],
+    "h": ["..", "xx", ".."],
+    "v": [".x.", ".x."]
+  },
+  "dots": [{ "x": 0.5, "y": 0.2 }],
+  "lattice": null
+}
+```
+
+`mask[j][i]` is `1` where a dot sits. `h[j][i]` describes the gap between dots `(i, j)` and
+`(i+1, j)`, and `v[j][i]` the gap between `(i, j)` and `(i, j+1)`. Each gap is `x` (strands cross),
+`p` (strands turn back around each dot), `j` (strands join the two dots) or `.` (no gap because a
+dot is missing).
+
+## Project layout
+
+```text
+src/utils/kolamLogic.ts     mirror-curve engine: tracing, symmetry, single-line transform, SVG
+src/components/             analyzer, generator, walkthrough and page sections
+src/lib/                    API client and .kolam.json helpers
+backend/detection.py        dot detection (OpenCV)
+backend/principles.py       lattice fit, crossing/turn reading, symmetry
+backend/main.py             FastAPI app; also serves the built frontend
+```
+
+## Feedback
+
+Tried it on your own kolam? Please [open an issue](https://github.com/Rhytam23/kolam-2/issues)
+with the photo (or its `.kolam.json`) and what SOLVIX got right or wrong.
+
+## References
+
+- G. Siromoney, R. Siromoney, K. Krithivasan. *Array grammars and kolam*. Computer Graphics and Image Processing 3(1), 1974.
+- P. Gerdes. *Reconstruction and extension of lost symmetries: examples from the Tamil of South India*. Computers & Mathematics with Applications 17(4–6), 1989.
+- M. Ascher. *The Kolam Tradition*. American Scientist 90(1), 2002.
+- *KolamNetV2: efficient attention-based deep learning network for Tamil heritage art-kolam classification*. npj Heritage Science, 2024.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
