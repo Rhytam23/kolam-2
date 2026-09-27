@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
@@ -94,7 +94,8 @@ const KolamGenerator: React.FC = () => {
     const k = useKolam();
     const { mode, setMode, design, loops, symmetry, scan, useScan, setUseScan, traced } = k;
 
-    const svg = useMemo(() => artworkSvg(k), [k]);
+    const [showDots, setShowDots] = useState(true);
+    const svg = useMemo(() => artworkSvg(k, { dots: showDots }), [k, showDots]);
     const colours = useMemo(() => artworkColours(k), [k]);
     const name = mode === 'kolam' ? `kolam-${design.rows}x${design.cols}` : mode === 'radial' ? `rangoli-${k.petals}-fold` : 'traced-drawing';
     const radialPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.radialColours) ?? null;
@@ -191,6 +192,16 @@ const KolamGenerator: React.FC = () => {
                                 Your photo, traced into {traced.layers.length} colour layer{traced.layers.length === 1 ? '' : 's'}. The guide below shows
                                 which colour to lay down first. To make a new design in the same spirit, open <strong>Rangoli & alpana</strong>.
                             </p>
+                        )}
+
+                        {mode !== 'kolam' && (
+                            <label className="flex items-start gap-3 text-ink">
+                                <input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} className="accent-kaavi w-4 h-4 mt-1" />
+                                <span>
+                                    Show the small guide dots
+                                    <span className="block text-xs text-muted">Put these down first, then join them. Download with dots to print a template.</span>
+                                </span>
+                            </label>
                         )}
 
                         <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam'} />

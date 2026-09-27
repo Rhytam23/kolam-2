@@ -23,7 +23,7 @@ without dots (alpana, most rangoli) are read by their turning symmetry and colou
 | **Recreate** | Dot kolams are redrawn as clean lines on top of your photo; fix missed dots by hand and recreate. Free-hand designs are traced into filled colour layers. |
 | **Make a similar design** | One click starts a new design in the studio with the same grid, or the same symmetry and colours for rangoli and alpana. |
 | **Design Studio** | Dot kolams (square or diamond grids, one-line sikku option) and radial rangoli/alpana (lotus, alpana, marigold and star styles, 3–16 petals, 1–4 rings), with colour sets: rice flour on red floor, kaavi on cream, Pongal and Diwali. |
-| **Draw it yourself** | A step-by-step guide for whatever is in the studio: prepare the ground, place the dots or mark guide circles and points, draw each line or ring one at a time, then fill each colour, with tips and materials for every step. |
+| **Draw it yourself** | A step-by-step guide that follows how floor art is really made: prepare the ground, put down the small dots first, then draw the lines (around the dots for a pulli kolam, from dot to dot for rangoli and alpana) one line or ring at a time, and fill the colours last, with tips and materials for every step. Rangoli and alpana designs can be downloaded with their dots as a printable template. |
 | **Share** | Export SVG, PNG or the open `.kolam.json` format, save kolams in the browser, and share links with a preview card. |
 
 No sample photo at hand? Press **Try a sample** in the analyzer.

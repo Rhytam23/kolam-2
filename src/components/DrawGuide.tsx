@@ -4,10 +4,10 @@ import { Card } from './ui/Card';
 import ColourGuide from './ColourGuide';
 import { useKolam } from './KolamContext';
 import { SYMMETRY_LABELS, designDots, loopPaths, rowPattern, type SymmetryName } from '../utils/kolamLogic';
-import { ringGuidePoints, ringPath, ringStyle, type Motif } from '../utils/radial';
-import { layerTransform, tracedBackground, tracedSize } from '../utils/traced';
+import { DOT_RADIUS, guideDotColour, radialGuideDots, ringPath, ringStyle, type Motif } from '../utils/radial';
+import { layerTransform, tracedBackground, tracedDots, tracedSize } from '../utils/traced';
 import { artworkColours, kolamDotColour } from '../lib/artwork';
-import { isDark, nearestGround, nearestTraditional } from '../lib/colours';
+import { nearestGround, nearestTraditional } from '../lib/colours';
 
 interface Step {
     title: string;
@@ -45,19 +45,20 @@ const DrawGuide: React.FC = () => {
         const ground = nearestGround(colours.background);
 
         if (mode === 'radial') {
-            const rings = [...radial.rings].reverse(); // draw from the centre outwards
+            const rings = [...radial.rings].reverse(); // work from the centre outwards
+            const dotColour = guideDotColour(radial.background);
             const bg = <rect x={-1.1} y={-1.1} width={2.2} height={2.2} fill={radial.background} />;
-            const guideColour = isDark(radial.background) ? '#F7F3EA' : '#3B2416';
-            const circles = (
-                <g fill="none" stroke={guideColour} strokeOpacity={0.35} strokeWidth={0.008} strokeDasharray="0.03 0.03">
-                    {radial.rings.map((r, i) => <circle key={i} r={r.outer} />)}
+            const guideDots = radialGuideDots(radial);
+            const dotsOf = (
+                <g fill={dotColour}>
+                    {guideDots.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={p.ring < 0 ? DOT_RADIUS * 1.3 : DOT_RADIUS} />)}
                 </g>
             );
-            const centre = <circle r={0.09} fill={radial.centre} stroke={radial.outline} strokeWidth={0.012} />;
-            const outline = (ringIndex: number, colour: string) => (
-                <path d={ringPath(rings[ringIndex])} fill="none" stroke={colour} strokeWidth={0.014} strokeLinejoin="round" />
+            const joined = (ring: (typeof rings)[number], colour: string, animate = false) => (
+                <path d={ringPath(ring)} fill="none" stroke={colour} strokeWidth={0.014} strokeLinejoin="round" pathLength={1} className={animate ? 'kolam-draw' : undefined} />
             );
-            const guideRing = radial.rings.find(r => r.motif !== 'dot') ?? radial.rings[0];
+            const dotsPerRing = rings.map((_, i) => `${guideDots.filter(d => d.ring === i).length} for ring ${i + 1}`).join(', ');
+            const total = guideDots.length;
             return {
                 viewBox: '-1.1 -1.1 2.2 2.2',
                 list: [
@@ -68,31 +69,23 @@ const DrawGuide: React.FC = () => {
                         picture: bg,
                     },
                     {
-                        title: '2. Centre and guide circles',
-                        text: `Mark the centre, then draw ${radial.rings.length} light guide circle${radial.rings.length > 1 ? 's' : ''}, one for the edge of each ring.`,
-                        tip: 'Tie a piece of chalk to a string and hold the other end at the centre to use it as a compass.',
-                        picture: <>{bg}{circles}{centre}</>,
-                    },
-                    {
-                        title: `3. Mark ${guideRing.count} points`,
-                        text: `Divide the circle into ${guideRing.count} equal parts, ${(360 / guideRing.count).toFixed(guideRing.count % 8 === 0 || 360 % guideRing.count === 0 ? 0 : 1)}° apart. The petals will point at these marks.`,
-                        tip: `Fold a paper circle in half again and again (or into ${guideRing.count}) to find the marks, then copy them onto the floor.`,
-                        picture: <>{bg}{circles}{centre}{ringGuidePoints(guideRing).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={0.025} fill={HIGHLIGHT} />)}</>,
+                        title: '2. Put down the small dots',
+                        text: `Start with one dot in the centre, then place ${total - 1} small dots around it: ${dotsPerRing}. Dots of the same ring are all the same distance from the centre.`,
+                        tip: 'Take a pinch of powder and touch it to the floor for each dot. Place opposite dots in pairs so the pattern stays even.',
+                        picture: <>{bg}{dotsOf}</>,
                     },
                     ...rings.map((ring, i) => ({
-                        title: `${4 + i}. Ring ${i + 1}: ${ring.count} ${MOTIF_NAMES[ring.motif]}`,
-                        text: `${i === 0 ? 'Start next to the centre. ' : ''}Draw ${ring.count} ${MOTIF_NAMES[ring.motif]} of the same size, `
-                            + (ring.count !== guideRing.count ? `${ring.count / guideRing.count > 1 ? 'two for every mark' : 'spaced evenly'}.`
-                                : ring.offset ? 'each one pointing between two marks.' : 'each one pointing at a mark.'),
-                        tip: 'Draw the outline of every shape first; colour comes at the end.',
-                        picture: <>{bg}{circles}{centre}{rings.slice(0, i).map((_, j) => <g key={j}>{outline(j, guideColour)}</g>)}{outline(i, HIGHLIGHT)}</>,
+                        title: `${3 + i}. Join the dots: ring ${i + 1}`,
+                        text: `${i === 0 ? 'Starting next to the centre, join' : 'Join'} the dots of this ring into ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from dot to dot${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
+                        tip: ring.filled ? 'Draw only the outline now; colour comes at the end.' : 'Keep the line thin and even; alpana outlines are the design itself.',
+                        picture: <>{bg}{rings.slice(0, i).map((r, j) => <g key={j}>{joined(r, dotColour)}</g>)}<g key={`${step}-${i}`}>{joined(ring, HIGHLIGHT, true)}</g>{dotsOf}</>,
                     })),
                     {
-                        title: `${4 + rings.length}. Fill the colours`,
-                        text: 'Fill each ring with its colour, working from the centre outwards so you never step or lean on finished parts.',
-                        tip: radial.rings.some(r => !r.filled) ? 'Alpana is painted with rice paste (pithali) using a finger or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.',
+                        title: `${3 + rings.length}. Fill the colours`,
+                        text: 'Fill each shape with its colour, working from the centre outwards so you never lean on finished parts. The dots disappear under the colour.',
+                        tip: radial.rings.some(r => !r.filled) ? 'For alpana, trace the lines with rice paste (pithali) using a fingertip or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.',
                         colours: true,
-                        picture: <>{bg}{radial.rings.map((r, i) => { const s = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={s.fill} stroke={s.stroke} strokeWidth={s.strokeWidth} strokeLinejoin="round" />; })}{centre}</>,
+                        picture: <>{bg}{radial.rings.map((r, i) => { const st = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={st.fill} stroke={st.stroke} strokeWidth={st.strokeWidth} strokeLinejoin="round" />; })}<circle r={0.09} fill={radial.centre} stroke={radial.outline} strokeWidth={0.012} /></>,
                     },
                 ],
             };
@@ -102,8 +95,11 @@ const DrawGuide: React.FC = () => {
             const { w, h } = tracedSize(traced);
             const bg = <rect width={w} height={h} fill={tracedBackground(traced)} />;
             const layers = traced.layers;
-            const outlines = (from: number) => (
-                <g transform={layerTransform(traced)} fill="none" stroke="#3B2416" strokeOpacity={0.55} strokeWidth={1} vectorEffect="non-scaling-stroke">
+            const dotColour = guideDotColour(tracedBackground(traced));
+            const guideDots = tracedDots(traced);
+            const dotsLayer = <g fill={dotColour}>{guideDots.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={w * 0.005} />)}</g>;
+            const outlines = (from: number, colour = dotColour) => (
+                <g transform={layerTransform(traced)} fill="none" stroke={colour} strokeOpacity={0.8} strokeWidth={1.5}>
                     {layers.slice(from).map((l, i) => <path key={i} d={l.path} vectorEffect="non-scaling-stroke" />)}
                 </g>
             );
@@ -120,22 +116,28 @@ const DrawGuide: React.FC = () => {
                         picture: bg,
                     },
                     {
-                        title: '2. Sketch the outline',
-                        text: 'Copy the outline lightly with chalk first. Start with the biggest shapes and check the spacing before adding details.',
-                        tip: 'For round designs, find the centre and use a string as a compass for the circles.',
-                        picture: <>{bg}{outlines(0)}</>,
+                        title: '2. Put down the small dots',
+                        text: `Copy the ${guideDots.length} small dots that mark the outline of every shape. Start from the middle of the design and work outwards.`,
+                        tip: 'Look at your photo often and compare the gaps between dots; small, light dots are easy to cover later.',
+                        picture: <>{bg}{dotsLayer}</>,
+                    },
+                    {
+                        title: '3. Join the dots',
+                        text: 'Join neighbouring dots with a thin line to bring out each shape. Follow the photo for curves between the dots.',
+                        tip: 'Draw the outline with a thin stream of powder or rice paste; colour comes after.',
+                        picture: <>{bg}{outlines(0, HIGHLIGHT)}{dotsLayer}</>,
                     },
                     ...layers.map((layer, i) => {
                         const c = nearestTraditional(layer.color);
                         return {
-                            title: `${3 + i}. Fill with ${c.name.toLowerCase()}`,
-                            text: `Fill the ${i === 0 ? 'largest' : 'next'} coloured areas with ${c.name.toLowerCase()}.`,
+                            title: `${4 + i}. Fill with ${c.name.toLowerCase()}`,
+                            text: `Fill the ${i === 0 ? 'largest' : 'next'} areas with ${c.name.toLowerCase()}, staying inside the lines.`,
                             tip: c.material,
                             picture: <>{bg}{filled(i + 1)}{outlines(i + 1)}</>,
                         };
                     }),
                     {
-                        title: `${3 + layers.length}. Finished`,
+                        title: `${4 + layers.length}. Finished`,
                         text: 'Compare with your photo and touch up the edges with a fine line of powder.',
                         colours: true,
                         picture: <>{bg}{filled(layers.length)}</>,
@@ -172,7 +174,7 @@ const DrawGuide: React.FC = () => {
             ? Array.from({ length: PARTS }, (_, p) => ({
                 title: `Draw the line: part ${p + 1} of ${PARTS}`,
                 text: p === 0
-                    ? 'Start at the circle and follow the line around the dots, curving at the edges. Never touch a dot.'
+                    ? 'With all the dots in place, start at the circle and draw the line between the dots, looping around each one. In a pulli kolam the line goes around the dots, never over them.'
                     : p === PARTS - 1 ? 'Finish the line where you started. The whole kolam is a single closed line.' : 'Keep going without lifting your hand; it is all one line.',
                 tip: 'Let the rice flour fall in a thin stream from between your thumb and forefinger.',
                 picture: <>{bg}{line(paths[0], stroke(0), { strokeDasharray: partDash(0, p / PARTS) })}{line(paths[0], HIGHLIGHT, { strokeDasharray: partDash(p / PARTS, (p + 1) / PARTS) })}{pulli}{p === 0 && startMarker(paths[0])}</>,

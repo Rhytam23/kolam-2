@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { makeRadial, radialColours, radialToSvg, ringGuidePoints, ringPath, RADIAL_STYLES, type RadialStyle } from './radial';
+import { makeRadial, radialColours, radialGuideDots, radialToSvg, ringDots, ringPath, RADIAL_STYLES, type RadialStyle } from './radial';
 import { designToSvg, squareDesign } from './kolamLogic';
 import { PALETTES, nearestTraditional } from '../lib/colours';
 
@@ -16,12 +16,25 @@ describe('radial designs', () => {
     }
   });
 
-  it('places the guide points evenly', () => {
+  it('gives every petal its own guide dots, and the outline passes through them', () => {
     const [ring] = makeRadial({ petals: 6, layers: 1, style: 'lotus', ...PALETTES.kaavi }).rings;
-    const pts = ringGuidePoints(ring);
-    expect(pts).toHaveLength(6);
-    const gaps = pts.map((p, i) => Math.hypot(p.x - pts[(i + 1) % 6].x, p.y - pts[(i + 1) % 6].y));
-    gaps.forEach(g => expect(g).toBeCloseTo(gaps[0]));
+    const dots = ringDots(ring);
+    expect(dots).toHaveLength(6 * 4); // base, two sides, tip
+    // The tips are points the outline is drawn through.
+    const numbers = ringPath(ring).match(/-?\d+(\.\d+)?/g)!.map(Number);
+    const endpoints: Array<{ x: number; y: number }> = [];
+    for (let i = 0; i < numbers.length; i += 2) endpoints.push({ x: numbers[i], y: numbers[i + 1] });
+    const tips = dots.filter(d => Math.abs(Math.hypot(d.x, d.y) - ring.outer) < 1e-3);
+    expect(tips).toHaveLength(6);
+    expect(tips.every(t => endpoints.some(e => Math.hypot(e.x - t.x, e.y - t.y) < 2e-3))).toBe(true);
+  });
+
+  it('shares one dot where two rings meet', () => {
+    const dots = radialGuideDots(makeRadial({ petals: 8, layers: 3, style: 'lotus', ...PALETTES.pongal }));
+    for (let i = 0; i < dots.length; i++) {
+      for (let j = i + 1; j < dots.length; j++) expect(Math.hypot(dots[i].x - dots[j].x, dots[i].y - dots[j].y)).toBeGreaterThanOrEqual(0.035);
+    }
+    expect(dots[0]).toMatchObject({ x: 0, y: 0 });
   });
 
   it('lists the ground first among its colours', () => {
@@ -49,5 +62,20 @@ describe('grounds', () => {
     expect(nearestGround('#FFF8EE').name).toBe('Light floor');
     expect(nearestGround('#8E3B24').name).toBe('Red-earth floor');
     expect(nearestGround('#1F1A3A').name).toBe('Dark floor');
+  });
+});
+
+describe('traced guide dots', () => {
+  it('spaces dots evenly along each outline', async () => {
+    const { tracedDots } = await import('./traced');
+    // A 0.4 × 0.4 square in a square picture: perimeter 1.6 of the width.
+    const art = { layers: [{ color: '#C62839', path: 'M0.3 0.3L0.7 0.3L0.7 0.7L0.3 0.7Z' }], palette: [], width: 100, height: 100 };
+    const dots = tracedDots(art);
+    expect(dots.length).toBeGreaterThanOrEqual(50);
+    expect(dots.length).toBeLessThanOrEqual(56);
+    dots.forEach(d => {
+      const onEdge = [d.x, d.y].some(v => Math.abs(v - 300) < 1e-6 || Math.abs(v - 700) < 1e-6);
+      expect(onEdge).toBe(true);
+    });
   });
 });

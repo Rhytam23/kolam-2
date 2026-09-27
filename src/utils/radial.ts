@@ -133,13 +133,62 @@ export const ringPath = (ring: RadialRing) => {
   return path;
 };
 
-/** Guide points where each motif of a ring starts and ends, for drawing by hand. */
-export const ringGuidePoints = (ring: RadialRing) => {
+/**
+ * The small guide dots a person puts down before drawing a ring, the way rangoli and alpana are
+ * started: for every petal a dot where it starts, one at each side and one at its tip. The drawn
+ * outline passes through every one of these dots.
+ */
+export const ringDots = (ring: RadialRing): Array<{ x: number; y: number }> => {
   const step = (2 * Math.PI) / ring.count;
-  return Array.from({ length: ring.count }, (_, i) => {
+  const local: Array<[number, number]> = [];
+  if (ring.motif === 'dot') {
+    local.push([(ring.inner + ring.outer) / 2, 0]);
+  } else {
+    let cur: [number, number] = [0, 0];
+    for (const seg of motifSegments(ring.motif, ring.inner, ring.outer, ring.width)) {
+      if (seg[0] === 'M') {
+        cur = [seg[1], seg[2]];
+        local.push(cur);
+      } else if (seg[0] === 'C') {
+        const [, x1, y1, x2, y2, x, y] = seg;
+        // Loops get a dot at each quarter; petals also at the widest point of each side.
+        if (ring.motif !== 'loop') local.push([(cur[0] + 3 * x1 + 3 * x2 + x) / 8, (cur[1] + 3 * y1 + 3 * y2 + y) / 8]);
+        cur = [x, y];
+        local.push(cur);
+      }
+    }
+  }
+  const unique = local.filter((p, i) => local.findIndex(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-6) === i);
+  const dots: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < ring.count; i++) {
     const angle = i * step + (ring.offset ? step / 2 : 0) - Math.PI / 2;
-    return { x: Math.cos(angle) * ring.outer, y: Math.sin(angle) * ring.outer };
+    const c = Math.cos(angle);
+    const sn = Math.sin(angle);
+    unique.forEach(([x, y]) => dots.push({ x: x * c - y * sn, y: x * sn + y * c }));
+  }
+  return dots;
+};
+
+export const DOT_RADIUS = 0.016;
+
+/**
+ * All the guide dots of a design, from the centre outwards. Where two rings meet, one dot serves
+ * both, as it would on the floor. `ring` is the index (centre-out) of the ring that first needs it.
+ */
+export const radialGuideDots = (design: RadialDesign) => {
+  const dots: Array<{ x: number; y: number; ring: number }> = [{ x: 0, y: 0, ring: -1 }];
+  [...design.rings].reverse().forEach((ring, index) => {
+    for (const p of ringDots(ring)) {
+      if (!dots.some(d => Math.hypot(d.x - p.x, d.y - p.y) < 0.035)) dots.push({ ...p, ring: index });
+    }
   });
+  return dots;
+};
+
+/** Dot colour that shows up on the ground. */
+export const guideDotColour = (background: string) => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(background.slice(i, i + 2), 16));
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128 ? '#F7F3EA' : '#3B2416';
 };
 
 export const ringStyle = (design: RadialDesign, ring: RadialRing) => ({
@@ -148,7 +197,7 @@ export const ringStyle = (design: RadialDesign, ring: RadialRing) => ({
   strokeWidth: ring.filled ? 0.012 : 0.022,
 });
 
-export const radialToSvg = (design: RadialDesign, size = 480) => {
+export const radialToSvg = (design: RadialDesign, size = 480, { dots = false } = {}) => {
   const rings = design.rings
     .map(ring => {
       const s = ringStyle(design, ring);
@@ -159,6 +208,11 @@ export const radialToSvg = (design: RadialDesign, size = 480) => {
     + `<rect x="-1.1" y="-1.1" width="2.2" height="2.2" fill="${design.background}"/>`
     + rings
     + `<circle r="0.09" fill="${design.centre}" stroke="${design.outline}" stroke-width="0.012"/>`
+    + (dots
+      ? `<g fill="${guideDotColour(design.background)}">`
+        + radialGuideDots(design).map(p => `<circle cx="${fmt(p.x)}" cy="${fmt(p.y)}" r="${DOT_RADIUS}"/>`).join('')
+        + '</g>'
+      : '')
     + '</svg>';
 };
 

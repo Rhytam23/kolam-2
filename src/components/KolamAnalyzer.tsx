@@ -8,6 +8,7 @@ import { ANALYSIS_PRESETS, type AnalysisPreset, type AnalysisResponse, type Poin
 import { ACCEPTED_TYPES, MAX_UPLOAD_MB, analyzeKolam, shrinkImage } from '../lib/api';
 import { downloadBlob, parseKolamFile, svgToPng, downloadKolamFile } from '../lib/kolamFile';
 import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, rowPattern, snapToLattice } from '../utils/kolamLogic';
+import { tracedDots, tracedSize } from '../utils/traced';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -49,6 +50,7 @@ const KolamAnalyzer: React.FC = () => {
     const [deskew, setDeskew] = useState(true);
     const [showRecreation, setShowRecreation] = useState(true);
     const [surface, setSurface] = useState({ w: 0, h: 0 });
+    const [replay, setReplay] = useState(0);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const surfaceRef = useRef<HTMLDivElement>(null);
@@ -76,6 +78,34 @@ const KolamAnalyzer: React.FC = () => {
         return () => observer.disconnect();
     }, [hasSurface]);
 
+    /** The recreated lines and colours, for the exported PNG (on screen they are animated in SVG). */
+    const paintRecreation = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+        if (scan?.lattice) {
+            const { origin: o, u, v } = scan.lattice;
+            const strands = new Path2D(designPath(scan.design));
+            ctx.save();
+            ctx.transform(w * u.x, h * u.y, w * v.x, h * v.y, w * o.x, h * o.y);
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 0.13;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.stroke(strands);
+            ctx.lineWidth = 0.07;
+            ctx.strokeStyle = '#F08A00';
+            ctx.stroke(strands);
+            ctx.restore();
+        } else if (traced) {
+            ctx.save();
+            ctx.scale(w, h);
+            ctx.globalAlpha = 0.85;
+            traced.layers.forEach(layer => {
+                ctx.fillStyle = layer.color;
+                ctx.fill(new Path2D(layer.path), 'evenodd');
+            });
+            ctx.restore();
+        }
+    };
+
+    // The canvas holds only the editable dots; it sits on top so it receives taps and drags.
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas || !surface.w) return;
@@ -85,30 +115,6 @@ const KolamAnalyzer: React.FC = () => {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
         ctx.scale(dpr, dpr);
-
-        if (showRecreation && scan?.lattice) {
-            const { origin: o, u, v } = scan.lattice;
-            const strands = new Path2D(designPath(scan.design));
-            ctx.save();
-            ctx.transform(surface.w * u.x, surface.h * u.y, surface.w * v.x, surface.h * v.y, surface.w * o.x, surface.h * o.y);
-            ctx.lineCap = 'round';
-            ctx.lineWidth = 0.13;
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-            ctx.stroke(strands);
-            ctx.lineWidth = 0.07;
-            ctx.strokeStyle = '#F08A00';
-            ctx.stroke(strands);
-            ctx.restore();
-        } else if (showRecreation && traced && imageUrl) {
-            ctx.save();
-            ctx.scale(surface.w, surface.h);
-            ctx.globalAlpha = 0.85;
-            traced.layers.forEach(layer => {
-                ctx.fillStyle = layer.color;
-                ctx.fill(new Path2D(layer.path), 'evenodd');
-            });
-            ctx.restore();
-        }
         dots.forEach(p => {
             ctx.beginPath();
             ctx.arc(p.x * surface.w, p.y * surface.h, 5, 0, 2 * Math.PI);
@@ -118,7 +124,42 @@ const KolamAnalyzer: React.FC = () => {
             ctx.strokeStyle = '#ffffff';
             ctx.stroke();
         });
-    }, [dots, scan, traced, imageUrl, showRecreation, surface]);
+    }, [dots, surface]);
+
+    /** Recreation drawn the way it is made by hand: dots first, then the lines, then colour. */
+    const recreation = () => {
+        const { w: W, h: H } = surface;
+        if (!W || !showRecreation) return null;
+        if (scan?.lattice) {
+            const { origin: o, u, v } = scan.lattice;
+            const d = designPath(scan.design);
+            return (
+                <g key={replay} transform={`matrix(${W * u.x} ${H * u.y} ${W * v.x} ${H * v.y} ${W * o.x} ${H * o.y})`} fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <path d={d} stroke="rgba(255,255,255,0.85)" strokeWidth={0.13} pathLength={1} className="kolam-draw" style={{ animationDelay: '0.8s' }} />
+                    <path d={d} stroke="#F08A00" strokeWidth={0.07} pathLength={1} className="kolam-draw" style={{ animationDelay: '0.8s' }} />
+                </g>
+            );
+        }
+        if (traced && imageUrl) {
+            const { w: tw, h: th } = tracedSize(traced);
+            return (
+                <g key={replay}>
+                    <g className="fade-in">
+                        {tracedDots(traced).map((p, i) => (
+                            <circle key={i} cx={(p.x / tw) * W} cy={(p.y / th) * H} r={3} fill="#2E7D32" stroke="#fff" strokeWidth={1} />
+                        ))}
+                    </g>
+                    <g transform={`scale(${W} ${H})`} fill="none" stroke="#F08A00" strokeWidth={2} className="fade-in" style={{ animationDelay: '1s' }}>
+                        {traced.layers.map((l, i) => <path key={i} d={l.path} vectorEffect="non-scaling-stroke" />)}
+                    </g>
+                    <g transform={`scale(${W} ${H})`} opacity={0.85} className="fade-in" style={{ animationDelay: '2.2s' }}>
+                        {traced.layers.map((l, i) => <path key={i} d={l.path} fill={l.color} fillRule="evenodd" />)}
+                    </g>
+                </g>
+            );
+        }
+        return null;
+    };
 
     // ------------------------------------------------------------ analysis
 
@@ -141,6 +182,7 @@ const KolamAnalyzer: React.FC = () => {
                 setTraced(data.layers.length ? { layers: data.layers, palette: data.palette, width: data.width, height: data.height } : null);
             }
             setMeta({ confidence: data.confidence, symmetry: data.symmetry, radial: data.radial, palette: data.palette });
+            setReplay(r => r + 1);
             setStatus(data.message);
             setEdited(false);
             if (!manualDots) {
@@ -326,6 +368,7 @@ const KolamAnalyzer: React.FC = () => {
         out.height = canvas.height;
         const ctx = out.getContext('2d')!;
         ctx.drawImage(img, 0, 0, out.width, out.height);
+        if (showRecreation) paintRecreation(ctx, out.width, out.height);
         ctx.drawImage(canvas, 0, 0);
         out.toBlob(blob => blob && downloadBlob(blob, `kolam-overlay-${Date.now()}.png`), 'image/png');
     };
@@ -401,6 +444,7 @@ const KolamAnalyzer: React.FC = () => {
                                     <Button variant="secondary" size="sm" onClick={() => scan?.lattice && changeDots(snapToLattice(scan.lattice, dots), 'Snapped the dots onto the grid.')} disabled={!scan?.lattice || !dots.length}>Snap to grid</Button>
                                     <Button variant="secondary" size="sm" onClick={() => changeDots([], 'Cleared all dots.')} disabled={!dots.length}>Clear dots</Button>
                                     <Button variant="secondary" size="sm" onClick={() => setZoomIndex(z => (z + 1) % ZOOM_LEVELS.length)}>Zoom {zoom}×</Button>
+                                    <Button variant="secondary" size="sm" onClick={() => setReplay(r => r + 1)} disabled={!scan && !traced}>Replay drawing</Button>
                                     <label className="flex items-center gap-2 text-sm text-ink ml-auto">
                                         <input type="checkbox" checked={showRecreation} onChange={e => setShowRecreation(e.target.checked)} className="accent-kaavi" />
                                         Show recreation
@@ -411,6 +455,9 @@ const KolamAnalyzer: React.FC = () => {
                                         {imageUrl
                                             ? <img ref={imageRef} src={imageUrl} alt="Your design" className="block w-full h-auto select-none pointer-events-none" draggable={false} />
                                             : <div className="w-full aspect-square" />}
+                                        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${surface.w || 1} ${surface.h || 1}`} aria-hidden>
+                                            {recreation()}
+                                        </svg>
                                         <canvas
                                             ref={canvasRef}
                                             onPointerDown={onPointerDown}

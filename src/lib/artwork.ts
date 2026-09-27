@@ -1,5 +1,5 @@
 import { designToSvg } from '../utils/kolamLogic';
-import { radialColours, radialToSvg } from '../utils/radial';
+import { guideDotColour, radialColours, radialToSvg } from '../utils/radial';
 import { tracedBackground, tracedToSvg } from '../utils/traced';
 import { isDark } from './colours';
 import type { useKolam } from '../components/KolamContext';
@@ -8,10 +8,10 @@ type Kolam = ReturnType<typeof useKolam>;
 
 export const kolamDotColour = (background: string) => (isDark(background) ? '#F7F3EA' : '#3B2416');
 
-/** The picture the studio currently shows, as a standalone SVG string. */
-export const artworkSvg = (k: Kolam) => {
-  if (k.mode === 'radial') return radialToSvg(k.radial);
-  if (k.mode === 'traced' && k.traced) return tracedToSvg(k.traced);
+/** The picture the studio currently shows, as a standalone SVG string. Dot kolams always show their pulli. */
+export const artworkSvg = (k: Kolam, { dots = false } = {}) => {
+  if (k.mode === 'radial') return radialToSvg(k.radial, 480, { dots });
+  if (k.mode === 'traced' && k.traced) return tracedToSvg(k.traced, { dots, dotColour: guideDotColour(tracedBackground(k.traced)) });
   const { background, colors } = k.kolamColours;
   return designToSvg(k.design, { background, stroke: colors, dot: kolamDotColour(background) });
 };
