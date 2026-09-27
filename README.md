@@ -1,136 +1,195 @@
-# 🌀 SOLVIX – Kolam AI
-> **Bridging Ancient Geometry with Advanced Artificial Intelligence**
+<p align="center"><img src="docs/kolam.svg" width="220" alt="A single-line diamond kolam drawn by Chittara"></p>
 
-![SOLVIX Banner](./public/banner.png)
+# Chittara – Kolam, rangoli and alpana
 
-SOLVIX is a comprehensive **React + TypeScript + FastAPI** platform designed to analyze, proceduralize, and celebrate the intricate art of traditional **Kolam** (Rangoli). By combining computer vision, interactive geometry tools, and educational walkthroughs, SOLVIX brings traditional heritage into the digital age.
+*Chittara* (ಚಿತ್ತಾರ) means "picture" in Kannada. It is also the name of the geometric art that women
+of the Deewaru community in the Malnad region of Karnataka paint on the walls and floors of their
+homes, in white rice paste on red earth.
 
----
+**Understand the design behind a kolam, and draw it again with your own hands.**
+Built for Smart India Hackathon problem statement **SIH25107**: *"Develop computer programs (in any
+language, preferably Python) to identify the design principles behind the Kolam designs and
+recreate the kolams."* It also works for the wider family of Indian floor art: rangoli, muggulu,
+rangavalli, alpana and mandana.
 
-## ✨ Key Features
+A pulli kolam is a grid of dots (*pulli*) with a line (*neli*) that loops around every dot without
+touching it. Between two neighbouring dots the line either **crosses** itself or **turns**, as if it
+bounced off a mirror. The dot grid plus that choice at every gap fully describes the kolam
+(the mirror-curve model of Gerdes, 1989). Chittara reads exactly that from a photo. Free-hand designs
+without dots (alpana, most rangoli) are read by their turning symmetry and colours instead.
 
-### 🔍 Intelligent Analyzer
-- **CV-Powered Detection**: Advanced dot-detection algorithms for balanced scans, phone photos, and noisy backgrounds.
-- **Manual Correction**: Precision tools for adding, removing, and repositioning dots with perspective correction.
-- **Lattice Lattice Inference**: Automatic snapping and confidence estimation for cleaner pattern generation.
+## What it does
 
-### 🎨 Procedural Generator
-- **Algorithm-to-Art**: Dynamically generate Kolam patterns based on detected lattice structures.
-- **Reference Overlays**: Compare generated patterns against the original analyzer reference.
-- **Vector Exports**: Export high-quality SVG and PNG versions of your creations.
+| | |
+| --- | --- |
+| **Art forms** | Eleven floor-art traditions, each with its own page and colours: kolam (`/kolam`), muggulu (`/muggulu`), rangoli (`/rangoli`), alpana (`/alpana`), pookalam (`/pookalam`), mandana (`/mandana`), aipan (`/aipan`), aripan (`/aripan`), jhoti chita (`/jhoti-chita`), chowk purana (`/chowk-purana`) and chittara (`/chittara`). Each page tells when and how it is made, draws its signature design, and has its own studio, guide and practice. |
+| **Read a design** | Take or upload a photo. For dot kolams, OpenCV finds the dots, fits a rotation- and perspective-tolerant grid, and reads every gap between two dots as a crossing, a turn-back or a join. Free-hand designs are traced colour by colour. |
+| **Design principles** | Dot grid and dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of separate lines (1 = sikku), mirror and turning symmetry (e.g. "8-fold"), and the colours used, each named after its traditional material (rice flour, kaavi, turmeric, kumkum…). |
+| **Recreate** | Dot kolams are redrawn as clean lines on top of your photo; fix missed dots by hand and recreate. Free-hand designs are traced into filled colour layers. |
+| **Make a similar design** | One click starts a new design in the studio with the same grid, or the same symmetry and colours for rangoli and alpana. |
+| **Design Studio** (`/studio`) | Three ways of drawing: dot kolams that loop round the dots (square or diamond grids, one-line sikku option); round designs (lotus, festival, alpana, pookalam, aripan, jhoti, marigold, star, and a circle of curls wound round coloured dots); and straight lines from dot to dot (muggu star, Aipan chowki, Chittara bands, chowk, mandana). Colour sets come from each tradition's real materials. |
+| **Draw it yourself** | A step-by-step guide that follows how floor art is really made: prepare the ground, put down the small dots first, then draw the lines (around the dots for a pulli kolam, from dot to dot for rangoli and alpana) one line or ring at a time, and fill the colours last, with tips and materials for every step. Rangoli and alpana designs can be downloaded with their dots as a printable template. |
+| **Practise it** | Draw the design yourself by tapping its dots in the order the line goes: round each dot for a pulli kolam, dot to dot along each petal for a rangoli, one curl per dot for a curl kolam. A wrong dot shows where to go; a ring or line can be finished for you. |
+| **From dots to design** | As you scroll, the landing page draws a circle-of-curls kolam and then a festival rangoli the way they are made by hand (dots, then lines, then colour), each with *Learn to draw this* and *Practise it*. It also shows the three steps for a rangoli, a pulli kolam and a photo. |
+| **Share** | Export SVG, PNG or the open `.kolam.json` format, save kolams in the browser, and share links with a preview card. |
 
-### 📂 Workspace Management
-- **Persistence**: Save and load snapshots directly in your browser's local storage.
-- **Portability**: Import and export workspaces as JSON for collaborative analysis.
+No sample photo at hand? Press **Try a sample** in the analyzer.
 
-### 🎓 Educational Walkthroughs
-- **Dynamic Construction**: Animated explanations showing how specific Kolams are built step-by-step.
-- **Context-Aware**: Walkthroughs adapt in real-time to your active workspace dot-map.
+## Privacy and hosting
 
----
+See [`public/privacy.html`](public/privacy.html) (served at `/privacy.html`) and [`public/terms.html`](public/terms.html).
 
-## 🛠️ Technology Stack
+Photos are analysed in memory and never stored; each visitor can have 20 photos read per minute
+(`RATE_LIMIT_PER_MINUTE`). The server sends a strict Content-Security-Policy and other security
+headers. Fonts (Tiro Tamil, Telugu, Devanagari, Bangla, Kannada and
+Hind Madurai) are bundled with the app, so the site makes no third-party requests.
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 19, TypeScript, Vite, Tailwind CSS |
-| **Backend** | FastAPI, OpenCV, NumPy |
-| **Visualization** | SVG, Canvas API, Procedural Math |
-| **Storage** | LocalStorage API, Workspace JSON Export |
+## Run it
 
----
-
-## 📂 Project Structure
-
-```text
-kolam-2/
-├── src/               # Main source code
-│   ├── components/    # Reusable UI components & feature logic
-│   ├── utils/         # Core geometric & procedural logic
-│   ├── App.tsx        # Main application entry point
-│   ├── main.tsx       # Vite entry point
-│   └── index.css      # Global styles & Tailwind directives
-├── backend/           # FastAPI backend server
-│   ├── main.py        # API endpoints & OpenCV logic
-│   └── requirements.txt
-├── docs/              # Project documentation & summaries
-├── public/            # Static assets & banners
-├── package.json       # Dependencies & NPM scripts
-└── vite.config.ts     # Project configuration
-```
-
----
-
-## 🚀 Getting Started
-
-### 1. Frontend Development
-Ensure you have **Node.js** installed.
+### One command (Docker)
 
 ```bash
-# Navigate to root
-npm install
-npm run dev
+docker build -t chittara .
+docker run -p 8000:8000 chittara
 ```
-> [!NOTE]
-> The frontend will be accessible at `http://localhost:3000`.
 
-### 2. Backend Setup
-Ensure you have **Python 3.10+** installed.
+Open http://localhost:8000. The container serves the web app and the API (`/api/...`) together.
+
+### Local development
+
+Requires Node.js 20+ and Python 3.10+.
 
 ```bash
-# Navigate to backend directory
+# terminal 1 – API on :8000
 cd backend
 pip install -r requirements.txt
 python main.py
-```
-> [!NOTE]
-> The backend will be accessible at `http://localhost:8000`.
 
-### 3. Environment Variables
-Copy `.env.example` to `.env.local` in the project root if you need to point the frontend at a
-backend running somewhere other than `http://localhost:8000`:
+# terminal 2 – web app on :3000 (proxies /api to :8000)
+npm install
+npm run dev
+```
+
+### Checks
 
 ```bash
-cp .env.example .env.local
+npm run typecheck && npm test && npm run build
+cd backend && pip install -r requirements-dev.txt && python -m pytest -q
 ```
 
-`.env.local` sets `VITE_API_BASE_URL`; it's gitignored, so your local value is never committed.
+CI runs the same checks and a Docker build on every push (`.github/workflows/ci.yml`).
 
----
+## Deploy
 
-## 🔮 Roadmap
-- [ ] **Advanced Lattice Inference**: Stronger pattern prediction from sparse dot sets.
-- [ ] **Visual Comparison Mode**: Side-by-side "detected vs. generated" comparison overlays.
-- [ ] **Extended Styles**: Support for varied regional styles and pattern families.
-- [ ] **Dataset Export**: Tooling to contribute your corrected dot-maps to a shared open-source Kolam dataset.
+### Easiest: Render (free)
 
----
+1. Merge your branch into `main` on GitHub.
+2. Sign in at [render.com](https://render.com) with GitHub, choose **New > Blueprint**, and pick this
+   repository. Render reads [`render.yaml`](render.yaml), builds the Docker image and gives you an
+   address such as `https://chittara.onrender.com`.
+3. In the service's **Environment** settings, set `SITE_URL` to that address and deploy again, so
+   shared links show the preview picture.
+4. Open the address on a phone and check that **Try a sample** in *Read a Design* works.
 
-## 📜 License
-MIT — see [LICENSE](LICENSE). Project created as part of the SOLVIX – Kolam AI initiative.
+The free plan sleeps when nobody has visited for 15 minutes; the first visit after that takes
+about a minute. A paid instance (or any host below) stays awake. Every push to `main` redeploys.
 
----
-<p align="center">
-  <b>Built with ❤️ by the SOLVIX Team</b>
-</p>
+### Anywhere else
 
----
+The Docker image runs anywhere that runs containers (Railway, Fly.io, Google Cloud Run,
+Hugging Face Spaces, a VPS). It listens on `$PORT` (default 8000) and has a health check at
+`/api/health`. Build with `--build-arg SITE_URL=https://your-domain` so shared links show the
+preview card. Serve it over **HTTPS**: phones only allow installing the app, and the camera
+button, on secure sites.
 
-## 📖 Project Understanding (Future Reference)
+Every page has its own address (`/kolam`, `/alpana`, …). The server answers each with the app,
+titled for that page, and unknown addresses with the 404 page. A static host needs the same
+rule: serve `index.html` for the addresses listed in `dist/routes.json`.
 
-SOLVIX analyzes, proceduralizes and teaches traditional Kolam (Rangoli) art using computer
-vision: it detects dot lattices from photos/scans, lets you correct them by hand, generates new
-patterns algorithmically from the detected lattice, and walks through how a given Kolam is
-constructed step by step.
+To host the frontend separately (for example on a static host), build it with
+`VITE_API_BASE_URL=https://your-api.example.com npm run build`, and start the API with
+`CORS_ORIGINS=https://your-frontend.example.com`. See `.env.example`.
 
-**Stack:** React 19 + TypeScript + Vite (frontend) · FastAPI + OpenCV + NumPy (backend, CV
-detection).
-**Status:** functional CV + generative-art platform blending heritage and technology.
+### Phones and tablets
 
-## 🎯 Where This Can Be Used
+The site adapts to phones, tablets and desktops, and can be installed as an app: *Install the
+app* in the footer (Android, Chrome, Edge), or **Share > Add to Home Screen** in Safari on
+iPhone and iPad. Once installed it opens full screen, and the studio, guide and practice work
+offline; reading a photo needs a connection.
 
-- Cultural-heritage/education technology — digitising and teaching a traditional art form.
-- Computer-vision portfolio piece (dot detection under noisy real-world photos is a genuinely
-  hard CV problem, worth highlighting).
-- **Hackathons:** very strong fit for heritage/culture + AI tracks (common in Indian hackathons
-  specifically) — it's visually striking and demos in seconds with a phone photo.
+## API
+
+`POST /api/analyze` (multipart form)
+
+| field | |
+| --- | --- |
+| `file` | PNG, JPEG or WebP, up to 8 MB |
+| `preset` | `balanced` (default), `clean-scan`, `phone-photo`, `noisy-background` |
+| `deskew` | `true` (default): straighten a photographed sheet. The corrected image is returned as `image` |
+| `dots` | optional JSON list of `{x, y}` (0–1): use these dots instead of detecting them |
+
+The response includes `dots`, `lattice` (grid size, origin and axes in image coordinates),
+`design` (see below), `symmetry` (mirror/rotation scores of the drawing), `radial` (turning
+symmetry: `order` N for N-fold), `palette` (main colours, their share and which one is the ground),
+`layers` (each colour traced as an SVG path in 0–1 coordinates), `confidence` (dot-grid reading only)
+and `message`. Free-hand designs return `lattice: null` and `design: null`.
+
+## The `.kolam.json` format
+
+```json
+{
+  "format": "kolam", "version": 1, "createdAt": "2026-01-01T00:00:00.000Z",
+  "design": {
+    "rows": 3, "cols": 3,
+    "mask": ["010", "111", "010"],
+    "h": ["..", "xx", ".."],
+    "v": [".x.", ".x."]
+  },
+  "dots": [{ "x": 0.5, "y": 0.2 }],
+  "lattice": null
+}
+```
+
+`mask[j][i]` is `1` where a dot sits. `h[j][i]` describes the gap between dots `(i, j)` and
+`(i+1, j)`, and `v[j][i]` the gap between `(i, j)` and `(i, j+1)`. Each gap is `x` (strands cross),
+`p` (strands turn back around each dot), `j` (strands join the two dots) or `.` (no gap because a
+dot is missing).
+
+## Project layout
+
+```text
+src/utils/kolamLogic.ts     mirror-curve engine: tracing, symmetry, single-line transform, SVG
+src/utils/radial.ts         radial rangoli / alpana / curl designs and drawing guides
+src/utils/geometric.ts      straight-line designs (muggu, chowki, chittara, chowk, mandana)
+src/utils/practice.ts       practice mode: which dot comes next, and what each tap draws
+src/data/traditions.ts      the art forms: facts, script, colours, designs; also every page's address and title
+src/data/designs.ts         design presets, built and opened in the studio
+src/pages/                  the landing, one page per art form, /read, /studio, /about
+src/lib/router.ts           page addresses without a router library
+src/lib/theme.ts            each page's colours, applied as CSS variables
+src/lib/colours.ts          traditional colours, materials and colour sets
+src/components/             analyzer, generator, walkthrough and page sections
+src/lib/                    API client and .kolam.json helpers
+backend/detection.py        dot detection (OpenCV)
+backend/principles.py       lattice fit, crossing/turn reading, symmetry
+backend/drawing.py          turning symmetry, colour palette and traced layers for any design
+backend/main.py             FastAPI app; also serves the built frontend
+public/                     app icons, manifest and the offline service worker (sw.js)
+render.yaml                 one-click hosting on Render
+```
+
+## Feedback
+
+Tried it on your own kolam? Please [open an issue](https://github.com/Rhytam23/kolam-2/issues)
+with the photo (or its `.kolam.json`) and what Chittara got right or wrong.
+
+## References
+
+- G. Siromoney, R. Siromoney, K. Krithivasan. *Array grammars and kolam*. Computer Graphics and Image Processing 3(1), 1974.
+- P. Gerdes. *Reconstruction and extension of lost symmetries: examples from the Tamil of South India*. Computers & Mathematics with Applications 17(4–6), 1989.
+- M. Ascher. *The Kolam Tradition*. American Scientist 90(1), 2002.
+- *KolamNetV2: efficient attention-based deep learning network for Tamil heritage art-kolam classification*. npj Heritage Science, 2024.
+
+## License
+
+MIT, see [LICENSE](LICENSE).

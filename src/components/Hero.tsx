@@ -1,79 +1,202 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Button } from './ui/Button';
-import { generateDots, generateKolamPath } from '../utils/kolamLogic';
+import Diya from './landing/Diya';
+import Toran from './landing/Toran';
+import { FloorTile, RangoliFrame } from './landing/FloorArt';
+import { SCENES, heroStory, type HeroScene } from './landing/heroStory';
+import { useKolam, type GuideView } from './KolamContext';
+import { navigate } from '../lib/router';
+import { makeRadial } from '../utils/radial';
+import { PALETTES } from '../lib/colours';
+import { useInView, useIntro, useReducedMotion, useScrollProgress, useViewport } from '../hooks/motion';
+import { BRAND } from '../lib/brand';
 
-interface HeroProps {
-    scrollToSection: () => void;
-}
+const NAMES = [
+    { word: 'கோலம்', lang: 'ta', label: 'Kolam (Tamil)' },
+    { word: 'ముగ్గు', lang: 'te', label: 'Muggu (Telugu)' },
+    { word: 'रंगोली', lang: 'hi', label: 'Rangoli (Hindi)' },
+    { word: 'আলপনা', lang: 'bn', label: 'Alpana (Bengali)' },
+];
 
-const Hero: React.FC<HeroProps> = ({ scrollToSection }) => {
-    // Generate a static smooth Kolam for the background
-    const gridSize = 5;
-    const size = 400; // SVG coordinate size
+const TRUST = ['Free and open source', 'Works on any phone', 'Photos are analysed, never stored'];
 
-    // ensure hydration match - wrap random gen in useEffect if needed, 
-    // but our generator is deterministic based on size.
-    const { dots, path } = useMemo(() => {
-        return {
-            dots: generateDots(gridSize, size, size),
-            path: generateKolamPath(gridSize, size, size)
-        };
-    }, []);
+interface HeroProps { onStart: () => void; onGenerate: () => void }
 
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
+const sceneDesign = ({ design }: HeroScene) =>
+    makeRadial({ petals: design.petals, layers: design.layers, style: design.style, ...PALETTES[design.palette] });
+
+/** Opens a hero design on its art form's page, at the guide, showing the steps or practice. */
+const useOpenInGuide = () => {
+    const k = useKolam();
+    return (scene: HeroScene, view: GuideView) => {
+        k.setGuideView(view);
+        navigate(`/${scene.page.slug}?design=${scene.page.design}#walkthrough`);
+    };
+};
+
+const Heading: React.FC<HeroProps> = ({ onStart, onGenerate }) => (
+    <div className="text-center lg:text-left w-full">
+        <p className="font-script text-2xl md:text-3xl text-brass-light mb-4 flex flex-wrap gap-x-5 gap-y-1 justify-center lg:justify-start">
+            {NAMES.map(n => <span key={n.word} lang={n.lang} title={n.label}>{n.word}</span>)}
+        </p>
+        <h1 className="font-heading text-5xl sm:text-6xl xl:text-7xl leading-[1.05] text-rice">
+            The Living Art <span className="brass-text">of the Threshold</span>
+        </h1>
+        <div className="brass-rule max-w-sm mx-auto lg:mx-0 my-6" aria-hidden><Diya className="h-9 w-9 shrink-0" /></div>
+        <p className="text-lg md:text-xl text-rice/90 mb-8 max-w-xl mx-auto lg:mx-0">
+            {BRAND} reads the dots, lines, symmetry and colours of a kolam, rangoli or alpana, and teaches you to draw it
+            again, step by step, the way it has always been made.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+            <Button variant="brass" onClick={onStart}>Read a design from a photo</Button>
+            <Button variant="outline-light" onClick={onGenerate}>Design your own</Button>
+        </div>
+        <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-rice/80">
+            {TRUST.map(t => (
+                <li key={t} className="flex items-center gap-2">
+                    <svg viewBox="0 0 16 16" className="h-4 w-4 text-brass-light" aria-hidden><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    {t}
+                </li>
+            ))}
+        </ul>
+    </div>
+);
+
+const LearnButtons: React.FC<{ scene: HeroScene }> = ({ scene }) => {
+    const open = useOpenInGuide();
+    return (
+        <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="brass" size="sm" onClick={() => open(scene, 'steps')}>Learn to draw this</Button>
+            <Button variant="outline-light" size="sm" onClick={() => open(scene, 'practice')}>Practise it</Button>
+        </div>
+    );
+};
+
+/** For visitors who prefer less motion: the heading beside both finished designs. */
+const StillHero: React.FC<HeroProps> = props => {
+    const designs = useMemo(() => SCENES.map(sceneDesign), []);
+    return (
+        <section className="relative floor-bg text-rice">
+            <div className="absolute inset-0 floor-dots pointer-events-none" aria-hidden />
+            <Toran className="absolute top-16 inset-x-0 z-10 pointer-events-none" />
+            <div className="relative container mx-auto px-4 grid lg:grid-cols-2 gap-12 items-center min-h-svh pt-44 pb-16 lg:pt-32">
+                <Heading {...props} />
+                <div className="grid grid-cols-2 gap-4">
+                    {SCENES.map((scene, i) => (
+                        <div key={scene.name} className="space-y-3">
+                            <FloorTile frame="plaque" label={`A finished ${scene.name.toLowerCase()}`}>
+                                <div className="absolute inset-0" style={{ backgroundColor: designs[i].background }}>
+                                    <RangoliFrame design={designs[i]} progress={{ dots: 1, lines: 1, colour: 1 }} />
+                                </div>
+                            </FloorTile>
+                            <p className="text-center font-heading text-lg text-brass-light">{scene.name}</p>
+                            <LearnButtons scene={scene} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+};
+
+const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+
+/**
+ * The hero. The heading sits beside the first design; scrolling fades the heading away and brings
+ * the design to the middle of the screen, where it is drawn the way it is made by hand: dots, then
+ * lines, then colour. A festival rangoli follows. Each finished design can be opened in the studio.
+ */
+const Hero: React.FC<HeroProps> = props => {
+    const reduce = useReducedMotion();
+    const designs = useMemo(() => SCENES.map(sceneDesign), []);
+    const [track, progress] = useScrollProgress<HTMLElement>(!reduce);
+    const [stage, inView] = useInView<HTMLDivElement>('0px');
+    const intro = useIntro(inView);
+    const { w, h } = useViewport();
+    if (reduce) return <StillHero {...props} />;
+
+    const story = heroStory(progress, intro);
+    const scene = SCENES[story.scene];
+    const e = ease(story.enter);
+    const wide = w >= 1024;
+
+    // Where the drawing sits: beside the heading at first, then centred, with its caption just below.
+    const header = 64;
+    const caption = 150;
+    const full = Math.max(200, Math.min(w - 32, h - header - caption - 24));
+    const blockTop = header + Math.max(8, (h - header - full - caption) / 2);
+    const end = { x: w / 2, y: blockTop + full / 2, size: full };
+    const start = wide
+        ? { x: w / 2 + Math.min(w, 1280) / 4, y: h / 2 + 30, size: Math.min(w * 0.4, h - 250, 560) }
+        : end;
+    const size = start.size + (end.size - start.size) * e;
+    const x = start.x + (end.x - start.x) * e;
+    const y = start.y + (end.y - start.y) * e;
+    const backdrop = wide ? 1 : 0.2 + 0.8 * e;
+    const background = story.mix < 0.5 ? designs[0].background : designs[1].background;
 
     return (
-        <section className="min-h-screen flex flex-col items-center justify-center text-center relative overflow-hidden px-4">
-            <div className="absolute inset-0 z-0">
-                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="opacity-10">
-                    <defs>
-                        <pattern id="dotted-pattern" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                            <circle cx="2" cy="2" r="1.5" className="fill-saffron animate-diya-flicker" />
-                        </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#dotted-pattern)" />
-                </svg>
-            </div>
+        <section ref={track} className="relative floor-bg text-rice" style={{ height: '620vh' }} aria-label="Kolam and rangoli being drawn">
+            <div className="sticky top-0 h-svh overflow-hidden">
+                <div className="absolute inset-0 floor-dots pointer-events-none" aria-hidden />
+                <div style={{ opacity: 1 - e, transform: `translateY(${-e * 80}px)` }} className="absolute top-16 inset-x-0 z-10 pointer-events-none">
+                    <Toran />
+                </div>
 
-            <div className="z-10 flex flex-col items-center relative">
-                {mounted && (
-                    <div className="w-80 h-80 md:w-[500px] md:h-[500px] mb-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 -z-10 opacity-60">
-                        <svg viewBox="0 0 400 400" className="w-full h-full animate-spin-slow">
-                            {/* Dots Layer */}
-                            {dots.map((d, i) => (
-                                <circle key={i} cx={d.x} cy={d.y} r="3" fill="rgba(255,255,255,0.3)" />
-                            ))}
+                <div
+                    ref={stage}
+                    className="absolute left-0 top-0"
+                    style={{ width: full, height: full, transform: `translate(${x - full / 2}px, ${y - full / 2}px) scale(${size / full})`, transformOrigin: '50% 50%', opacity: backdrop }}
+                >
+                    <FloorTile frame="plaque" label={`${scene.name}: ${scene.steps[story.step].toLowerCase()}`} className="h-full">
+                        <div className="absolute inset-0 transition-colors duration-700" style={{ backgroundColor: background }}>
+                            <div className="absolute inset-[2%] glow" style={{ opacity: 1 - story.mix }}>
+                                <RangoliFrame design={designs[0]} progress={story.first} rough={false} />
+                            </div>
+                            <div className="absolute inset-[2%] glow" style={{ opacity: story.mix }}>
+                                <RangoliFrame design={designs[1]} progress={story.second} rough={false} />
+                            </div>
+                        </div>
+                    </FloorTile>
+                </div>
 
-                            {/* Path - Outer Glow (Fix 5) */}
-                            <path
-                                d={path}
-                                className="stroke-marigold blur-sm opacity-50"
-                                strokeWidth="4"
-                                fill="none"
-                            />
+                <div
+                    className="absolute inset-0 container mx-auto px-4 flex items-center lg:pr-[52%]"
+                    style={{ opacity: 1 - Math.min(1, e * 1.6), transform: `translateY(${-e * 60}px)`, pointerEvents: e > 0.3 ? 'none' : undefined }}
+                    aria-hidden={e > 0.3}
+                >
+                    <div className="pt-36 lg:pt-24 w-full"><Heading {...props} /></div>
+                </div>
 
-                            {/* Path - Inner Core (Fix 5) */}
-                            <path
-                                d={path}
-                                className="stroke-saffron"
-                                strokeWidth="2"
-                                fill="none"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                        </svg>
+                <div className="absolute inset-x-0 px-4 text-center" style={{ top: blockTop + full + 12, opacity: Math.max(0, e * 2 - 1), pointerEvents: e < 0.7 ? 'none' : undefined }}>
+                    <p className="font-heading text-2xl text-brass-light" aria-live="polite">{scene.name}</p>
+                    <ol className="mt-2 flex flex-wrap justify-center gap-2 text-sm">
+                        {scene.steps.map((s, i) => {
+                            const finished = i < story.step || story.done;
+                            const active = i === story.step && !story.done;
+                            return (
+                                <li
+                                    key={s}
+                                    aria-current={active ? 'step' : undefined}
+                                    className={`rounded-full border px-3 py-1 transition-colors ${active ? 'bg-brass-light border-brass-light text-floor font-semibold' : finished ? 'border-brass/70 text-brass-light' : 'border-rice/25 text-rice/75'}`}
+                                >
+                                    {i + 1}. {s}
+                                </li>
+                            );
+                        })}
+                    </ol>
+                    <div className="mt-3 min-h-[2.5rem] flex items-center justify-center">
+                        {story.done
+                            ? <LearnButtons scene={scene} />
+                            : <p className="text-sm text-rice/75">Keep scrolling to draw it ↓</p>}
                     </div>
-                )}
-
-                <div className="relative z-20 backdrop-blur-sm bg-black/10 p-8 rounded-2xl border border-white/5">
-                    <h1 className="font-heading text-5xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-saffron via-marigold to-indiaGreen inline-block text-transparent bg-clip-text animate-fade-in-down">
-                        SOLVIX – Kolam AI
-                    </h1>
-                    <p className="text-lg md:text-2xl text-gray-300 mb-8 max-w-2xl italic">
-                        Bridging Tradition and Technology through Kolam Intelligence
-                    </p>
-                    <Button onClick={scrollToSection}>Start Exploring</Button>
+                    <button
+                        type="button"
+                        className="mt-1 text-xs text-rice/75 underline decoration-brass/60 underline-offset-4 hover:text-brass-light"
+                        onClick={() => document.getElementById('traditions')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                        Skip the drawing
+                    </button>
                 </div>
             </div>
         </section>

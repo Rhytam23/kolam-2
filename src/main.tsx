@@ -3,6 +3,17 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+// Self-hosted fonts (no third-party requests). Each file only downloads when its script appears on the page.
+import '@fontsource/hind-madurai/400.css';
+import '@fontsource/hind-madurai/600.css';
+import '@fontsource/hind-madurai/700.css';
+import '@fontsource/tiro-tamil/400.css';
+import '@fontsource/tiro-telugu/400.css';
+import '@fontsource/tiro-devanagari-hindi/400.css';
+import '@fontsource/tiro-bangla/400.css';
+import '@fontsource/tiro-kannada/400.css';
+import '@fontsource/noto-serif-malayalam/400.css';
+import '@fontsource/noto-serif-oriya/400.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,3 +26,10 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Installable app with offline support, only in the real build (not while developing).
+if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* the site still works without it */ });
+  });
+}

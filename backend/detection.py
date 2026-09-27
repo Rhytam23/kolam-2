@@ -1,15 +1,7 @@
 from __future__ import annotations
 
+import cv2
 import numpy as np
-
-try:
-    import cv2
-except ImportError:  # pragma: no cover - lets non-CV tests run in lean environments
-    class _MissingCV2:
-        def __getattr__(self, name: str):
-            raise RuntimeError('OpenCV is required for image analysis')
-
-    cv2 = _MissingCV2()  # type: ignore[assignment]
 
 
 PRESET_CONFIGS = {
@@ -19,7 +11,6 @@ PRESET_CONFIGS = {
         'min_area_scale': 0.000015,
         'max_area_scale': 0.0035,
         'merge_radius': 0.018,
-        'neighbor_limit': 0.22,
     },
     'clean-scan': {
         'adaptive_block': 25,
@@ -27,7 +18,6 @@ PRESET_CONFIGS = {
         'min_area_scale': 0.00001,
         'max_area_scale': 0.0025,
         'merge_radius': 0.014,
-        'neighbor_limit': 0.18,
     },
     'phone-photo': {
         'adaptive_block': 35,
@@ -35,7 +25,6 @@ PRESET_CONFIGS = {
         'min_area_scale': 0.00002,
         'max_area_scale': 0.004,
         'merge_radius': 0.022,
-        'neighbor_limit': 0.26,
     },
     'noisy-background': {
         'adaptive_block': 41,
@@ -43,7 +32,6 @@ PRESET_CONFIGS = {
         'min_area_scale': 0.00003,
         'max_area_scale': 0.003,
         'merge_radius': 0.02,
-        'neighbor_limit': 0.24,
     },
 }
 
@@ -60,20 +48,25 @@ def order_points(points: np.ndarray) -> np.ndarray:
     return rect
 
 
-def deskew_if_needed(image: np.ndarray) -> np.ndarray:
+def deskew_if_needed(image: np.ndarray) -> tuple[np.ndarray, bool]:
+    """Warp a photographed sheet to a flat rectangle. Returns the image and whether it changed."""
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blur, 50, 150)
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
-        return image
+        return image, False
 
     largest = max(contours, key=cv2.contourArea)
     perimeter = cv2.arcLength(largest, True)
     approx = cv2.approxPolyDP(largest, 0.02 * perimeter, True)
 
     if len(approx) != 4:
-        return image
+        return image, False
+    # A sheet of paper has straight edges; a diamond-shaped kolam outline does not.
+    edge_distance = np.array([abs(cv2.pointPolygonTest(approx, (float(x), float(y)), True)) for x, y in largest[:, 0]])
+    if np.mean(edge_distance <= 0.01 * perimeter) < 0.9:
+        return image, False
 
     pts = approx.reshape(4, 2).astype('float32')
     rect = order_points(pts)
@@ -87,8 +80,10 @@ def deskew_if_needed(image: np.ndarray) -> np.ndarray:
     height_b = np.linalg.norm(tl - bl)
     max_height = int(max(height_a, height_b))
 
-    if max_width < 50 or max_height < 50:
-        return image
+    # Only warp when a real sheet fills a good part of the photo.
+    image_area = image.shape[0] * image.shape[1]
+    if max_width < 50 or max_height < 50 or cv2.contourArea(approx) < 0.3 * image_area:
+        return image, False
 
     destination = np.array([
         [0, 0],
@@ -98,13 +93,13 @@ def deskew_if_needed(image: np.ndarray) -> np.ndarray:
     ], dtype='float32')
 
     matrix = cv2.getPerspectiveTransform(rect, destination)
-    return cv2.warpPerspective(image, matrix, (max_width, max_height))
+    return cv2.warpPerspective(image, matrix, (max_width, max_height)), True
 
 
-def preprocess_image(gray: np.ndarray, preset: str) -> tuple[np.ndarray, np.ndarray]:
+def preprocess_image(gray: np.ndarray, preset: str, dark_ink: bool) -> tuple[np.ndarray, np.ndarray]:
     config = PRESET_CONFIGS.get(preset, PRESET_CONFIGS['balanced'])
 
-    if np.mean(gray) > 150:
+    if dark_ink:
         gray = cv2.bitwise_not(gray)
 
     normalized = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
@@ -142,7 +137,11 @@ def preprocess_image(gray: np.ndarray, preset: str) -> tuple[np.ndarray, np.ndar
 
 def contour_candidates(mask: np.ndarray, width: int, height: int, preset: str) -> list[dict]:
     config = PRESET_CONFIGS.get(preset, PRESET_CONFIGS['balanced'])
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # CCOMP + top-level only: dots enclosed by kolam lines are separate components, not holes.
+    contours, hierarchy = cv2.findContours(mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    if hierarchy is None:
+        return []
+    contours = [cnt for cnt, info in zip(contours, hierarchy[0]) if info[3] == -1]
     image_area = width * height
     min_area = max(8, int(image_area * config['min_area_scale']))
     max_area = max(450, int(image_area * config['max_area_scale']))
@@ -237,24 +236,17 @@ def suppress_outliers(candidates: list[dict]) -> list[dict]:
     return [candidate for candidate, distance in zip(candidates, distances) if distance <= median_distance * 4.5]
 
 
-def spacing_consistency_filter(candidates: list[dict], preset: str) -> list[dict]:
-    config = PRESET_CONFIGS.get(preset, PRESET_CONFIGS['balanced'])
+def spacing_consistency_filter(candidates: list[dict]) -> list[dict]:
+    """Drop isolated blobs: a pulli dot has a neighbour at roughly the common dot spacing."""
     if len(candidates) < 4:
-        return [{'x': c['x'], 'y': c['y']} for c in candidates]
+        return candidates
 
     points = np.array([[c['x'], c['y']] for c in candidates], dtype=np.float32)
-    accepted = []
-
-    for idx, point in enumerate(points):
-        distances = np.linalg.norm(points - point, axis=1)
-        distances = distances[distances > 0]
-        nearest = np.sort(distances)[:4]
-        if len(nearest) == 0:
-            continue
-        if np.median(nearest) < config['neighbor_limit']:
-            accepted.append({'x': candidates[idx]['x'], 'y': candidates[idx]['y']})
-
-    return accepted if accepted else [{'x': c['x'], 'y': c['y']} for c in candidates]
+    distances = np.linalg.norm(points[:, None] - points[None], axis=2)
+    np.fill_diagonal(distances, np.inf)
+    nearest = distances.min(axis=1)
+    limit = 1.6 * float(np.median(nearest))
+    return [c for c, d in zip(candidates, nearest) if d <= limit]
 
 
 def limit_candidates(candidates: list[dict], max_points: int = 220) -> list[dict]:
@@ -262,23 +254,9 @@ def limit_candidates(candidates: list[dict], max_points: int = 220) -> list[dict
     return [{'x': c['x'], 'y': c['y']} for c in trimmed]
 
 
-def estimate_confidence(dot_count: int, preset: str) -> float:
-    baseline = {
-        'clean-scan': 0.88,
-        'balanced': 0.78,
-        'phone-photo': 0.7,
-        'noisy-background': 0.62,
-    }.get(preset, 0.75)
-
-    if dot_count < 4:
-        return max(0.2, baseline - 0.35)
-    if dot_count > 180:
-        return max(0.25, baseline - 0.2)
-    return min(0.97, baseline + 0.05)
-
-
-def detect_dots(gray: np.ndarray, width: int, height: int, preset: str) -> list[dict]:
-    adaptive_mask, otsu_mask = preprocess_image(gray, preset)
+def detect_dots(gray: np.ndarray, width: int, height: int, preset: str, dark_ink: bool = True) -> list[dict]:
+    """Dots as normalised (x, y). dark_ink: dark drawing on light ground (paper) or light on dark (rice flour on floor)."""
+    adaptive_mask, otsu_mask = preprocess_image(gray, preset, dark_ink)
 
     candidates = []
     candidates.extend(contour_candidates(adaptive_mask, width, height, preset))
@@ -288,5 +266,5 @@ def detect_dots(gray: np.ndarray, width: int, height: int, preset: str) -> list[
 
     merged = dedupe_candidates(candidates, preset)
     filtered = suppress_outliers(merged)
-    filtered = spacing_consistency_filter(filtered, preset)
+    filtered = spacing_consistency_filter(filtered)
     return limit_candidates(filtered)

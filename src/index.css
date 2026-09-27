@@ -2,41 +2,146 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Theme colours as "r g b". Each art form's page sets its own (see src/lib/theme.ts). */
+:root {
+  --floor: 90 36 22;
+  --floor-2: 114 48 28;
+  --rice: 247 243 234;
+  --brass: 201 151 58;
+  --brass-light: 232 194 113;
+  --kaavi: 166 58 30;
+  --paper: 255 248 238;
+  --ink: 59 36 22;
+  --muted: 107 84 67;
+}
+
 body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #0c0a18;
-  color: #e0e0e0;
+  @apply bg-paper text-ink font-sans;
+  transition: background-color 0.4s;
 }
 
 .font-heading {
-  font-family: 'Mukta Mahee', sans-serif;
+  font-family: 'Tiro Tamil', Georgia, serif;
 }
 
-.gradient-text-fallback {
-  background: linear-gradient(90deg, #FFD700, #FF9933, #FFD700);
+/* Cream paper with a faint pulli (dot) grid, like the dots laid out before drawing a kolam. */
+.paper-bg {
+  background-color: rgb(var(--paper));
+  background-image: radial-gradient(rgb(var(--kaavi) / 0.12) 1.2px, transparent 1.3px);
+  background-size: 28px 28px;
+}
+
+/* A red-oxide floor: warm light in the middle, darker at the edges, with a fine speckle. */
+.floor-bg {
+  background-color: rgb(var(--floor));
+  background-image:
+    radial-gradient(ellipse at 50% 30%, rgb(var(--floor-2) / 0.75), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/* Pulli dots in rice flour, for the floor. */
+.floor-dots {
+  background-image: radial-gradient(rgb(var(--rice) / 0.13) 1.4px, transparent 1.5px);
+  background-size: 34px 34px;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, rgb(var(--kaavi)), rgb(var(--kaavi) / 0.82));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.card-glow {
-  position: relative;
-  overflow: hidden;
+.brass-text {
+  background: linear-gradient(180deg, rgb(var(--brass-light)), rgb(var(--brass-light)) 45%, rgb(var(--brass)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.card-glow::before {
+/* A thin brass line with a small diamond in the middle, under headings. */
+.brass-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: rgb(var(--brass));
+}
+.brass-rule::before,
+.brass-rule::after {
   content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(circle at var(--mouse-x) var(--mouse-y), rgba(255, 153, 51, 0.15), transparent 40%);
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, currentColor);
+}
+.brass-rule::after {
+  background: linear-gradient(90deg, currentColor, transparent);
 }
 
-.card-glow:hover::before {
+/* The double red border drawn around a doorstep kolam. */
+.kolam-border {
+  border: 3px double rgb(var(--kaavi) / 0.55);
+}
+
+/* Rice flour catches the light on a dark floor. */
+.glow {
+  filter: drop-shadow(0 0 6px rgba(255, 236, 200, 0.28));
+}
+
+/* Draws a path with pathLength="1" from start to end (hidden until any animation-delay passes). */
+.kolam-draw {
+  stroke-dasharray: 1;
+  animation: kolam-draw 3s linear both;
+}
+
+.fade-in {
+  animation: fade-in 0.8s ease-out both;
+}
+
+/* Sections rise into view once, as they are scrolled to. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s ease-out, transform 0.9s ease-out;
+}
+.reveal.in {
   opacity: 1;
+  transform: none;
+}
+
+.sway {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: sway 5s ease-in-out infinite alternate;
+}
+
+.flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flicker 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes kolam-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes sway {
+  from { transform: rotate(-2.5deg); }
+  to { transform: rotate(2.5deg); }
+}
+
+@keyframes flicker {
+  0% { transform: scale(1, 1); opacity: 0.95; }
+  40% { transform: scale(0.92, 1.06); opacity: 1; }
+  100% { transform: scale(1.04, 0.95); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kolam-draw, .fade-in, .sway, .flicker { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
 }

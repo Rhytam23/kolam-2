@@ -1,0 +1,15 @@
+# One-click hosting on Render (https://render.com): New > Blueprint, then pick this repository.
+# The free plan sleeps after 15 minutes without visitors and takes about a minute to wake up.
+services:
+  - type: web
+    name: chittara
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # The public address, e.g. https://chittara.onrender.com, for link previews.
+      # Set it after the first deploy, then deploy again.
+      - key: SITE_URL
+        sync: false

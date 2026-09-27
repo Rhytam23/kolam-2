@@ -1,81 +1,221 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from fastapi.middleware.cors import CORSMiddleware
+import base64
+import html
+import json
+import mimetypes
+import re
+import time
+from collections import deque
+
 import cv2
 import numpy as np
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
-from config import MAX_UPLOAD_BYTES, get_allowed_origins
-from detection import deskew_if_needed, detect_dots, estimate_confidence
+import config
+from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
+from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
+from drawing import colour_layers, radial_symmetry
+from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
 
-app = FastAPI()
+# So phones recognise the app manifest when the site is installed to the home screen.
+mimetypes.add_type('application/manifest+json', '.webmanifest')
 
+# The page loads nothing from other sites: scripts, styles, fonts and images all come from here.
+CONTENT_SECURITY_POLICY = '; '.join([
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+])
+
+# When each visitor last had a photo read, for the per-minute limit. Kept in memory only.
+_recent: dict[str, deque[float]] = {}
+
+
+def check_rate_limit(visitor: str) -> None:
+    now = time.monotonic()
+    if len(_recent) > 10_000:
+        # Forget visitors who have been quiet for a minute, so the table stays small.
+        for key in [k for k, q in _recent.items() if not q or now - q[-1] > 60]:
+            del _recent[key]
+    times = _recent.setdefault(visitor, deque())
+    while times and now - times[0] > 60:
+        times.popleft()
+    if len(times) >= config.RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail='Too many photos in a short time. Please wait a minute and try again.')
+    times.append(now)
+
+app = FastAPI(title='Chittara API')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
-    allow_credentials=True,
-    allow_methods=['*'],
+    allow_methods=['GET', 'POST'],
     allow_headers=['*'],
 )
+api = APIRouter(prefix='/api')
 
 
-@app.get('/')
-async def root():
-    return {'message': 'Kolam Analyzer API is running'}
-
-
-@app.get('/health')
+@api.get('/health')
 async def health():
-    return {'status': 'ok'}
+    return {'status': 'ok', 'maxUploadBytes': MAX_UPLOAD_BYTES, 'allowedTypes': ALLOWED_TYPES}
 
 
-@app.post('/analyze')
+def parse_dots(raw: str) -> list[dict]:
+    try:
+        items = json.loads(raw)
+        dots = [{'x': float(d['x']), 'y': float(d['y'])} for d in items]
+    except (ValueError, TypeError, KeyError):
+        raise HTTPException(status_code=422, detail='dots must be a JSON list of {x, y} objects')
+    if len(dots) > MAX_DOTS or not all(0 <= d['x'] <= 1 and 0 <= d['y'] <= 1 for d in dots):
+        raise HTTPException(status_code=422, detail=f'dots must hold at most {MAX_DOTS} points inside the image')
+    return dots
+
+
+@api.post('/analyze')
 async def analyze_kolam(
+    request: Request,
     file: UploadFile = File(...),
     preset: str = Form('balanced'),
     deskew: bool = Form(True),
+    dots: str | None = Form(None),
 ):
-    if not file.content_type or not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail='File must be an image')
+    check_rate_limit(request.client.host if request.client else 'unknown')
+    if preset not in PRESET_CONFIGS:
+        raise HTTPException(status_code=422, detail=f'Unknown preset. Use one of: {", ".join(PRESET_CONFIGS)}')
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=415, detail='Upload a PNG, JPEG or WebP image')
+
+    contents = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f'Image is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB')
+    manual_dots = parse_dots(dots) if dots is not None else None
+
+    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail='Could not read the image')
 
     try:
-        contents = await file.read(MAX_UPLOAD_BYTES + 1)
-        if len(contents) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail='File too large')
-
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            raise HTTPException(status_code=400, detail='Could not process image')
-
+        corrected = False
         if deskew:
-            img = deskew_if_needed(img)
-
-        height, width, _ = img.shape
+            img, corrected = deskew_if_needed(img)
+        height, width = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        dots = detect_dots(gray, width, height, preset)
-        confidence = estimate_confidence(len(dots), preset)
 
-        return {
-            'width': width,
-            'height': height,
-            'dots': dots,
-            'preset': preset,
-            'confidence': confidence,
-            'message': (
-                f'Detected {len(dots)} potential dots using the {preset} preset '
-                'with denoising, threshold blending, blob fallback, and geometric cleanup.'
-            ),
-        }
-
-    except HTTPException:
-        raise
+        # Kolams are drawn dark-on-light (paper) or light-on-dark (rice flour on a floor).
+        if manual_dots is not None:
+            found, dark_ink = manual_dots, ink_is_dark(gray, manual_dots)
+        else:
+            readings = []
+            for dark in (True, False):
+                candidate = detect_dots(gray, width, height, preset, dark)
+                fit = infer_lattice(candidate, width, height)
+                readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
+            _, dark_ink, found = max(readings, key=lambda r: r[0])
+        lattice = infer_lattice(found, width, height)
+        if lattice is None:
+            # No dot grid to go by: the drawing is the thinner of the two tones.
+            dark_ink = bool(stroke_mask(gray, True).mean() <= stroke_mask(gray, False).mean())
+        ink = stroke_mask(gray, dark_ink)
+        design, clarity = infer_design(lattice, ink) if lattice else (None, 0.0)
+        radial = radial_symmetry(ink)
+        palette, layers = colour_layers(img)
     except Exception:
         raise HTTPException(status_code=500, detail='Analysis pipeline failed')
+
+    if lattice:
+        confidence = round(lattice['fit'] * (0.5 + 0.5 * clarity), 2)
+        message = (
+            f'Found {len(found)} dots on a {lattice["rows"]}×{lattice["cols"]} lattice '
+            f'({lattice["fit"]:.0%} of dots fit it) and read how the strands pass between them.'
+        )
+    else:
+        confidence = None  # the confidence describes the dot-grid reading, which does not apply here
+        shape = f' with {radial["order"]}-fold radial symmetry' if radial and radial['order'] > 1 else ''
+        message = (f'No regular dot grid, so this looks like a free-hand design (alpana, rangoli, mandana style){shape}. '
+                   'Its colours and outline have been traced so you can redraw it.')
+
+    response = {
+        'width': width,
+        'height': height,
+        # Without a grid, detected "dots" are just specks; keep only dots the user placed.
+        'dots': found if lattice or manual_dots is not None else [],
+        'preset': preset,
+        'confidence': confidence,
+        'message': message,
+        'lattice': lattice,
+        'design': design,
+        'symmetry': image_symmetry(ink),
+        'radial': radial,
+        'palette': palette,
+        'layers': layers,
+    }
+    if corrected:
+        ok, jpeg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if ok:
+            response['image'] = 'data:image/jpeg;base64,' + base64.b64encode(jpeg.tobytes()).decode()
+    return response
+
+
+app.include_router(api)
+
+
+@app.middleware('http')
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    headers = response.headers
+    headers.setdefault('X-Content-Type-Options', 'nosniff')
+    headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    headers.setdefault('X-Frame-Options', 'DENY')
+    headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), payment=(), usb=()')
+    headers.setdefault('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+    if request.url.scheme == 'https':
+        headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+    if request.url.path == '/sw.js':
+        # Browsers must always check for a new version of the offline worker.
+        headers['Cache-Control'] = 'no-cache'
+    return response
+
+def page_html(template: str, title: str, description: str) -> str:
+    """The app's index.html, titled and described for one page, so shared links show the right text."""
+    t, d = html.escape(title, quote=True), html.escape(description, quote=True)
+    out = re.sub(r'<title>.*?</title>', f'<title>{t}</title>', template, count=1, flags=re.S)
+    for attr, value in (('name="description"', d), ('property="og:title"', t), ('property="og:description"', d),
+                        ('name="twitter:title"', t), ('name="twitter:description"', d)):
+        out = re.sub(rf'(<meta {attr} content=")[^"]*(")', lambda m: m.group(1) + value + m.group(2), out, count=1)
+    return out
+
+
+def add_page_routes(static_dir) -> None:
+    """Answer every page of the app (/, /kolam, /read, ...) with index.html; see routes.json from the build."""
+    routes_file, index_file = static_dir / 'routes.json', static_dir / 'index.html'
+    if not (routes_file.is_file() and index_file.is_file()):
+        return
+    template = index_file.read_text(encoding='utf-8')
+    for route in json.loads(routes_file.read_text(encoding='utf-8')):
+        body = page_html(template, route['title'], route['description'])
+        app.add_api_route(route['path'], lambda body=body: HTMLResponse(body), methods=['GET'], include_in_schema=False)
+        # Ahead of the static files mounted at '/', which would otherwise answer first.
+        app.router.routes.insert(0, app.router.routes.pop())
+
+
+if STATIC_DIR.is_dir():
+    add_page_routes(STATIC_DIR)
+    app.mount('/', StaticFiles(directory=STATIC_DIR, html=True), name='app')
 
 
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=PORT)

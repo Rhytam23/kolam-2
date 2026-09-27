@@ -1,50 +1,39 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    './index.html',
-    './App.{js,ts,jsx,tsx}',
-    './components/**/*.{js,ts,jsx,tsx}',
-    './utils/**/*.{js,ts,jsx,tsx}',
-    './index.{js,ts,jsx,tsx}',
-  ],
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        saffron: '#FF9933',
-        indiaGreen: '#138808',
-        marigold: '#FDB813',
-        festivePink: '#E91E63',
-        deepRed: '#8B0000',
+        paper: 'rgb(var(--paper) / <alpha-value>)',     // a freshly washed threshold
+        sand: '#FBEBD3',
+        ink: 'rgb(var(--ink) / <alpha-value>)',       // dark brown text
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        kaavi: 'rgb(var(--kaavi) / <alpha-value>)',     // red-earth border colour
+        marigold: '#F08A00',
+        turmeric: '#E1AD01',
+        leaf: '#2E7D32',
+        kumkum: '#C62839',
+        floor: 'rgb(var(--floor) / <alpha-value>)',     // deep red-oxide floor of the landing
+        'floor-2': 'rgb(var(--floor-2) / <alpha-value>)',
+        brass: 'rgb(var(--brass) / <alpha-value>)',     // lamp brass, for accents on the dark floor
+        'brass-light': 'rgb(var(--brass-light) / <alpha-value>)',
+        rice: 'rgb(var(--rice) / <alpha-value>)',      // rice flour
+      },
+      fontFamily: {
+        heading: ['"Tiro Tamil"', 'Georgia', 'serif'],
+        sans: ['"Hind Madurai"', 'system-ui', 'sans-serif'],
+        script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', '"Tiro Kannada"', '"Noto Serif Malayalam"', '"Noto Serif Oriya"', 'serif'],
       },
       animation: {
-        'diya-flicker': 'diya-flicker 3s infinite',
-        'spin-slow': 'spin 60s linear infinite',
-        'rangoli-draw': 'rangoli-draw 6s ease-in-out forwards',
         'fade-in-down': 'fade-in-down 0.5s ease-out forwards',
-        'float-up': 'float-up 3s ease-in-out infinite',
       },
       keyframes: {
-        'diya-flicker': {
-          '0%, 100%': { opacity: 0.8, transform: 'scale(1)' },
-          '20%': { opacity: 0.6, transform: 'scale(0.95)' },
-          '40%': { opacity: 0.9, transform: 'scale(1.05)' },
-          '60%': { opacity: 0.5, transform: 'scale(0.9)' },
-          '80%': { opacity: 1, transform: 'scale(1.1)' },
-        },
-        'rangoli-draw': {
-          '0%': { strokeDasharray: '30000', strokeDashoffset: '30000' },
-          '100%': { strokeDasharray: '30000', strokeDashoffset: '0' },
-        },
         'fade-in-down': {
           '0%': { opacity: 0, transform: 'translateY(-20px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' },
         },
-        'float-up': {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        }
-      }
-    }
+      },
+    },
   },
   plugins: [],
-}
+};

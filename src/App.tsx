@@ -1,54 +1,41 @@
-import React, { useRef } from 'react';
+import React, { useEffect } from 'react';
 import Header from './components/Header';
-import Hero from './components/Hero';
-import About from './components/About';
-import KolamAnalyzer from './components/KolamAnalyzer';
-import KolamGenerator from './components/KolamGenerator';
-import KolamWalkthrough from './components/KolamWalkthrough';
-import Research from './components/Research';
-import Team from './components/Team';
-import Contact from './components/Contact';
 import Footer from './components/Footer';
 import { KolamProvider } from './components/KolamContext';
+import { FloorArtDefs } from './components/landing/FloorArt';
+import Landing from './pages/Landing';
+import TraditionPage from './pages/TraditionPage';
+import { AboutPage, NotFoundPage, ReadPage, StudioPage } from './pages/Pages';
+import { ROUTES, traditionBySlug } from './data/traditions';
+import { usePath } from './lib/router';
+
+const page = (path: string) => {
+    if (path === '/') return <Landing />;
+    if (path === '/read') return <ReadPage />;
+    if (path === '/studio') return <StudioPage />;
+    if (path === '/about') return <AboutPage />;
+    const tradition = traditionBySlug(path.slice(1));
+    return tradition ? <TraditionPage key={tradition.slug} tradition={tradition} /> : <NotFoundPage />;
+};
 
 const App: React.FC = () => {
-    const sections = {
-        home: useRef<HTMLDivElement>(null),
-        about: useRef<HTMLDivElement>(null),
-        analyzer: useRef<HTMLDivElement>(null),
-        generator: useRef<HTMLDivElement>(null),
-        walkthrough: useRef<HTMLDivElement>(null),
-        research: useRef<HTMLDivElement>(null),
-        team: useRef<HTMLDivElement>(null),
-        contact: useRef<HTMLDivElement>(null),
-    };
+    const path = usePath();
 
-    const scrollToSection = (section: keyof typeof sections) => {
-        sections[section].current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    // Each page has its own title and description.
+    useEffect(() => {
+        const route = ROUTES.find(r => r.path === path);
+        document.title = route?.title ?? 'Page not found · Chittara';
+        document.querySelector('meta[name="description"]')?.setAttribute('content', route?.description ?? '');
+    }, [path]);
 
     return (
         <KolamProvider>
-            <div className="bg-[#0c0a18] min-h-screen text-gray-200 overflow-x-hidden">
-                <div className="absolute inset-0 z-0 opacity-10">
-                    <div className="absolute bottom-0 left-0 h-96 w-96 bg-gradient-to-tr from-[#FF9933] to-transparent rounded-full blur-[150px]"></div>
-                    <div className="absolute top-0 right-0 h-96 w-96 bg-gradient-to-bl from-[#33A1C9] to-transparent rounded-full blur-[150px]"></div>
-                </div>
-
-                <div className="relative z-10">
-                    <Header scrollToSection={scrollToSection} />
-                    <main>
-                        <div ref={sections.home}><Hero scrollToSection={() => scrollToSection('analyzer')} /></div>
-                        <div ref={sections.about}><About /></div>
-                        <div ref={sections.analyzer}><KolamAnalyzer /></div>
-                        <div ref={sections.generator}><KolamGenerator /></div>
-                        <div ref={sections.walkthrough}><KolamWalkthrough /></div>
-                        <div ref={sections.research}><Research /></div>
-                        <div ref={sections.team}><Team /></div>
-                        <div ref={sections.contact}><Contact /></div>
-                    </main>
-                    <Footer />
-                </div>
+            <div className="min-h-screen overflow-x-clip">
+                <FloorArtDefs />
+                <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:bg-paper focus:px-4 focus:py-2 focus:rounded-lg">Skip to the content</a>
+                <Header path={path} />
+                <main id="main">{page(path)}</main>
+                <Footer />
             </div>
         </KolamProvider>
     );
