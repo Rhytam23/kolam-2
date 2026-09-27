@@ -12,6 +12,7 @@ import { KolamProvider } from './components/KolamContext';
 import Process from './components/landing/Process';
 import { FloorArtDefs } from './components/landing/FloorArt';
 import KolamDivider from './components/landing/KolamDivider';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const scrollTo = (id: SectionId) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -24,25 +25,25 @@ const App: React.FC = () => (
                 <Header onNavigate={scrollTo} />
                 <main>
                     {/* The landing: a dark red-oxide floor, like a threshold at dawn. */}
-                    <div id="home"><Hero onStart={() => scrollTo('analyzer')} onGenerate={() => scrollTo('generator')} /></div>
+                    <div id="home"><ErrorBoundary name="home page"><Hero onStart={() => scrollTo('analyzer')} onGenerate={() => scrollTo('generator')} /></ErrorBoundary></div>
                     <div className="floor-bg">
                         <KolamDivider tone="rice" spacing={40} className="pt-4" />
-                        <div id="process" className="scroll-mt-16"><Process /></div>
+                        <div id="process" className="scroll-mt-16"><ErrorBoundary name="drawing steps"><Process /></ErrorBoundary></div>
                         <KolamDivider tone="rice" spacing={40} />
-                        <div id="about" className="scroll-mt-16"><About /></div>
+                        <div id="about" className="scroll-mt-16"><ErrorBoundary name="tradition section"><About /></ErrorBoundary></div>
                         <KolamDivider tone="rice" spacing={40} className="pb-10" />
                     </div>
                     {/* The tools, on cream paper so they stay easy to read and use. */}
                     <div id="tools" className="paper-bg">
-                        <div id="analyzer" className="scroll-mt-16"><KolamAnalyzer /></div>
+                        <div id="analyzer" className="scroll-mt-16"><ErrorBoundary name="photo reader"><KolamAnalyzer /></ErrorBoundary></div>
                         <KolamDivider />
-                        <div id="generator" className="scroll-mt-16"><KolamGenerator /></div>
+                        <div id="generator" className="scroll-mt-16"><ErrorBoundary name="design studio"><KolamGenerator /></ErrorBoundary></div>
                         <KolamDivider />
-                        <div id="walkthrough" className="scroll-mt-16"><DrawGuide /></div>
+                        <div id="walkthrough" className="scroll-mt-16"><ErrorBoundary name="drawing guide"><DrawGuide /></ErrorBoundary></div>
                         <KolamDivider />
-                        <div id="research" className="scroll-mt-16"><Research /></div>
+                        <div id="research" className="scroll-mt-16"><ErrorBoundary name="reference list"><Research /></ErrorBoundary></div>
                         <KolamDivider />
-                        <div id="contact" className="scroll-mt-16"><Contact /></div>
+                        <div id="contact" className="scroll-mt-16"><ErrorBoundary name="feedback section"><Contact /></ErrorBoundary></div>
                     </div>
                 </main>
                 <Footer />

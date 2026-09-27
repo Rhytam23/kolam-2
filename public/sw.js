@@ -1,7 +1,7 @@
 // Offline support: the app itself (studio, drawing guide, practice) works without a connection
 // once visited. Reading a photo always needs the server, so the API is never cached.
-const CACHE = 'solvix-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'kolam-v2';
+const SHELL = ['/', '/privacy.html', '/terms.html', '/pages.css', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -25,11 +25,13 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE).then(cache => cache.put('/', copy));
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then(cache => cache.put(request, copy));
+          }
           return response;
         })
-        .catch(() => caches.match('/')),
+        .catch(() => caches.match(request).then(saved => saved || caches.match('/'))),
     );
     return;
   }

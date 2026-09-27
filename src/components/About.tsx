@@ -5,6 +5,7 @@ import Reveal from './landing/Reveal';
 import { FloorTile, KolamFrame, RICE, RED_FLOOR } from './landing/FloorArt';
 import { diamondDesign, makeSingleLine, squareDesign } from '../utils/kolamLogic';
 import { makeRadial, ringPath } from '../utils/radial';
+import { BRAND } from '../lib/brand';
 
 /** A square with stepped corners, the building block of a padi (step) kolam. */
 const steppedSquare = (a: number, k: number) => {
@@ -87,8 +88,7 @@ const About: React.FC = () => {
                 <Reveal className="mt-20 rounded-2xl border border-brass/50 bg-floor/60 p-8 md:p-10 max-w-4xl mx-auto">
                     <p className="text-sm font-semibold tracking-wide text-brass-light mb-3">About this project</p>
                     <p className="text-rice/90 leading-relaxed text-lg">
-                        <strong className="text-rice">SOLVIX</strong> was built for Smart India Hackathon problem <strong className="text-rice">SIH25107</strong>:
-                        identify the design principles behind kolam designs and recreate them. It reads the dot grid, the way lines cross or turn
+                        <strong className="text-rice">{BRAND}</strong> finds the design principles behind a kolam and recreates it. It reads the dot grid, the way lines cross or turn
                         between dots, the symmetry and the colours of a design, and turns them into a guide anyone can follow. Dot kolams are
                         recreated exactly; free-hand designs such as alpana and rangoli are traced, and you can generate new designs with the
                         same symmetry and colours.

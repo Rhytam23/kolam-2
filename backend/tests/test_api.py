@@ -86,3 +86,20 @@ def test_free_hand_design_gets_radial_symmetry_and_colours():
     assert body['palette'][0]['background']
     assert body['layers']
     assert '8-fold' in body['message']
+
+
+def test_limits_photos_per_minute(monkeypatch):
+    monkeypatch.setattr(main.config, 'RATE_LIMIT_PER_MINUTE', 2)
+    img = np.full((64, 64, 3), 255, np.uint8)
+    assert upload(img).status_code != 429
+    assert upload(img).status_code != 429
+    third = upload(img)
+    assert third.status_code == 429
+    assert 'wait a minute' in third.json()['detail']
+
+
+def test_security_headers():
+    headers = client.get('/api/health').headers
+    assert headers['x-content-type-options'] == 'nosniff'
+    assert headers['x-frame-options'] == 'DENY'
+    assert "default-src 'self'" in headers['content-security-policy']

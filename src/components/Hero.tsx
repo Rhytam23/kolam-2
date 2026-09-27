@@ -8,6 +8,7 @@ import { useKolam, type GuideView } from './KolamContext';
 import { makeRadial } from '../utils/radial';
 import { PALETTES } from '../lib/colours';
 import { useInView, useIntro, useReducedMotion, useScrollProgress, useViewport } from '../hooks/motion';
+import { BRAND } from '../lib/brand';
 
 const NAMES = [
     { word: 'கோலம்', lang: 'ta', label: 'Kolam (Tamil)' },
@@ -41,10 +42,6 @@ const useOpenInGuide = () => {
 
 const Heading: React.FC<HeroProps> = ({ onStart, onGenerate }) => (
     <div className="text-center lg:text-left w-full">
-        <p className="inline-flex items-center gap-2 rounded-full border border-brass/60 bg-floor/60 px-4 py-1.5 text-sm text-brass-light mb-6">
-            <span className="h-2 w-2 rounded-full bg-marigold" aria-hidden />
-            Smart India Hackathon 2025 · Problem SIH25107
-        </p>
         <p className="font-script text-2xl md:text-3xl text-brass-light mb-4 flex flex-wrap gap-x-5 gap-y-1 justify-center lg:justify-start">
             {NAMES.map(n => <span key={n.word} lang={n.lang} title={n.label}>{n.word}</span>)}
         </p>
@@ -53,7 +50,7 @@ const Heading: React.FC<HeroProps> = ({ onStart, onGenerate }) => (
         </h1>
         <div className="brass-rule max-w-sm mx-auto lg:mx-0 my-6" aria-hidden><Diya className="h-9 w-9 shrink-0" /></div>
         <p className="text-lg md:text-xl text-rice/90 mb-8 max-w-xl mx-auto lg:mx-0">
-            SOLVIX reads the dots, lines, symmetry and colours of a kolam, rangoli or alpana, and teaches you to draw it
+            {BRAND} reads the dots, lines, symmetry and colours of a kolam, rangoli or alpana, and teaches you to draw it
             again, step by step, the way it has always been made.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from './ui/Card';
 import { SectionHeading } from './ui/SectionHeading';
+import { BRAND } from '../lib/brand';
 
 const references = [
     {
@@ -11,7 +12,7 @@ const references = [
     {
         title: 'Reconstruction and extension of lost symmetries: examples from the Tamil of South India',
         source: 'P. Gerdes · Computers & Mathematics with Applications 17(4–6), 1989',
-        summary: 'Models kolam strands as mirror curves around a dot grid. SOLVIX uses this model to recreate dot kolams and to join separate loops into a single line.',
+        summary: `Models kolam strands as mirror curves around a dot grid. ${BRAND} uses this model to recreate dot kolams and to join separate loops into a single line.`,
     },
     {
         title: 'The Kolam Tradition',
@@ -21,7 +22,7 @@ const references = [
     {
         title: 'KolamNetV2: efficient attention-based deep learning network for Tamil heritage art-kolam classification',
         source: 'npj Heritage Science, 2024',
-        summary: 'A learned approach to kolam recognition, and a useful comparison for SOLVIX’s explainable geometric pipeline.',
+        summary: `A learned approach to kolam recognition, and a useful comparison for ${BRAND}’s explainable geometric pipeline.`,
     },
 ];
 

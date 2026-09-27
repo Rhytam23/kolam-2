@@ -13,6 +13,8 @@ def get_allowed_origins() -> list[str]:
 MAX_UPLOAD_BYTES = int(os.getenv('MAX_UPLOAD_BYTES', str(8 * 1024 * 1024)))
 ALLOWED_TYPES = ('image/png', 'image/jpeg', 'image/webp')
 MAX_DOTS = 600
+# Photos one visitor can have read per minute, so a free server stays usable for everyone.
+RATE_LIMIT_PER_MINUTE = int(os.getenv('RATE_LIMIT_PER_MINUTE', '20'))
 
 # The built frontend (npm run build). When present it is served at "/", so one process runs the whole app.
 STATIC_DIR = Path(os.getenv('STATIC_DIR', Path(__file__).resolve().parent.parent / 'dist'))

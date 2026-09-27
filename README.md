@@ -32,7 +32,11 @@ No sample photo at hand? Press **Try a sample** in the analyzer.
 
 ## Privacy and hosting
 
-Photos are analysed in memory and never stored. Fonts (Tiro Tamil, Telugu, Devanagari, Bangla and
+See [`public/privacy.html`](public/privacy.html) (served at `/privacy.html`) and [`public/terms.html`](public/terms.html).
+
+Photos are analysed in memory and never stored; each visitor can have 20 photos read per minute
+(`RATE_LIMIT_PER_MINUTE`). The server sends a strict Content-Security-Policy and other security
+headers. Fonts (Tiro Tamil, Telugu, Devanagari, Bangla, Kannada and
 Hind Madurai) are bundled with the app, so the site makes no third-party requests.
 
 ## Run it

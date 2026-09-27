@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BRAND } from '../lib/brand';
 
 /** The browser's install prompt (Chrome, Edge and Android browsers). */
 interface InstallPrompt extends Event {
@@ -35,7 +36,7 @@ const InstallApp: React.FC = () => {
     return (
         <div className="space-y-2">
             <p className="text-rice/80">
-                Add SOLVIX to your phone or tablet's home screen. It opens full screen like an app, and the studio, guide and practice work offline.
+                Add {BRAND} to your phone or tablet's home screen. It opens full screen like an app, and the studio, guide and practice work offline.
             </p>
             {prompt ? (
                 <button

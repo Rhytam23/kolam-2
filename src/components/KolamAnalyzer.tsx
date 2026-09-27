@@ -10,6 +10,7 @@ import { downloadBlob, parseKolamFile, svgToPng, downloadKolamFile } from '../li
 import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, rowPattern, snapToLattice } from '../utils/kolamLogic';
 import { tracedDots, tracedSize } from '../utils/traced';
 import { SectionHeading } from './ui/SectionHeading';
+import { BRAND } from '../lib/brand';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -380,7 +381,7 @@ const KolamAnalyzer: React.FC = () => {
         <section className="py-20 px-4 container mx-auto">
             <SectionHeading title="Read a Design" className="mb-4" />
             <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
-                Photograph a kolam, rangoli, alpana or muggulu. SOLVIX finds the dots, the symmetry and the colours, and recreates the design so you can draw it again.
+                Photograph a kolam, rangoli, alpana or muggulu. {BRAND} finds the dots, the symmetry and the colours, and recreates the design so you can draw it again.
             </p>
 
             <div className="max-w-6xl mx-auto space-y-8">
@@ -409,6 +410,7 @@ const KolamAnalyzer: React.FC = () => {
                                 className="block w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-kaavi/10 file:text-kaavi hover:file:bg-kaavi/20 cursor-pointer"
                             />
                             <p className="text-xs text-muted">Or drop a photo here. Stand directly above the design, in daylight, with all of it in the frame.</p>
+                            <p className="text-xs text-muted">Your photo is read and deleted straight away. <a className="text-kaavi underline" href="/privacy.html#photos">How photos are handled</a></p>
                         </div>
                         <div className="space-y-3">
                             <div>

@@ -3,13 +3,16 @@ from __future__ import annotations
 import base64
 import json
 import mimetypes
+import time
+from collections import deque
 
 import cv2
 import numpy as np
-from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+import config
 from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
 from drawing import colour_layers, radial_symmetry
@@ -17,6 +20,39 @@ from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark,
 
 # So phones recognise the app manifest when the site is installed to the home screen.
 mimetypes.add_type('application/manifest+json', '.webmanifest')
+
+# The page loads nothing from other sites: scripts, styles, fonts and images all come from here.
+CONTENT_SECURITY_POLICY = '; '.join([
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+])
+
+# When each visitor last had a photo read, for the per-minute limit. Kept in memory only.
+_recent: dict[str, deque[float]] = {}
+
+
+def check_rate_limit(visitor: str) -> None:
+    now = time.monotonic()
+    if len(_recent) > 10_000:
+        # Forget visitors who have been quiet for a minute, so the table stays small.
+        for key in [k for k, q in _recent.items() if not q or now - q[-1] > 60]:
+            del _recent[key]
+    times = _recent.setdefault(visitor, deque())
+    while times and now - times[0] > 60:
+        times.popleft()
+    if len(times) >= config.RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail='Too many photos in a short time. Please wait a minute and try again.')
+    times.append(now)
 
 app = FastAPI(title='SOLVIX Kolam API')
 app.add_middleware(
@@ -46,11 +82,13 @@ def parse_dots(raw: str) -> list[dict]:
 
 @api.post('/analyze')
 async def analyze_kolam(
+    request: Request,
     file: UploadFile = File(...),
     preset: str = Form('balanced'),
     deskew: bool = Form(True),
     dots: str | None = Form(None),
 ):
+    check_rate_limit(request.client.host if request.client else 'unknown')
     if preset not in PRESET_CONFIGS:
         raise HTTPException(status_code=422, detail=f'Unknown preset. Use one of: {", ".join(PRESET_CONFIGS)}')
     if file.content_type not in ALLOWED_TYPES:
@@ -128,6 +166,23 @@ async def analyze_kolam(
 
 
 app.include_router(api)
+
+
+@app.middleware('http')
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    headers = response.headers
+    headers.setdefault('X-Content-Type-Options', 'nosniff')
+    headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    headers.setdefault('X-Frame-Options', 'DENY')
+    headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), payment=(), usb=()')
+    headers.setdefault('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+    if request.url.scheme == 'https':
+        headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+    if request.url.path == '/sw.js':
+        # Browsers must always check for a new version of the offline worker.
+        headers['Cache-Control'] = 'no-cache'
+    return response
 
 if STATIC_DIR.is_dir():
     app.mount('/', StaticFiles(directory=STATIC_DIR, html=True), name='app')

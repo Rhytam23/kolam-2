@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BRAND } from '../lib/brand';
 
 const LINKS = [
     { label: 'How it’s drawn', id: 'process' },
@@ -43,7 +44,7 @@ const Header: React.FC<{ onNavigate: (id: SectionId) => void }> = ({ onNavigate 
     return (
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${menuOpen && look === 'top' ? 'bg-floor/95' : bar}`}>
             <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-                <button className={`font-heading text-3xl font-bold ${dark ? 'brass-text' : 'gradient-text'}`} onClick={() => go('home')}>SOLVIX</button>
+                <button className={`font-heading text-3xl font-bold ${dark ? 'brass-text' : 'gradient-text'}`} onClick={() => go('home')}>{BRAND}</button>
                 <div className="hidden lg:flex items-center space-x-8">
                     {LINKS.map(link => (
                         <button key={link.id} onClick={() => go(link.id)} className={`${linkClass} transition-colors font-medium`}>

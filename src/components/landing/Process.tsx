@@ -5,6 +5,7 @@ import { makeRadial } from '../../utils/radial';
 import { nearestTraditional } from '../../lib/colours';
 import { SectionHeading } from '../ui/SectionHeading';
 import Reveal from './Reveal';
+import { BRAND } from '../../lib/brand';
 
 const RANGOLI_COLOURS = ['#F08A00', '#2E7D32', '#E1AD01'];
 const KOLAM_COLOURS = ['#F7F3EA', '#E1AD01', '#E75480', '#F08A00'];
@@ -47,7 +48,7 @@ const Process: React.FC = () => {
             <div className="container mx-auto max-w-6xl">
                 <SectionHeading dark title="From Dots to Design" kicker="புள்ளி · கோடு · வண்ணம் — dot · line · colour" />
                 <p className="text-center text-rice/85 mb-16 max-w-2xl mx-auto text-lg">
-                    Every kolam, rangoli and alpana is made the same way: small dots first, then the lines, then colour. SOLVIX reads and teaches designs in that order.
+                    Every kolam, rangoli and alpana is made the same way: small dots first, then the lines, then colour. {BRAND} reads and teaches designs in that order.
                 </p>
 
                 <Row title="Rangoli" subtitle="A lotus rangoli with 8 petals in each ring">
@@ -74,7 +75,7 @@ const Process: React.FC = () => {
                     </Step>
                 </Row>
 
-                <Row title="Reading a photo" subtitle="What SOLVIX does with a photo of a finished design (sample image)">
+                <Row title="Reading a photo" subtitle={`What ${BRAND} does with a photo of a finished design (sample image)`}>
                     <Step n={1} title="Your photo" text="Take it from directly above, in daylight, with the whole design in the frame.">
                         <FloorTile frame="plaque" label="Sample photo of a finished rangoli"><div className={inner}><RangoliFrame design={rangoli} stage="colour" showDots={false} showLines={false} /></div></FloorTile>
                     </Step>
