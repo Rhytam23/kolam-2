@@ -10,5 +10,12 @@ export default defineConfig({
       '/api': 'http://localhost:8000',
     },
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      // Link previews need absolute image URLs: set SITE_URL (e.g. https://kolam.example.com) when building.
+      name: 'site-url',
+      transformIndexHtml: html => html.replaceAll('%SITE_URL%', (process.env.SITE_URL ?? '').replace(/\/$/, '')),
+    },
+  ],
 });

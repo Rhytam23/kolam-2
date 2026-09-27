@@ -62,6 +62,9 @@ CI runs the same checks and a Docker build on every push (`.github/workflows/ci.
 
 ## Deploy
 
+Build with `--build-arg SITE_URL=https://your-domain` (or `SITE_URL=… npm run build`) so shared
+links show the preview card with an absolute image URL.
+
 The Docker image runs anywhere that runs containers (Render, Railway, Fly.io, Google Cloud Run,
 Hugging Face Spaces, a VPS). It listens on `$PORT` (default 8000) and has a health check at
 `/api/health`.

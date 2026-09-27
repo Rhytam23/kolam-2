@@ -22,7 +22,7 @@ const App: React.FC = () => (
             <div className="relative z-10">
                 <Header onNavigate={scrollTo} />
                 <main>
-                    <div id="home"><Hero onStart={() => scrollTo('analyzer')} /></div>
+                    <div id="home"><Hero onStart={() => scrollTo('analyzer')} onGenerate={() => scrollTo('generator')} /></div>
                     <div id="about" className="scroll-mt-16"><About /></div>
                     <div id="analyzer" className="scroll-mt-16"><KolamAnalyzer /></div>
                     <div id="generator" className="scroll-mt-16"><KolamGenerator /></div>
