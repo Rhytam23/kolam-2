@@ -50,6 +50,8 @@ export const PALETTES = {
   kaavi: { label: 'Kaavi on cream', background: '#FFF8EE', colors: ['#A63A1E'] },
   pongal: { label: 'Pongal festive', background: '#FFF8EE', colors: ['#C62839', '#F08A00', '#2E7D32', '#E1AD01', '#2F3E9E', '#E75480'] },
   diwali: { label: 'Diwali night', background: '#1F1A3A', colors: ['#F08A00', '#E1AD01', '#E75480', '#F7F3EA', '#7B3F98'] },
+  festival: { label: 'Festival on red floor', background: '#8E3B24', colors: ['#F7F3EA', '#E1AD01', '#C62839', '#F08A00', '#2E7D32', '#E75480'] },
+  darkFloor: { label: 'Rice flour on dark floor', background: '#1E1A18', colors: ['#F7F3EA', '#C62839', '#E1AD01'] },
 } as const;
 
 export type PaletteName = keyof typeof PALETTES;

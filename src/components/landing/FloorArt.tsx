@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { designDots, loopPaths } from '../../utils/kolamLogic';
 import { radialGuideDots, ringPath, ringStyle, type RadialDesign } from '../../utils/radial';
 import type { Design } from '../../types/kolam';
@@ -145,32 +145,44 @@ interface RangoliFrameProps {
     showLines?: boolean;
     /** Follow this progress instead of `stage`; rings are joined one after another, from the centre. */
     progress?: DrawProgress;
+    /** Give the lines a powdery, hand-drawn texture (costly to redraw on every scroll frame). */
+    rough?: boolean;
 }
 
-export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'colour', ringsDrawn, animate = false, showDots = true, showLines = true, progress }) => {
-    const rings = [...design.rings].reverse();
-    const dots = radialGuideDots(design);
+export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'colour', ringsDrawn, animate = false, showDots = true, showLines = true, progress, rough = true }) => {
+    const rings = useMemo(() => [...design.rings].reverse(), [design]);
+    const paths = useMemo(() => rings.map(ringPath), [rings]);
+    const dots = useMemo(() => radialGuideDots(design), [design]);
+    const lineWidth = (r: RadialDesign['rings'][number]) => (r.motif === 'curl' ? 0.011 : 0.016);
     if (progress) {
         const shownDots = Math.round(clamp01(progress.dots) * dots.length);
+        const colour = clamp01(progress.colour);
         return (
             <svg viewBox="-1.15 -1.15 2.3 2.3" className="absolute inset-0 w-full h-full">
-                {progress.colour > 0 && (
-                    <g opacity={clamp01(progress.colour)}>
-                        {design.rings.map((r, i) => <path key={i} d={ringPath(r)} fill={ringStyle(design, r).fill} stroke="none" />)}
+                <g filter={rough ? 'url(#rice)' : undefined}>
+                    {rings.map((r, i) => {
+                        // Dot rings are the dots themselves: they are coloured, not drawn round.
+                        const drawn = r.motif === 'dot' ? 0 : clamp01(progress.lines * rings.length - i);
+                        return drawn > 0 && (
+                            <path key={i} d={paths[i]} fill="none" stroke={RICE} strokeWidth={lineWidth(r)} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - drawn} />
+                        );
+                    })}
+                    {/* The guide dots disappear under the colour. */}
+                    <g opacity={1 - 0.75 * colour}>
+                        {dots.map((p, i) => (
+                            <circle key={i} cx={p.x} cy={p.y} r={p.ring < 0 ? 0.03 : 0.02} fill={RICE} style={shownStyle(i < shownDots)} />
+                        ))}
+                    </g>
+                </g>
+                {colour > 0 && (
+                    <g opacity={colour}>
+                        {rings.map((r, i) => {
+                            const s = ringStyle(design, r);
+                            return r.filled && <path key={i} d={paths[i]} fill={s.fill} stroke={s.stroke} strokeWidth={s.strokeWidth} strokeLinejoin="round" />;
+                        })}
                         <circle r={0.09} fill={design.centre} />
                     </g>
                 )}
-                <g filter="url(#rice)">
-                    {rings.map((r, i) => {
-                        const drawn = clamp01(progress.lines * rings.length - i);
-                        return drawn > 0 && (
-                            <path key={i} d={ringPath(r)} fill="none" stroke={RICE} strokeWidth={0.016} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - drawn} />
-                        );
-                    })}
-                    {dots.map((p, i) => (
-                        <circle key={i} cx={p.x} cy={p.y} r={p.ring < 0 ? 0.03 : 0.022} fill={RICE} style={shownStyle(i < shownDots)} />
-                    ))}
-                </g>
             </svg>
         );
     }

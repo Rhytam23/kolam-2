@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  countLoops, designDots, designPath, diamondDesign, imageToLattice, latticeToImage, makeDesign,
+  countLoops, designDots, designPath, diamondDesign, imageToLattice, latticeToImage, loopBends, makeDesign,
   makeSingleLine, rowPattern, snapToLattice, squareDesign, symmetries, traceLoops,
 } from './kolamLogic';
 import type { Lattice } from '../types/kolam';
@@ -74,5 +74,24 @@ describe('lattice helpers', () => {
     ]);
     expect(snapped).toHaveLength(1);
     expect(snapped[0].x).toBeCloseTo(exact.x);
+  });
+});
+
+describe('loopBends', () => {
+  it('splits every line into bends round neighbouring dots, covering the whole line', () => {
+    for (const d of [squareDesign(3), makeSingleLine(diamondDesign(5)), squareDesign(4)]) {
+      const bends = loopBends(d);
+      expect(bends).toHaveLength(countLoops(d));
+      bends.forEach((loop, i) => {
+        // Consecutive bends go round different dots that are next to each other.
+        loop.forEach((b, k) => {
+          const next = loop[(k + 1) % loop.length];
+          if (loop.length > 1) expect(b.dot).not.toEqual(next.dot);
+          expect(Math.max(Math.abs(b.dot.x - next.dot.x), Math.abs(b.dot.y - next.dot.y))).toBeLessThanOrEqual(1);
+        });
+        const curves = loop.map(b => (b.path.match(/C/g) ?? []).length).reduce((a, b) => a + b, 0);
+        expect(curves).toBe(traceLoops(d)[i].length);
+      });
+    }
   });
 });

@@ -69,9 +69,9 @@ const EXAMPLES: Example[] = [
         k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(7); k.setSingleLine(false); k.setKolamPalette('riceFlour'); }),
     kolamExample('Pongal kolam', '4 × 4 dots, each line in its own colour', squareDesign(4), 'pongal',
         k => { k.setUseScan(false); k.setShape('square'); k.setSize(4); k.setSingleLine(false); k.setKolamPalette('pongal'); }),
-    radialExample('Lotus rangoli', 'Rangoli', '8 petals in 3 rings', 'lotus', 8, 3, 'pongal'),
+    radialExample('Festival rangoli', 'Rangoli', 'Six bands of petals, leaves and teardrops', 'festival', 12, 4, 'festival'),
     radialExample('Alpana', 'Alpana', 'Rice paste on red earth, 8-fold', 'alpana', 8, 3, 'riceFlour'),
-    radialExample('Diwali rangoli', 'Rangoli', 'An 8-pointed star for the night of lamps', 'star', 8, 3, 'diwali'),
+    radialExample('Circle of curls', 'Pulli kolam', 'Curls wound round dots, with coloured dots', 'curls', 8, 3, 'darkFloor'),
 ];
 
 const scrollToGuide = () => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' });

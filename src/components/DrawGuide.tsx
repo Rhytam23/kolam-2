@@ -9,6 +9,7 @@ import { layerTransform, tracedBackground, tracedDots, tracedSize } from '../uti
 import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
 import { SectionHeading } from './ui/SectionHeading';
+import Practice from './Practice';
 
 interface Step {
     title: string;
@@ -24,7 +25,7 @@ const HIGHLIGHT = '#C62839';
 const STEP_MS = 3500;
 
 const MOTIF_NAMES: Record<Motif, string> = {
-    lotus: 'lotus petals', leaf: 'pointed leaves', drop: 'rounded petals', loop: 'loops', dot: 'dots',
+    lotus: 'lotus petals', leaf: 'pointed leaves', drop: 'rounded petals', loop: 'loops', dot: 'dots', curl: 'curls',
 };
 
 const startOf = (path: string) => {
@@ -37,7 +38,7 @@ const partDash = (from: number, to: number) => `0 ${from} ${to - from} 1`;
 
 const DrawGuide: React.FC = () => {
     const k = useKolam();
-    const { mode, design, loops, symmetry, radial, traced } = k;
+    const { mode, design, loops, symmetry, radial, traced, guideView, setGuideView } = k;
     const [step, setStep] = useState(0);
     const [playing, setPlaying] = useState(false);
     const colours = artworkColours(k);
@@ -46,7 +47,8 @@ const DrawGuide: React.FC = () => {
         const ground = nearestGround(colours.background);
 
         if (mode === 'radial') {
-            const rings = [...radial.rings].reverse(); // work from the centre outwards
+            // Work from the centre outwards. Rings of plain dots are not drawn: they are coloured at the end.
+            const rings = [...radial.rings].reverse().filter(r => r.motif !== 'dot');
             const dotColour = guideDotColour(radial.background);
             const bg = <rect x={-1.1} y={-1.1} width={2.2} height={2.2} fill={radial.background} />;
             const guideDots = radialGuideDots(radial);
@@ -58,7 +60,11 @@ const DrawGuide: React.FC = () => {
             const joined = (ring: (typeof rings)[number], colour: string, animate = false) => (
                 <path d={ringPath(ring)} fill="none" stroke={colour} strokeWidth={0.014} strokeLinejoin="round" pathLength={1} className={animate ? 'kolam-draw' : undefined} />
             );
-            const dotsPerRing = rings.map((_, i) => `${guideDots.filter(d => d.ring === i).length} for ring ${i + 1}`).join(', ');
+            // Guide dots are numbered by position among all rings, plain dot rings included.
+            const allRings = [...radial.rings].reverse();
+            const perRing = rings.map(r => guideDots.filter(d => d.ring === allRings.indexOf(r)).length);
+            const border = guideDots.length - 1 - perRing.reduce((a, b) => a + b, 0);
+            const dotsPerRing = perRing.map((n, i) => `${n} for ring ${i + 1}`).join(', ') + (border > 0 ? `, and ${border} more to be coloured` : '');
             const total = guideDots.length;
             return {
                 viewBox: '-1.1 -1.1 2.2 2.2',
@@ -77,8 +83,12 @@ const DrawGuide: React.FC = () => {
                     },
                     ...rings.map((ring, i) => ({
                         title: `${3 + i}. Join the dots: ring ${i + 1}`,
-                        text: `${i === 0 ? 'Starting next to the centre, join' : 'Join'} the dots of this ring into ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from dot to dot${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
-                        tip: ring.filled ? 'Draw only the outline now; colour comes at the end.' : ring.double ? 'Draw each outline through the dots, then a second line just inside it. Keep both thin and even.' : 'Keep the line thin and even; alpana outlines are the design itself.',
+                        text: ring.motif === 'curl'
+                            ? `Wind a curl round each dot of this ring: ${ring.count} curls, pointing ${ring.flip ? 'in towards the centre' : 'outwards'}. Start at the pointed tip, come down one side, round the dot, and curl inwards.`
+                            : ring.count === 1
+                                ? 'Join the dots round the centre into a circle.'
+                                : `${i === 0 ? 'Starting next to the centre, join' : 'Join'} the dots of this ring into ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from dot to dot${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
+                        tip: ring.motif === 'curl' ? 'Keep every curl the same size; the dots keep them evenly spaced.' : ring.filled ? 'Draw only the outline now; colour comes at the end.' : ring.double ? 'Draw each outline through the dots, then a second line just inside it. Keep both thin and even.' : 'Keep the line thin and even; alpana outlines are the design itself.',
                         picture: <>{bg}{rings.slice(0, i).map((r, j) => <g key={j}>{joined(r, dotColour)}</g>)}<g key={`${step}-${i}`}>{joined(ring, HIGHLIGHT, true)}</g>{dotsOf}</>,
                     })),
                     {
@@ -237,35 +247,51 @@ const DrawGuide: React.FC = () => {
         <section className="py-20 px-4">
             <div className="container mx-auto max-w-5xl">
                 <SectionHeading title="Draw It Yourself" className="mb-4" />
-                <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
-                    Step by step instructions for the design in the studio above: dots or guide circles first, then each line or ring, then colour.
+                <p className="text-center text-muted mb-8 max-w-2xl mx-auto">
+                    Step by step instructions for the design in the studio above: dots first, then each line or ring, then colour. Then practise it by tapping the dots in order.
                 </p>
-                <div className="grid md:grid-cols-2 gap-10 items-start">
-                    <div className="kolam-border rounded-2xl p-3 bg-white/60">
-                        <svg viewBox={steps.viewBox} className="w-full aspect-square" role="img" aria-label={current.title}>{current.picture}</svg>
-                    </div>
-                    <div className="space-y-6">
-                        <Card className="space-y-3">
-                            <p className="text-xs uppercase tracking-widest text-muted">Step {Math.min(step, last) + 1} of {last + 1}</p>
-                            <h3 className="font-heading text-2xl text-kaavi">{current.title}</h3>
-                            <p className="text-ink leading-relaxed">{current.text}</p>
-                            {current.tip && <p className="text-sm text-muted border-l-4 border-marigold pl-3">{current.tip}</p>}
-                            {current.colours && <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam'} />}
-                        </Card>
-                        <div className="flex justify-center gap-3">
-                            <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}>Previous</Button>
-                            <Button size="sm" onClick={() => { if (step >= last) setStep(0); setPlaying(p => step >= last || !p); }}>
-                                {playing ? 'Pause' : step >= last ? 'Start again' : 'Play'}
-                            </Button>
-                            <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.min(last, s + 1))} disabled={step >= last}>Next</Button>
-                        </div>
-                        <div className="flex justify-center flex-wrap gap-1.5">
-                            {steps.list.map((s, i) => (
-                                <button key={s.title} aria-label={`Go to ${s.title}`} onClick={() => setStep(i)} className={`h-2.5 w-2.5 rounded-full ${i === step ? 'bg-kaavi' : 'bg-kaavi/20'}`} />
-                            ))}
-                        </div>
-                    </div>
+                <div className="flex justify-center gap-2 mb-10" role="tablist" aria-label="Guide or practice">
+                    {([['steps', 'Watch the steps'], ['practice', 'Practise it yourself']] as const).map(([id, label]) => (
+                        <button
+                            key={id}
+                            type="button"
+                            role="tab"
+                            aria-selected={guideView === id}
+                            onClick={() => setGuideView(id)}
+                            className={`px-5 py-2 rounded-full text-sm font-semibold border transition-colors ${guideView === id ? 'bg-kaavi text-paper border-kaavi' : 'border-kaavi/30 text-kaavi bg-white/70 hover:border-kaavi'}`}
+                        >
+                            {label}
+                        </button>
+                    ))}
                 </div>
+                {guideView === 'practice' ? <Practice /> : (
+                    <div className="grid md:grid-cols-2 gap-10 items-start">
+                        <div className="kolam-border rounded-2xl p-3 bg-white/60">
+                            <svg viewBox={steps.viewBox} className="w-full aspect-square" role="img" aria-label={current.title}>{current.picture}</svg>
+                        </div>
+                        <div className="space-y-6">
+                            <Card className="space-y-3">
+                                <p className="text-xs uppercase tracking-widest text-muted">Step {Math.min(step, last) + 1} of {last + 1}</p>
+                                <h3 className="font-heading text-2xl text-kaavi">{current.title}</h3>
+                                <p className="text-ink leading-relaxed">{current.text}</p>
+                                {current.tip && <p className="text-sm text-muted border-l-4 border-marigold pl-3">{current.tip}</p>}
+                                {current.colours && <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam'} />}
+                            </Card>
+                            <div className="flex justify-center gap-3">
+                                <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}>Previous</Button>
+                                <Button size="sm" onClick={() => { if (step >= last) setStep(0); setPlaying(p => step >= last || !p); }}>
+                                    {playing ? 'Pause' : step >= last ? 'Start again' : 'Play'}
+                                </Button>
+                                <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.min(last, s + 1))} disabled={step >= last}>Next</Button>
+                            </div>
+                            <div className="flex justify-center flex-wrap gap-1.5">
+                                {steps.list.map((s, i) => (
+                                    <button key={s.title} aria-label={`Go to ${s.title}`} onClick={() => setStep(i)} className={`h-2.5 w-2.5 rounded-full ${i === step ? 'bg-kaavi' : 'bg-kaavi/20'}`} />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </section>
     );

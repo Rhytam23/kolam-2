@@ -22,9 +22,10 @@ without dots (alpana, most rangoli) are read by their turning symmetry and colou
 | **Design principles** | Dot grid and dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of separate lines (1 = sikku), mirror and turning symmetry (e.g. "8-fold"), and the colours used, each named after its traditional material (rice flour, kaavi, turmeric, kumkum…). |
 | **Recreate** | Dot kolams are redrawn as clean lines on top of your photo; fix missed dots by hand and recreate. Free-hand designs are traced into filled colour layers. |
 | **Make a similar design** | One click starts a new design in the studio with the same grid, or the same symmetry and colours for rangoli and alpana. |
-| **Design Studio** | Dot kolams (square or diamond grids, one-line sikku option) and radial rangoli/alpana (lotus, alpana, marigold and star styles, 3–16 petals, 1–4 rings), with colour sets: rice flour on red floor, kaavi on cream, Pongal and Diwali. |
+| **Design Studio** | Dot kolams (square or diamond grids, one-line sikku option) and radial designs: lotus, festival, alpana (double-outlined petals), marigold, star, and a circle of curls wound round dots; 3–16 petals, 1–4 rings. Colour sets: rice flour on a red or dark floor, kaavi on cream, Pongal, Diwali and festival. |
 | **Draw it yourself** | A step-by-step guide that follows how floor art is really made: prepare the ground, put down the small dots first, then draw the lines (around the dots for a pulli kolam, from dot to dot for rangoli and alpana) one line or ring at a time, and fill the colours last, with tips and materials for every step. Rangoli and alpana designs can be downloaded with their dots as a printable template. |
-| **From dots to design** | The landing page draws a kolam and a rangoli live on a red-oxide floor in rice-flour texture, and shows the three real steps (dots, lines, colour) for a rangoli, a pulli kolam and a photo. |
+| **Practise it** | Draw the design yourself by tapping its dots in the order the line goes: round each dot for a pulli kolam, dot to dot along each petal for a rangoli, one curl per dot for a curl kolam. A wrong dot shows where to go; a ring or line can be finished for you. |
+| **From dots to design** | As you scroll, the landing page draws a circle-of-curls kolam and then a festival rangoli the way they are made by hand (dots, then lines, then colour), each with *Learn to draw this* and *Practise it*. It also shows the three steps for a rangoli, a pulli kolam and a photo. |
 | **Share** | Export SVG, PNG or the open `.kolam.json` format, save kolams in the browser, and share links with a preview card. |
 
 No sample photo at hand? Press **Try a sample** in the analyzer.
@@ -124,7 +125,8 @@ dot is missing).
 
 ```text
 src/utils/kolamLogic.ts     mirror-curve engine: tracing, symmetry, single-line transform, SVG
-src/utils/radial.ts         radial rangoli / alpana designs and drawing guides
+src/utils/radial.ts         radial rangoli / alpana / curl designs and drawing guides
+src/utils/practice.ts       practice mode: which dot comes next, and what each tap draws
 src/lib/colours.ts          traditional colours, materials and colour sets
 src/components/             analyzer, generator, walkthrough and page sections
 src/lib/                    API client and .kolam.json helpers

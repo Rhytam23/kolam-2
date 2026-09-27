@@ -90,3 +90,15 @@ export const useIntro = (start: boolean, ms = 1600) => {
     }, [start, ms, reduce]);
     return t;
 };
+
+/** The size of the browser window, kept up to date. */
+export const useViewport = () => {
+    const read = () => ({ w: typeof window === 'undefined' ? 1280 : window.innerWidth, h: typeof window === 'undefined' ? 800 : window.innerHeight });
+    const [size, setSize] = useState(read);
+    useEffect(() => {
+        const onResize = () => setSize(read());
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+    return size;
+};

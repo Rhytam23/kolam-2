@@ -1,30 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { heroStory } from './heroStory';
+import { SCENES, heroStory } from './heroStory';
 import { countLoops, makeDesign } from '../../utils/kolamLogic';
+import { makeRadial } from '../../utils/radial';
+import { PALETTES } from '../../lib/colours';
 
 describe('heroStory', () => {
-    it('starts on an empty floor and lays the dots first', () => {
+    it('starts with the heading and an empty floor, and lays the dots first', () => {
         const s = heroStory(0, 0);
-        expect(s.scene).toBe(0);
-        expect(s.kolam).toEqual({ dots: 0, lines: 0, colour: 0 });
-        expect(heroStory(0, 1).kolam.dots).toBe(1);
+        expect(s).toMatchObject({ enter: 0, scene: 0, step: 0, done: false });
+        expect(s.first).toEqual({ dots: 0, lines: 0, colour: 0 });
+        expect(heroStory(0, 1).first.dots).toBe(1);
     });
 
-    it('never draws a line before all its dots are down', () => {
-        for (let p = 0; p <= 1; p += 0.01) {
+    it('never draws a line before its dots, nor colours before its lines', () => {
+        for (let p = 0; p <= 1; p += 0.005) {
             const s = heroStory(p, 0);
-            if (s.kolam.lines > 0) expect(s.kolam.dots).toBe(1);
-            if (s.rangoli.lines > 0) expect(s.rangoli.dots).toBe(1);
-            if (s.rangoli.colour > 0) expect(s.rangoli.lines).toBe(1);
+            for (const d of [s.first, s.second]) {
+                if (d.lines > 0) expect(d.dots).toBe(1);
+                if (d.colour > 0) expect(d.lines).toBe(1);
+            }
+            // The drawing only starts once the heading has gone.
+            if (s.first.lines > 0) expect(s.enter).toBe(1);
         }
     });
 
-    it('moves on from the kolam to the finished rangoli', () => {
-        expect(heroStory(0.3, 1)).toMatchObject({ scene: 0, step: 1 });
-        expect(heroStory(0.7, 1)).toMatchObject({ scene: 1, step: 1 });
+    it('finishes the first design before moving on to the second', () => {
+        expect(heroStory(0.2, 1)).toMatchObject({ scene: 0, step: 1, done: false });
+        expect(heroStory(0.46, 1)).toMatchObject({ scene: 0, step: 2, done: true });
+        expect(heroStory(0.7, 1)).toMatchObject({ scene: 1, step: 1, done: false });
         const end = heroStory(1, 1);
-        expect(end).toMatchObject({ scene: 1, step: 2, mix: 1 });
-        expect(end.rangoli).toEqual({ dots: 1, lines: 1, colour: 1 });
+        expect(end).toMatchObject({ scene: 1, step: 2, done: true, mix: 1 });
+        expect(end.second).toEqual({ dots: 1, lines: 1, colour: 1 });
+    });
+
+    it('shows designs the studio can open', () => {
+        for (const { design } of SCENES) {
+            expect(makeRadial({ petals: design.petals, layers: design.layers, style: design.style, ...PALETTES[design.palette] }).rings.length).toBeGreaterThan(3);
+        }
     });
 });
 

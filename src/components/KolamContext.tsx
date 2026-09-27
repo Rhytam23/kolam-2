@@ -9,6 +9,7 @@ import { loadSaved, persistSaved, toKolamFile } from '../lib/kolamFile';
 export type Shape = 'square' | 'diamond';
 /** What the generator and the drawing guide are showing. */
 export type Mode = 'kolam' | 'radial' | 'traced';
+export type GuideView = 'steps' | 'practice';
 
 /** A kolam read from a photo (or loaded from a file): the design plus where its dots sit in the image. */
 export interface Scan {
@@ -61,6 +62,10 @@ interface KolamContextValue {
   /** Starts a radial design that matches a photographed one: same symmetry and colours. */
   makeSimilar: (order: number, palette: PaletteEntry[]) => void;
 
+  /** Whether the drawing guide shows the steps or lets the visitor practise. */
+  guideView: GuideView;
+  setGuideView: (view: GuideView) => void;
+
   // traced free-hand drawing
   traced: Traced | null;
   setTraced: (traced: Traced | null) => void;
@@ -88,6 +93,7 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [radialStyle, setRadialStyle] = useState<RadialStyle>('lotus');
   const [radialColours, setRadialColours] = useState<Colours>(PALETTES.pongal);
   const [traced, setTracedState] = useState<Traced | null>(null);
+  const [guideView, setGuideView] = useState<GuideView>('steps');
   const [saved, setSaved] = useState<SavedKolam[]>(loadSaved);
 
   useEffect(() => persistSaved(saved), [saved]);
@@ -138,6 +144,7 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     kolamColours: PALETTES[kolamPalette], kolamPalette, setKolamPalette,
     petals, setPetals, layers, setLayers, radialStyle, setRadialStyle,
     radialColours, setRadialPalette: name => setRadialColours(PALETTES[name]), radial, makeSimilar,
+    guideView, setGuideView,
     traced, setTraced,
     saved,
     save: () => setSaved(prev => [{ ...currentFile(), id: `${Date.now()}` }, ...prev].slice(0, 10)),
@@ -148,7 +155,7 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     currentFile,
   }), [mode, size, shape, singleLine, scan, setScan, useScan, dots, design, loops, symmetry, kolamPalette,
-    petals, layers, radialStyle, radialColours, radial, makeSimilar, traced, setTraced, saved, currentFile]);
+    petals, layers, radialStyle, radialColours, radial, makeSimilar, guideView, traced, setTraced, saved, currentFile]);
 
   return <KolamContext.Provider value={value}>{children}</KolamContext.Provider>;
 };

@@ -265,6 +265,49 @@ export const loopPaths = (d: Design, unit = 1, pad = 0) => {
 
 export const designPath = (d: Design, unit = 1, pad = 0) => loopPaths(d, unit, pad).join('');
 
+/** One bend of a line: the stretch that curves round a single dot. */
+export interface Bend {
+  dot: Point;
+  path: string;
+}
+
+/**
+ * Each line split into its bends, in drawing order. A line in a pulli kolam passes between the
+ * dots, curving round one dot and then the next; drawing it by hand means following those bends.
+ */
+export const loopBends = (d: Design, unit = 1, pad = 0): Bend[][] => {
+  const at = (v: number) => fmt((pad + v) * unit);
+  return traceLoops(d).map(loop => {
+    const pts = loop.map(passPoint);
+    const n = loop.length;
+    // The dot a segment curves round is the even-even corner between its two ports.
+    const dotOf = (k: number) => {
+      const a = loop[k];
+      const b = loop[(k + 1) % n];
+      const [X, Y] = (a.X & 1) === 0 && (b.Y & 1) === 0 ? [a.X, b.Y] : [b.X, a.Y];
+      return { x: X / 2, y: Y / 2 };
+    };
+    const same = (p: Point, q: Point) => p.x === q.x && p.y === q.y;
+    // Start at the beginning of a bend, so no bend is split across the end of the loop.
+    let first = 0;
+    while (first < n && n > 1 && same(dotOf((first + n - 1) % n), dotOf(first))) first++;
+    if (first === n) first = 0;
+    const bends: Bend[] = [];
+    for (let i = 0; i < n; i++) {
+      const k = (first + i) % n;
+      const a = pts[k];
+      const b = pts[(k + 1) % n];
+      const handle = 0.39 * Math.hypot(b.x - a.x, b.y - a.y);
+      const curve = `C${at(a.x + a.tx * handle)} ${at(a.y + a.ty * handle)} ${at(b.x - b.tx * handle)} ${at(b.y - b.ty * handle)} ${at(b.x)} ${at(b.y)}`;
+      const dot = dotOf(k);
+      const last = bends[bends.length - 1];
+      if (last && same(last.dot, dot)) last.path += curve;
+      else bends.push({ dot, path: `M${at(a.x)} ${at(a.y)}${curve}` });
+    }
+    return bends;
+  });
+};
+
 export const designDots = (d: Design): Point[] => {
   const dots: Point[] = [];
   for (let j = 0; j < d.rows; j++) for (let i = 0; i < d.cols; i++) if (isDot(d, i, j)) dots.push({ x: i, y: j });
