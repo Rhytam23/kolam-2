@@ -10,7 +10,7 @@ const references = [
     {
         title: 'Reconstruction and extension of lost symmetries: examples from the Tamil of South India',
         source: 'P. Gerdes · Computers & Mathematics with Applications 17(4–6), 1989',
-        summary: 'Models kolam strands as mirror curves around a dot grid. SOLVIX uses this model to recreate kolams and to join separate loops into a single line.',
+        summary: 'Models kolam strands as mirror curves around a dot grid. SOLVIX uses this model to recreate dot kolams and to join separate loops into a single line.',
     },
     {
         title: 'The Kolam Tradition',
@@ -30,9 +30,9 @@ const Research: React.FC = () => (
         <div className="max-w-4xl mx-auto space-y-6">
             {references.map(item => (
                 <Card key={item.title}>
-                    <h3 className="text-xl font-bold text-orange-400">{item.title}</h3>
-                    <p className="text-sm text-gray-400 italic my-2">{item.source}</p>
-                    <p className="text-gray-300">{item.summary}</p>
+                    <h3 className="font-heading text-xl text-kaavi">{item.title}</h3>
+                    <p className="text-sm text-muted italic my-2">{item.source}</p>
+                    <p className="text-ink">{item.summary}</p>
                 </Card>
             ))}
         </div>

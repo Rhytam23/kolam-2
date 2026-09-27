@@ -2,26 +2,29 @@
 
 # SOLVIX – Kolam AI
 
-**Identify the design principles behind a kolam and recreate it digitally.**
+**Understand the design behind a kolam, and draw it again with your own hands.**
 Built for Smart India Hackathon problem statement **SIH25107**: *"Develop computer programs (in any
 language, preferably Python) to identify the design principles behind the Kolam designs and
-recreate the kolams."*
+recreate the kolams."* It also works for the wider family of Indian floor art: rangoli, muggulu,
+rangavalli, alpana and mandana.
 
 A pulli kolam is a grid of dots (*pulli*) with a line (*neli*) that loops around every dot without
 touching it. Between two neighbouring dots the line either **crosses** itself or **turns**, as if it
 bounced off a mirror. The dot grid plus that choice at every gap fully describes the kolam
-(the mirror-curve model of Gerdes, 1989). SOLVIX reads exactly that from a photo.
+(the mirror-curve model of Gerdes, 1989). SOLVIX reads exactly that from a photo. Free-hand designs
+without dots (alpana, most rangoli) are read by their turning symmetry and colours instead.
 
 ## What it does
 
 | | |
 | --- | --- |
-| **Analyze** | Upload a photo or scan. OpenCV finds the dots, fits a (rotation- and perspective-tolerant) lattice, and reads the ink between every pair of dots as a crossing, a turn-back or a join. |
-| **Design principles** | Dot grid and orientation, dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of loops (1 = sikku, one continuous line), symmetry of the design and of the drawing, and a confidence score. |
-| **Recreate** | The kolam is redrawn as clean vector strands on top of your photo. Fix missed dots by hand (click, drag, undo) and recreate from your corrections. |
-| **Generate** | Square or diamond dot grids, with a one-click transform that joins all loops into a single line while keeping the design symmetric. |
-| **Share** | Export SVG, PNG, or the open `.kolam.json` format, and save kolams in the browser. |
-| **Learn** | A step-by-step walkthrough of dots → symmetry → strands → completion for the current design. |
+| **Read a design** | Take or upload a photo. For dot kolams, OpenCV finds the dots, fits a rotation- and perspective-tolerant grid, and reads every gap between two dots as a crossing, a turn-back or a join. Free-hand designs are traced colour by colour. |
+| **Design principles** | Dot grid and dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of separate lines (1 = sikku), mirror and turning symmetry (e.g. "8-fold"), and the colours used, each named after its traditional material (rice flour, kaavi, turmeric, kumkum…). |
+| **Recreate** | Dot kolams are redrawn as clean lines on top of your photo; fix missed dots by hand and recreate. Free-hand designs are traced into filled colour layers. |
+| **Make a similar design** | One click starts a new design in the studio with the same grid, or the same symmetry and colours for rangoli and alpana. |
+| **Design Studio** | Dot kolams (square or diamond grids, one-line sikku option) and radial rangoli/alpana (lotus, alpana, marigold and star styles, 3–16 petals, 1–4 rings), with colour sets: rice flour on red floor, kaavi on cream, Pongal and Diwali. |
+| **Draw it yourself** | A step-by-step guide for whatever is in the studio: prepare the ground, place the dots or mark guide circles and points, draw each line or ring one at a time, then fill each colour, with tips and materials for every step. |
+| **Share** | Export SVG, PNG or the open `.kolam.json` format, save kolams in the browser, and share links with a preview card. |
 
 No sample photo at hand? Press **Try a sample** in the analyzer.
 
@@ -85,7 +88,10 @@ To host the frontend separately (for example on a static host), build it with
 | `dots` | optional JSON list of `{x, y}` (0–1): use these dots instead of detecting them |
 
 The response includes `dots`, `lattice` (grid size, origin and axes in image coordinates),
-`design` (see below), `symmetry` (drawing symmetry scores), `confidence` and `message`.
+`design` (see below), `symmetry` (mirror/rotation scores of the drawing), `radial` (turning
+symmetry: `order` N for N-fold), `palette` (main colours, their share and which one is the ground),
+`layers` (each colour traced as an SVG path in 0–1 coordinates), `confidence` (dot-grid reading only)
+and `message`. Free-hand designs return `lattice: null` and `design: null`.
 
 ## The `.kolam.json` format
 
@@ -112,10 +118,13 @@ dot is missing).
 
 ```text
 src/utils/kolamLogic.ts     mirror-curve engine: tracing, symmetry, single-line transform, SVG
+src/utils/radial.ts         radial rangoli / alpana designs and drawing guides
+src/lib/colours.ts          traditional colours, materials and colour sets
 src/components/             analyzer, generator, walkthrough and page sections
 src/lib/                    API client and .kolam.json helpers
 backend/detection.py        dot detection (OpenCV)
 backend/principles.py       lattice fit, crossing/turn reading, symmetry
+backend/drawing.py          turning symmetry, colour palette and traced layers for any design
 backend/main.py             FastAPI app; also serves the built frontend
 ```
 

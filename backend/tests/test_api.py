@@ -76,3 +76,13 @@ def test_diamond_kolam_is_not_mistaken_for_a_sheet():
     body = upload(crossing_kolam(5, 5, diamond=True)).json()
     assert 'image' not in body
     assert [row.count('1') for row in body['lattice']['mask']] == [1, 3, 5, 3, 1]
+
+
+def test_free_hand_design_gets_radial_symmetry_and_colours():
+    from tests.test_drawing import FLOOR, RICE, petals
+    body = upload(petals(8, background=FLOOR, ink=RICE)).json()
+    assert body['lattice'] is None
+    assert body['radial']['order'] == 8
+    assert body['palette'][0]['background']
+    assert body['layers']
+    assert '8-fold' in body['message']

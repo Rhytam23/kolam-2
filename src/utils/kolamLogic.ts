@@ -248,8 +248,8 @@ const passPoint = (p: LoopPoint) => {
   return { x, y, tx: tx / tl, ty: ty / tl };
 };
 
-/** SVG path of every loop; lattice point (i, j) maps to ((pad + i)·unit, (pad + j)·unit). */
-export const designPath = (d: Design, unit = 1, pad = 0) => {
+/** One SVG path per loop; lattice point (i, j) maps to ((pad + i)·unit, (pad + j)·unit). */
+export const loopPaths = (d: Design, unit = 1, pad = 0) => {
   const at = (v: number) => fmt((pad + v) * unit);
   return traceLoops(d).map(loop => {
     const pts = loop.map(passPoint);
@@ -260,8 +260,10 @@ export const designPath = (d: Design, unit = 1, pad = 0) => {
       path += `C${at(a.x + a.tx * handle)} ${at(a.y + a.ty * handle)} ${at(b.x - b.tx * handle)} ${at(b.y - b.ty * handle)} ${at(b.x)} ${at(b.y)}`;
     });
     return `${path}Z`;
-  }).join('');
+  });
 };
+
+export const designPath = (d: Design, unit = 1, pad = 0) => loopPaths(d, unit, pad).join('');
 
 export const designDots = (d: Design): Point[] => {
   const dots: Point[] = [];
@@ -272,11 +274,12 @@ export const designDots = (d: Design): Point[] => {
 export interface SvgOptions {
   unit?: number;
   background?: string;
-  stroke?: string;
+  /** One colour, or a list used loop by loop (as in coloured festival kolams). */
+  stroke?: string | readonly string[];
   dot?: string;
 }
 
-export const designToSvg = (d: Design, { unit = 40, background, stroke = '#FF9933', dot = '#ffffff' }: SvgOptions = {}) => {
+export const designToSvg = (d: Design, { unit = 40, background, stroke = '#A63A1E', dot = '#3B2416' }: SvgOptions = {}) => {
   const pad = 1;
   const width = (d.cols - 1 + 2 * pad) * unit;
   const height = (d.rows - 1 + 2 * pad) * unit;
@@ -285,7 +288,9 @@ export const designToSvg = (d: Design, { unit = 40, background, stroke = '#FF993
     .join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fmt(width)} ${fmt(height)}" width="${fmt(width)}" height="${fmt(height)}">`
     + (background ? `<rect width="100%" height="100%" fill="${background}"/>` : '')
-    + `<path d="${designPath(d, unit, pad)}" fill="none" stroke="${stroke}" stroke-width="${fmt(unit * 0.07)}" stroke-linecap="round" stroke-linejoin="round"/>`
+    + loopPaths(d, unit, pad)
+      .map((path, k) => `<path d="${path}" fill="none" stroke="${typeof stroke === 'string' ? stroke : stroke[k % stroke.length]}" stroke-width="${fmt(unit * 0.07)}" stroke-linecap="round" stroke-linejoin="round"/>`)
+      .join('')
     + dots
     + '</svg>';
 };

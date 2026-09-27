@@ -1,136 +1,224 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
 import KolamSvg from './KolamSvg';
-import { useKolam, type Shape } from './KolamContext';
+import ColourGuide from './ColourGuide';
+import { useKolam, type Mode, type Shape } from './KolamContext';
 import { SYMMETRY_LABELS, designToSvg, diamondDesign, makeSingleLine, squareDesign } from '../utils/kolamLogic';
+import { RADIAL_STYLES, makeRadial, radialToSvg, type RadialStyle } from '../utils/radial';
+import { PALETTES, type PaletteName } from '../lib/colours';
+import { artworkColours, artworkSvg, kolamDotColour } from '../lib/artwork';
 import { downloadBlob, downloadKolamFile, svgToPng } from '../lib/kolamFile';
-
-const EXAMPLES: Array<{ title: string; shape: Shape; size: number; singleLine: boolean }> = [
-    { title: '5×5 sikku (one line)', shape: 'square', size: 5, singleLine: true },
-    { title: '1-3-5-7-5-3-1 diamond', shape: 'diamond', size: 7, singleLine: true },
-    { title: '4×4 pulli, 4 loops', shape: 'square', size: 4, singleLine: false },
-];
-
-const exampleDesign = (e: (typeof EXAMPLES)[number]) => {
-    const base = e.shape === 'square' ? squareDesign(e.size) : diamondDesign(e.size);
-    return e.singleLine ? makeSingleLine(base) : base;
-};
-const EXAMPLE_DESIGNS = EXAMPLES.map(exampleDesign);
 
 const Toggle: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
         type="button"
         onClick={onClick}
         aria-pressed={active}
-        className={`px-4 py-2 rounded-full text-sm border transition-colors ${active ? 'bg-orange-500/20 border-orange-400 text-orange-300' : 'border-gray-600 text-gray-400 hover:text-white'}`}
+        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${active ? 'bg-kaavi text-paper border-kaavi' : 'border-kaavi/30 text-muted hover:border-kaavi hover:text-kaavi bg-white/70'}`}
     >
         {children}
     </button>
 );
 
-const KolamGenerator: React.FC = () => {
-    const {
-        size, setSize, shape, setShape, singleLine, setSingleLine,
-        scan, useScan, setUseScan, design, loops, symmetry, currentFile,
-    } = useKolam();
+const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteName) => void }> = ({ value, onChange }) => (
+    <div>
+        <Label>Colours</Label>
+        <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(PALETTES) as PaletteName[]).map(name => {
+                const p = PALETTES[name];
+                return (
+                    <button
+                        key={name}
+                        type="button"
+                        onClick={() => onChange(name)}
+                        aria-pressed={value === name}
+                        className={`flex items-center gap-2 rounded-xl border p-2 text-left text-xs ${value === name ? 'border-kaavi ring-1 ring-kaavi' : 'border-kaavi/20 hover:border-kaavi/60'}`}
+                    >
+                        <span className="flex h-6 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10" style={{ backgroundColor: p.background }}>
+                            {p.colors.slice(0, 4).map(c => <span key={c} className="m-auto h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c }} />)}
+                        </span>
+                        <span className="text-ink">{p.label}</span>
+                    </button>
+                );
+            })}
+        </div>
+    </div>
+);
 
-    const name = `kolam-${design.rows}x${design.cols}`;
-    const downloadSvg = () =>
-        downloadBlob(new Blob([designToSvg(design, { background: '#0c0a18' })], { type: 'image/svg+xml' }), `${name}.svg`);
-    const downloadPng = async () => downloadBlob(await svgToPng(designToSvg(design, { background: '#0c0a18' })), `${name}.png`);
-    const dotCount = design.mask.join('').split('1').length - 1;
+type Example = { title: string; mode: Mode; apply: (k: ReturnType<typeof useKolam>) => void; svg: string };
+
+const EXAMPLES: Example[] = [
+    {
+        title: 'Sikku kolam · one line',
+        mode: 'kolam',
+        svg: designToSvg(makeSingleLine(squareDesign(5)), { background: PALETTES.kaavi.background, stroke: PALETTES.kaavi.colors, dot: kolamDotColour(PALETTES.kaavi.background) }),
+        apply: k => { k.setUseScan(false); k.setShape('square'); k.setSize(5); k.setSingleLine(true); k.setKolamPalette('kaavi'); },
+    },
+    {
+        title: 'Diamond pulli kolam',
+        mode: 'kolam',
+        svg: designToSvg(diamondDesign(7), { background: PALETTES.riceFlour.background, stroke: PALETTES.riceFlour.colors, dot: '#F7F3EA' }),
+        apply: k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(7); k.setSingleLine(false); k.setKolamPalette('riceFlour'); },
+    },
+    {
+        title: 'Pongal colours · 4 loops',
+        mode: 'kolam',
+        svg: designToSvg(squareDesign(4), { background: PALETTES.pongal.background, stroke: PALETTES.pongal.colors, dot: '#3B2416' }),
+        apply: k => { k.setUseScan(false); k.setShape('square'); k.setSize(4); k.setSingleLine(false); k.setKolamPalette('pongal'); },
+    },
+    {
+        title: 'Lotus rangoli',
+        mode: 'radial',
+        svg: radialToSvg(makeRadial({ petals: 8, layers: 3, style: 'lotus', ...PALETTES.pongal })),
+        apply: k => { k.setRadialStyle('lotus'); k.setPetals(8); k.setLayers(3); k.setRadialPalette('pongal'); },
+    },
+    {
+        title: 'Alpana',
+        mode: 'radial',
+        svg: radialToSvg(makeRadial({ petals: 8, layers: 3, style: 'alpana', ...PALETTES.riceFlour })),
+        apply: k => { k.setRadialStyle('alpana'); k.setPetals(8); k.setLayers(3); k.setRadialPalette('riceFlour'); },
+    },
+    {
+        title: 'Diwali star',
+        mode: 'radial',
+        svg: radialToSvg(makeRadial({ petals: 6, layers: 2, style: 'star', ...PALETTES.diwali })),
+        apply: k => { k.setRadialStyle('star'); k.setPetals(6); k.setLayers(2); k.setRadialPalette('diwali'); },
+    },
+];
+
+const scrollToGuide = () => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' });
+
+const KolamGenerator: React.FC = () => {
+    const k = useKolam();
+    const { mode, setMode, design, loops, symmetry, scan, useScan, setUseScan, traced } = k;
+
+    const svg = useMemo(() => artworkSvg(k), [k]);
+    const colours = useMemo(() => artworkColours(k), [k]);
+    const name = mode === 'kolam' ? `kolam-${design.rows}x${design.cols}` : mode === 'radial' ? `rangoli-${k.petals}-fold` : 'traced-drawing';
+    const radialPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.radialColours) ?? null;
+
+    const tabs: Array<[Mode, string]> = [['kolam', 'Dot kolam'], ['radial', 'Rangoli & alpana']];
+    if (traced) tabs.push(['traced', 'Traced from your photo']);
 
     return (
-        <section className="py-20 px-4 relative">
+        <section className="py-20 px-4">
             <div className="container mx-auto">
-                <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Kolam Generator</h2>
-                <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
-                    Each dot is wrapped by strands that either cross or bounce off a mirror between neighbouring dots.
-                    Switching crossings to mirrors joins separate loops into the single continuous line of a sikku kolam.
+                <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Design Studio</h2>
+                <p className="text-center text-muted mb-8 max-w-2xl mx-auto">
+                    Make your own floor design, or a similar one to a photo you analysed. Then follow the step-by-step guide below to draw it on your doorstep.
                 </p>
-                <div className="grid lg:grid-cols-3 gap-10 items-start">
+                <div className="flex justify-center gap-2 mb-10 flex-wrap" role="tablist">
+                    {tabs.map(([id, label]) => (
+                        <Toggle key={id} active={mode === id} onClick={() => setMode(id)}>{label}</Toggle>
+                    ))}
+                </div>
+
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-10 items-start">
                     <Card className="space-y-6">
-                        {scan && (
-                            <div>
-                                <Label>Source</Label>
-                                <div className="flex gap-2 flex-wrap">
-                                    <Toggle active={!useScan} onClick={() => setUseScan(false)}>Presets</Toggle>
-                                    <Toggle active={useScan} onClick={() => setUseScan(true)}>Analysed kolam</Toggle>
-                                </div>
-                            </div>
-                        )}
-                        {!useScan && (
+                        {mode === 'kolam' && (
                             <>
-                                <div>
-                                    <Label>Dot arrangement</Label>
-                                    <div className="flex gap-2">
-                                        <Toggle active={shape === 'square'} onClick={() => setShape('square')}>Square</Toggle>
-                                        <Toggle active={shape === 'diamond'} onClick={() => setShape('diamond')}>Diamond</Toggle>
+                                {scan && (
+                                    <div>
+                                        <Label>Start from</Label>
+                                        <div className="flex gap-2 flex-wrap">
+                                            <Toggle active={!useScan} onClick={() => setUseScan(false)}>A dot grid</Toggle>
+                                            <Toggle active={useScan} onClick={() => setUseScan(true)}>Your analysed kolam</Toggle>
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <Label htmlFor="grid-size">Size: {design.rows} × {design.cols}</Label>
-                                    <input
-                                        id="grid-size"
-                                        type="range"
-                                        min={shape === 'square' ? 2 : 3}
-                                        max={13}
-                                        step={shape === 'square' ? 1 : 2}
-                                        value={design.rows}
-                                        onChange={e => setSize(Number(e.target.value))}
-                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                                    />
+                                )}
+                                {!useScan && (
+                                    <>
+                                        <div>
+                                            <Label>Dot arrangement</Label>
+                                            <div className="flex gap-2">
+                                                <Toggle active={k.shape === 'square'} onClick={() => k.setShape('square' as Shape)}>Square</Toggle>
+                                                <Toggle active={k.shape === 'diamond'} onClick={() => k.setShape('diamond' as Shape)}>Diamond (1-3-5-3-1)</Toggle>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="grid-size">Dots per side: {design.rows}</Label>
+                                            <input
+                                                id="grid-size" type="range" min={k.shape === 'square' ? 2 : 3} max={13} step={k.shape === 'square' ? 1 : 2}
+                                                value={design.rows} onChange={e => k.setSize(Number(e.target.value))}
+                                                className="w-full accent-kaavi"
+                                            />
+                                        </div>
+                                    </>
+                                )}
+                                <label className="flex items-center gap-3 text-ink">
+                                    <input type="checkbox" checked={k.singleLine} onChange={e => k.setSingleLine(e.target.checked)} className="accent-kaavi w-4 h-4" />
+                                    One continuous line (sikku kolam)
+                                </label>
+                                <PaletteChoice value={k.kolamPalette} onChange={k.setKolamPalette} />
+                                <dl className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Pulli (dots)</dt><dd className="text-xl">{design.mask.join('').split('1').length - 1}</dd></div>
+                                    <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Separate lines</dt><dd className="text-xl">{loops}</dd></div>
+                                </dl>
+                                <div className="flex flex-wrap gap-2">
+                                    {symmetry.map(s => <span key={s} className="text-xs px-2 py-1 rounded-full bg-leaf/10 text-leaf">{SYMMETRY_LABELS[s]}</span>)}
                                 </div>
                             </>
                         )}
-                        <label className="flex items-center gap-3 text-gray-300">
-                            <input type="checkbox" checked={singleLine} onChange={e => setSingleLine(e.target.checked)} className="accent-orange-500 w-4 h-4" />
-                            Draw with one continuous line (sikku)
-                        </label>
 
-                        <dl className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="bg-black/20 rounded-lg p-3"><dt className="text-gray-500">Dots</dt><dd className="text-xl text-white">{dotCount}</dd></div>
-                            <div className="bg-black/20 rounded-lg p-3"><dt className="text-gray-500">Loops</dt><dd className="text-xl text-white">{loops}</dd></div>
-                        </dl>
+                        {mode === 'radial' && (
+                            <>
+                                <div>
+                                    <Label>Style</Label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {(Object.keys(RADIAL_STYLES) as RadialStyle[]).map(s => (
+                                            <Toggle key={s} active={k.radialStyle === s} onClick={() => k.setRadialStyle(s)}>{RADIAL_STYLES[s].label}</Toggle>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-muted mt-2">{RADIAL_STYLES[k.radialStyle].hint}</p>
+                                </div>
+                                <div>
+                                    <Label htmlFor="petals">Petals (symmetry): {k.petals}-fold</Label>
+                                    <input id="petals" type="range" min={3} max={16} value={k.petals} onChange={e => k.setPetals(Number(e.target.value))} className="w-full accent-kaavi" />
+                                </div>
+                                <div>
+                                    <Label htmlFor="layers">Rings of petals: {k.layers}</Label>
+                                    <input id="layers" type="range" min={1} max={4} value={k.layers} onChange={e => k.setLayers(Number(e.target.value))} className="w-full accent-kaavi" />
+                                </div>
+                                <PaletteChoice value={radialPalette} onChange={k.setRadialPalette} />
+                                {!radialPalette && <p className="text-xs text-leaf">Using the colours from your photo.</p>}
+                            </>
+                        )}
+
+                        {mode === 'traced' && traced && (
+                            <p className="text-sm text-muted">
+                                Your photo, traced into {traced.layers.length} colour layer{traced.layers.length === 1 ? '' : 's'}. The guide below shows
+                                which colour to lay down first. To make a new design in the same spirit, open <strong>Rangoli & alpana</strong>.
+                            </p>
+                        )}
+
+                        <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam'} />
+
                         <div className="flex flex-wrap gap-2">
-                            {symmetry.length === 0 && <span className="text-xs text-gray-500">No symmetry</span>}
-                            {symmetry.map(s => (
-                                <span key={s} className="text-xs px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-200">{SYMMETRY_LABELS[s]}</span>
-                            ))}
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={downloadSvg}>SVG</Button>
-                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={downloadPng}>PNG</Button>
-                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={() => downloadKolamFile(currentFile())}>.kolam</Button>
+                            <Button size="sm" variant="secondary" onClick={() => downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${name}.svg`)}>SVG</Button>
+                            <Button size="sm" variant="secondary" onClick={async () => downloadBlob(await svgToPng(svg, mode === 'traced' ? 1 : 2), `${name}.png`)}>PNG</Button>
+                            {mode === 'kolam' && <Button size="sm" variant="secondary" onClick={() => downloadKolamFile(k.currentFile())}>.kolam.json</Button>}
+                            <Button size="sm" onClick={scrollToGuide}>Draw it step by step</Button>
                         </div>
                     </Card>
 
-                    <div className="lg:col-span-2 flex justify-center">
-                        <div className="w-full max-w-xl aspect-square bg-indigo-900/10 rounded-xl p-6 border border-indigo-500/20">
-                            <KolamSvg design={design} className="w-full h-full" label={`Generated kolam with ${loops} loop(s)`} />
-                        </div>
+                    <div className="kolam-border rounded-2xl p-3 bg-white/60">
+                        <KolamSvg svg={svg} className="w-full aspect-square [&_svg]:object-contain" label="Your design" />
                     </div>
                 </div>
 
-                <h3 className="text-2xl font-bold mt-16 mb-6 text-center text-saffron">Try these</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                    {EXAMPLES.map((example, index) => (
+                <h3 className="font-heading text-2xl mt-16 mb-6 text-center text-kaavi">Try these</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                    {EXAMPLES.map(example => (
                         <button
                             key={example.title}
                             type="button"
-                            onClick={() => {
-                                setUseScan(false);
-                                setShape(example.shape);
-                                setSize(example.size);
-                                setSingleLine(example.singleLine);
-                            }}
-                            className="rounded-xl border border-indigo-500/20 bg-indigo-900/10 p-4 hover:border-orange-400 transition-colors"
+                            onClick={() => { example.apply(k); setMode(example.mode); }}
+                            className="rounded-2xl border border-kaavi/15 bg-white/80 p-3 hover:border-kaavi transition-colors"
                         >
-                            <KolamSvg design={EXAMPLE_DESIGNS[index]} className="aspect-square" label={example.title} />
-                            <p className="mt-3 text-sm text-gray-300">{example.title}</p>
+                            <KolamSvg svg={example.svg} className="aspect-square" label={example.title} />
+                            <p className="mt-2 text-sm text-ink">{example.title}</p>
                         </button>
                     ))}
                 </div>

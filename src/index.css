@@ -3,26 +3,32 @@
 @import "tailwindcss/utilities";
 
 body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #0c0a18;
-  color: #e0e0e0;
+  @apply bg-paper text-ink font-sans;
+  /* A faint pulli (dot) grid, like the dots laid out before drawing a kolam. */
+  background-image: radial-gradient(rgba(166, 58, 30, 0.12) 1.2px, transparent 1.3px);
+  background-size: 28px 28px;
 }
 
 .font-heading {
-  font-family: 'Mukta Mahee', sans-serif;
+  font-family: 'Tiro Tamil', Georgia, serif;
 }
 
 .gradient-text {
-  background: linear-gradient(90deg, #FDB813, #FF9933, #FDB813);
+  background: linear-gradient(90deg, #A63A1E, #C62839 45%, #F08A00);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
+/* The double red border drawn around a doorstep kolam. */
+.kolam-border {
+  border: 3px double rgba(166, 58, 30, 0.55);
+}
+
 /* Draws a path with pathLength="1" from start to end. */
 .kolam-draw {
   stroke-dasharray: 1;
-  animation: kolam-draw 4s linear forwards;
+  animation: kolam-draw 3s linear forwards;
 }
 
 @keyframes kolam-draw {

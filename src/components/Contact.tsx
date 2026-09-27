@@ -11,9 +11,9 @@ const Contact: React.FC = () => {
             <div className="max-w-2xl mx-auto">
                 <Card>
                     <div className="text-center space-y-4 p-6">
-                        <p className="text-gray-300">
-                            Tried it on your own kolam? Tell us what worked, what it missed, or share a .kolam.json
-                            file. Bug reports and ideas are welcome as GitHub issues.
+                        <p className="text-ink">
+                            Tried it on your own kolam, rangoli or alpana? Tell us what it got right and what it missed, and share
+                            the photo if you can. Ideas and bug reports are welcome as GitHub issues.
                         </p>
                         <Button
                             type="button"

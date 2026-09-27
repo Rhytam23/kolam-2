@@ -1,42 +1,61 @@
 import React from 'react';
 import { Card } from './ui/Card';
 
+const KINDS = [
+    ['Pulli kolam', 'Lines loop around a grid of dots (pulli) without touching them.'],
+    ['Sikku kolam', 'A pulli kolam drawn as one continuous line that returns to where it began.'],
+    ['Kambi kolam', 'Lines woven like wire, often without dots.'],
+    ['Padi kolam', 'Stepped, geometric bands, drawn on festive days and at temples.'],
+];
+
+const FAMILY = [
+    ['Kolam', 'Tamil Nadu'],
+    ['Muggulu', 'Andhra Pradesh, Telangana'],
+    ['Rangavalli', 'Karnataka'],
+    ['Rangoli', 'Maharashtra, Gujarat and across India'],
+    ['Alpana', 'Bengal'],
+    ['Mandana', 'Rajasthan, Madhya Pradesh'],
+];
+
 const About: React.FC = () => (
     <section className="py-20 px-4 container mx-auto">
-        <h2 className="font-heading text-4xl md:text-5xl text-center mb-12 gradient-text">About The Project</h2>
-        <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div className="space-y-6 text-gray-300 text-lg leading-relaxed">
-                <p>
-                    <strong>SOLVIX – Kolam AI</strong> answers the Smart India Hackathon problem <strong>SIH25107</strong>: write programs that
-                    identify the design principles behind kolam designs and recreate the kolams.
+        <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">The Tradition</h2>
+        <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
+            Every morning, in homes across South India, the threshold is swept, sprinkled with water, and decorated with a kolam.
+        </p>
+        <div className="grid md:grid-cols-3 gap-6">
+            <Card>
+                <h3 className="font-heading text-2xl text-kaavi mb-3">When and why</h3>
+                <p className="text-ink leading-relaxed">
+                    A kolam is drawn at dawn at the doorstep, traditionally with rice flour, which also feeds ants and birds. It welcomes the day
+                    and visitors. Designs grow larger and more colourful in the month of Margazhi and at Pongal.
                 </p>
-                <p>
-                    A pulli kolam is a set of dots (pulli) with a line (neli) that loops around every dot without touching it.
-                    Between two neighbouring dots the line either crosses itself or turns, as if bouncing off a mirror.
-                    Those choices, together with the dot grid, fully describe the kolam.
-                </p>
-                <p>
-                    SOLVIX reads those choices from a photo, reports the grid, symmetry and number of loops, and redraws the kolam as a clean vector
-                    you can edit, share as a <code className="text-saffron">.kolam.json</code> file, or join into a single continuous line.
-                </p>
-            </div>
-            <div className="space-y-8">
-                <Card>
-                    <h3 className="text-2xl font-bold text-orange-400 mb-3">Computer vision with human correction</h3>
-                    <p className="text-gray-400">
-                        OpenCV finds the dots and fits a lattice to them. If it misses a dot you add, move or remove dots by hand and recreate
-                        the kolam from your corrections.
-                    </p>
-                </Card>
-                <Card>
-                    <h3 className="text-2xl font-bold text-blue-400 mb-3">Explainable, not a black box</h3>
-                    <p className="text-gray-400">
-                        Every result comes from simple geometry: lattice fit, ink between dots and mirror-curve tracing. That makes it easy to
-                        teach and to check.
-                    </p>
-                </Card>
-            </div>
+            </Card>
+            <Card>
+                <h3 className="font-heading text-2xl text-kaavi mb-3">Kinds of kolam</h3>
+                <dl className="space-y-2">
+                    {KINDS.map(([name, text]) => (
+                        <div key={name}><dt className="font-semibold text-ink">{name}</dt><dd className="text-sm text-muted">{text}</dd></div>
+                    ))}
+                </dl>
+            </Card>
+            <Card>
+                <h3 className="font-heading text-2xl text-kaavi mb-3">One family, many names</h3>
+                <ul className="space-y-1.5">
+                    {FAMILY.map(([name, region]) => (
+                        <li key={name} className="flex justify-between gap-3"><span className="font-semibold text-ink">{name}</span><span className="text-sm text-muted text-right">{region}</span></li>
+                    ))}
+                </ul>
+            </Card>
         </div>
+        <Card className="mt-6">
+            <p className="text-ink leading-relaxed">
+                <strong>SOLVIX</strong> was built for Smart India Hackathon problem <strong>SIH25107</strong>: identify the design principles behind
+                kolam designs and recreate them. It reads the dot grid, the way lines cross or turn between dots, the symmetry and the colours of
+                a design, and turns them into a guide anyone can follow. Dot kolams are recreated exactly; free-hand designs such as alpana and
+                rangoli are traced, and you can generate new designs with the same symmetry and colours.
+            </p>
+        </Card>
     </section>
 );
 

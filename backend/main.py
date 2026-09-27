@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
+from drawing import colour_layers, radial_symmetry
 from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
 
 app = FastAPI(title='SOLVIX Kolam API')
@@ -78,8 +79,13 @@ async def analyze_kolam(
                 readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
             _, dark_ink, found = max(readings, key=lambda r: r[0])
         lattice = infer_lattice(found, width, height)
+        if lattice is None:
+            # No dot grid to go by: the drawing is the thinner of the two tones.
+            dark_ink = bool(stroke_mask(gray, True).mean() <= stroke_mask(gray, False).mean())
         ink = stroke_mask(gray, dark_ink)
         design, clarity = infer_design(lattice, ink) if lattice else (None, 0.0)
+        radial = radial_symmetry(ink)
+        palette, layers = colour_layers(img)
     except Exception:
         raise HTTPException(status_code=500, detail='Analysis pipeline failed')
 
@@ -90,19 +96,25 @@ async def analyze_kolam(
             f'({lattice["fit"]:.0%} of dots fit it) and read how the strands pass between them.'
         )
     else:
-        confidence = 0.2 if found else 0.0
-        message = f'Found {len(found)} dots but no regular dot lattice; this looks like a free-hand kolam.'
+        confidence = None  # the confidence describes the dot-grid reading, which does not apply here
+        shape = f' with {radial["order"]}-fold radial symmetry' if radial and radial['order'] > 1 else ''
+        message = (f'No regular dot grid, so this looks like a free-hand design (alpana, rangoli, mandana style){shape}. '
+                   'Its colours and outline have been traced so you can redraw it.')
 
     response = {
         'width': width,
         'height': height,
-        'dots': found,
+        # Without a grid, detected "dots" are just specks; keep only dots the user placed.
+        'dots': found if lattice or manual_dots is not None else [],
         'preset': preset,
         'confidence': confidence,
         'message': message,
         'lattice': lattice,
         'design': design,
         'symmetry': image_symmetry(ink),
+        'radial': radial,
+        'palette': palette,
+        'layers': layers,
     }
     if corrected:
         ok, jpeg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])

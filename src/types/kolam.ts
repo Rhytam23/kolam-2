@@ -41,16 +41,39 @@ export interface ImageSymmetry {
   diagonal: number;
 }
 
+export interface RadialSymmetry {
+  /** N for N-fold rotational symmetry (1 = none, 0 = circular rings). */
+  order: number;
+  score: number;
+  circular: boolean;
+}
+
+export interface PaletteEntry {
+  hex: string;
+  share: number;
+  background: boolean;
+}
+
+/** A traced area of one colour, as an SVG path in 0–1 image coordinates (fill-rule evenodd). */
+export interface ColourLayer {
+  color: string;
+  path: string;
+}
+
 export interface AnalysisResponse {
   width: number;
   height: number;
   dots: Point[];
   preset: AnalysisPreset;
-  confidence: number;
+  /** How well the dot grid was read; null for free-hand designs. */
+  confidence: number | null;
   message: string;
   lattice: Lattice | null;
   design: Design | null;
   symmetry: ImageSymmetry | null;
+  radial: RadialSymmetry | null;
+  palette: PaletteEntry[];
+  layers: ColourLayer[];
   /** Present when perspective correction changed the image: the corrected image the dots refer to. */
   image?: string;
 }

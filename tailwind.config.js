@@ -4,12 +4,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        saffron: '#FF9933',
-        indiaGreen: '#138808',
-        marigold: '#FDB813',
+        paper: '#FFF8EE',     // a freshly washed threshold
+        sand: '#FBEBD3',
+        ink: '#3B2416',       // dark brown text
+        muted: '#6B5443',
+        kaavi: '#A63A1E',     // red-earth border colour
+        marigold: '#F08A00',
+        turmeric: '#E1AD01',
+        leaf: '#2E7D32',
+        kumkum: '#C62839',
+      },
+      fontFamily: {
+        heading: ['"Tiro Tamil"', 'Georgia', 'serif'],
+        sans: ['"Mukta Malar"', 'system-ui', 'sans-serif'],
       },
       animation: {
-        'spin-slow': 'spin 60s linear infinite',
+        'spin-slow': 'spin 90s linear infinite',
         'fade-in-down': 'fade-in-down 0.5s ease-out forwards',
       },
       keyframes: {

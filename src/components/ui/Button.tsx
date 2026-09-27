@@ -1,20 +1,19 @@
-
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary';
+    size?: 'md' | 'sm';
 }
 
-export const Button: React.FC<ButtonProps> = ({ children, className = '', variant = 'primary', ...props }) => {
-    const baseClasses = "px-8 py-3 font-semibold rounded-full transition-all duration-300 transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#0c0a18]";
-    
-    const variantClasses = {
-        primary: "bg-gradient-to-r from-orange-500 to-yellow-500 text-white hover:shadow-lg hover:shadow-orange-500/30 focus:ring-orange-500",
-        secondary: "bg-transparent border-2 border-orange-500 text-orange-400 hover:bg-orange-500/20 focus:ring-orange-500",
+export const Button: React.FC<ButtonProps> = ({ children, className = '', variant = 'primary', size = 'md', ...props }) => {
+    const base = 'font-semibold rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-kaavi disabled:opacity-40 disabled:cursor-not-allowed';
+    const sizes = { md: 'px-7 py-3', sm: 'px-4 py-2 text-sm' };
+    const variants = {
+        primary: 'bg-kaavi text-paper hover:bg-kumkum shadow-sm',
+        secondary: 'border-2 border-kaavi text-kaavi bg-white/60 hover:bg-kaavi/10',
     };
-
     return (
-        <button className={`${baseClasses} ${variantClasses[variant]} ${className}`} {...props}>
+        <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>
             {children}
         </button>
     );

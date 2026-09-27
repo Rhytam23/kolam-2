@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
 const LINKS = [
-    { label: 'About', id: 'about' },
-    { label: 'Analyzer', id: 'analyzer' },
-    { label: 'Generator', id: 'generator' },
-    { label: 'Walkthrough', id: 'walkthrough' },
+    { label: 'Tradition', id: 'about' },
+    { label: 'Read a design', id: 'analyzer' },
+    { label: 'Studio', id: 'generator' },
+    { label: 'Draw it', id: 'walkthrough' },
     { label: 'Research', id: 'research' },
     { label: 'Feedback', id: 'contact' },
 ] as const;
@@ -27,24 +27,24 @@ const Header: React.FC<{ onNavigate: (id: SectionId) => void }> = ({ onNavigate 
     };
 
     return (
-        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#0c0a18]/80 backdrop-blur-md shadow-lg shadow-indigo-900/10' : 'bg-transparent'}`}>
+        <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-paper/95 backdrop-blur-md shadow-sm border-b border-kaavi/10' : 'bg-transparent'}`}>
             <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
                 <button className="font-heading text-3xl font-bold gradient-text" onClick={() => go('home')}>SOLVIX</button>
                 <div className="hidden md:flex items-center space-x-8">
                     {LINKS.map(link => (
-                        <button key={link.id} onClick={() => go(link.id)} className="text-gray-300 hover:text-white transition-colors">
+                        <button key={link.id} onClick={() => go(link.id)} className="text-ink hover:text-kaavi transition-colors font-medium">
                             {link.label}
                         </button>
                     ))}
                 </div>
-                <button className="md:hidden text-white" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu" aria-expanded={menuOpen}>
+                <button className="md:hidden text-ink" onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu" aria-expanded={menuOpen}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
                 </button>
             </nav>
             {menuOpen && (
-                <div className="md:hidden border-t border-white/10 bg-[#0c0a18]/95 backdrop-blur-md px-6 pb-6 pt-2 space-y-3">
+                <div className="md:hidden border-t border-kaavi/10 bg-paper/95 backdrop-blur-md px-6 pb-6 pt-2 space-y-3">
                     {LINKS.map(link => (
-                        <button key={link.id} onClick={() => go(link.id)} className="block w-full text-left text-gray-200 hover:text-saffron">
+                        <button key={link.id} onClick={() => go(link.id)} className="block w-full text-left text-ink hover:text-kaavi">
                             {link.label}
                         </button>
                     ))}
