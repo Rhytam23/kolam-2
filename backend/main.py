@@ -54,7 +54,7 @@ def check_rate_limit(visitor: str) -> None:
         raise HTTPException(status_code=429, detail='Too many photos in a short time. Please wait a minute and try again.')
     times.append(now)
 
-app = FastAPI(title='SOLVIX Kolam API')
+app = FastAPI(title='Chittara API')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),

@@ -1,6 +1,10 @@
-<p align="center"><img src="docs/kolam.svg" width="220" alt="A single-line diamond kolam drawn by SOLVIX"></p>
+<p align="center"><img src="docs/kolam.svg" width="220" alt="A single-line diamond kolam drawn by Chittara"></p>
 
-# SOLVIX – Kolam AI
+# Chittara – Kolam, rangoli and alpana
+
+*Chittara* (ಚಿತ್ತಾರ) means "picture" in Kannada. It is also the name of the geometric art that women
+of the Deewaru community in the Malnad region of Karnataka paint on the walls and floors of their
+homes, in white rice paste on red earth.
 
 **Understand the design behind a kolam, and draw it again with your own hands.**
 Built for Smart India Hackathon problem statement **SIH25107**: *"Develop computer programs (in any
@@ -11,7 +15,7 @@ rangavalli, alpana and mandana.
 A pulli kolam is a grid of dots (*pulli*) with a line (*neli*) that loops around every dot without
 touching it. Between two neighbouring dots the line either **crosses** itself or **turns**, as if it
 bounced off a mirror. The dot grid plus that choice at every gap fully describes the kolam
-(the mirror-curve model of Gerdes, 1989). SOLVIX reads exactly that from a photo. Free-hand designs
+(the mirror-curve model of Gerdes, 1989). Chittara reads exactly that from a photo. Free-hand designs
 without dots (alpana, most rangoli) are read by their turning symmetry and colours instead.
 
 ## What it does
@@ -44,8 +48,8 @@ Hind Madurai) are bundled with the app, so the site makes no third-party request
 ### One command (Docker)
 
 ```bash
-docker build -t solvix-kolam .
-docker run -p 8000:8000 solvix-kolam
+docker build -t chittara .
+docker run -p 8000:8000 chittara
 ```
 
 Open http://localhost:8000. The container serves the web app and the API (`/api/...`) together.
@@ -81,7 +85,7 @@ CI runs the same checks and a Docker build on every push (`.github/workflows/ci.
 1. Merge your branch into `main` on GitHub.
 2. Sign in at [render.com](https://render.com) with GitHub, choose **New > Blueprint**, and pick this
    repository. Render reads [`render.yaml`](render.yaml), builds the Docker image and gives you an
-   address such as `https://solvix-kolam.onrender.com`.
+   address such as `https://chittara.onrender.com`.
 3. In the service's **Environment** settings, set `SITE_URL` to that address and deploy again, so
    shared links show the preview picture.
 4. Open the address on a phone and check that **Try a sample** in *Read a Design* works.
@@ -166,7 +170,7 @@ render.yaml                 one-click hosting on Render
 ## Feedback
 
 Tried it on your own kolam? Please [open an issue](https://github.com/Rhytam23/kolam-2/issues)
-with the photo (or its `.kolam.json`) and what SOLVIX got right or wrong.
+with the photo (or its `.kolam.json`) and what Chittara got right or wrong.
 
 ## References
 

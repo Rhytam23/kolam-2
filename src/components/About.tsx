@@ -32,6 +32,7 @@ const FAMILY = [
     { word: 'रांगोळी', lang: 'mr', name: 'Rangoli', region: 'Maharashtra, Gujarat and across India' },
     { word: 'আলপনা', lang: 'bn', name: 'Alpana', region: 'Bengal' },
     { word: 'मांडना', lang: 'hi', name: 'Mandana', region: 'Rajasthan, Madhya Pradesh' },
+    { word: 'ಚಿತ್ತಾರ', lang: 'kn', name: 'Chittara', region: 'Malnad, Karnataka' },
 ];
 
 const About: React.FC = () => {
@@ -74,7 +75,7 @@ const About: React.FC = () => {
 
                 <h3 className="mt-20 mb-8 font-heading text-3xl md:text-4xl text-brass-light text-center">One family, many names</h3>
                 <Reveal>
-                    <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border-y border-brass/40 divide-brass/30 lg:divide-x">
+                    <ul className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 border-y border-brass/40 divide-brass/30 lg:divide-x">
                         {FAMILY.map(f => (
                             <li key={f.name} className="px-3 py-6 text-center">
                                 <p lang={f.lang} className="font-script text-3xl text-brass-light leading-relaxed">{f.word}</p>
@@ -92,6 +93,11 @@ const About: React.FC = () => {
                         between dots, the symmetry and the colours of a design, and turns them into a guide anyone can follow. Dot kolams are
                         recreated exactly; free-hand designs such as alpana and rangoli are traced, and you can generate new designs with the
                         same symmetry and colours.
+                    </p>
+                    <p className="mt-4 text-rice/80 leading-relaxed">
+                        <strong className="text-brass-light">The name.</strong> <span lang="kn">ಚಿತ್ತಾರ</span> (Chittara) means "picture" in Kannada.
+                        It is also the geometric art that women of the Deewaru community in the Malnad region of Karnataka paint on the walls and
+                        floors of their homes, in white rice paste on red earth: the same colours as this site.
                     </p>
                 </Reveal>
             </div>
