@@ -102,3 +102,29 @@ export const useViewport = () => {
     }, []);
     return size;
 };
+
+/**
+ * Runs from 0 to 1 over `ms`, starting again whenever `key` changes. With reduced motion it is 1
+ * straight away.
+ */
+export const useTimeline = (ms: number, key: unknown) => {
+    const reduce = useReducedMotion();
+    const [t, setT] = useState(reduce ? 1 : 0);
+    useEffect(() => {
+        if (reduce) {
+            setT(1);
+            return;
+        }
+        setT(0);
+        let frame = 0;
+        const begin = performance.now();
+        const tick = (now: number) => {
+            const next = Math.min(1, (now - begin) / ms);
+            setT(next);
+            if (next < 1) frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+    }, [ms, key, reduce]);
+    return t;
+};

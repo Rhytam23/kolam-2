@@ -6,6 +6,7 @@ import { useKolam } from './KolamContext';
 import { SYMMETRY_LABELS, designDots, loopPaths, rowPattern, type SymmetryName } from '../utils/kolamLogic';
 import { DOT_RADIUS, centreRadius, guideDotColour, radialGuideDots, ringPath, ringStyle, type Motif } from '../utils/radial';
 import { layerTransform, tracedBackground, tracedDots, tracedSize } from '../utils/traced';
+import { geometricPoint, shapePath } from '../utils/geometric';
 import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
 import { SectionHeading } from './ui/SectionHeading';
@@ -25,7 +26,7 @@ const HIGHLIGHT = '#C62839';
 const STEP_MS = 3500;
 
 const MOTIF_NAMES: Record<Motif, string> = {
-    lotus: 'lotus petals', leaf: 'pointed leaves', drop: 'rounded petals', loop: 'loops', dot: 'dots', curl: 'curls',
+    lotus: 'lotus petals', leaf: 'pointed leaves', drop: 'rounded petals', loop: 'loops', dot: 'dots', curl: 'curls', wedge: 'segments of the ring',
 };
 
 const startOf = (path: string) => {
@@ -105,6 +106,52 @@ const DrawGuide: React.FC = () => {
                         tip: radial.rings.some(r => !r.filled) ? 'For alpana, trace the lines with rice paste (pithali) using a fingertip or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.',
                         colours: true,
                         picture: <>{bg}{radial.rings.map((r, i) => { const st = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={st.fill} stroke={st.stroke} strokeWidth={st.strokeWidth} strokeLinejoin="round" />; })}<circle r={centreRadius(radial)} fill={radial.centre} stroke={radial.dotsInColour ? 'none' : radial.outline} strokeWidth={0.012} /></>,
+                    },
+                ],
+            };
+        }
+
+        if (mode === 'geometric') {
+            const g = k.geometric;
+            const side = (g.size + 1) * UNIT;
+            const bg = <rect width={side} height={side} fill={g.background} />;
+            const dotColour = kolamDotColour(g.background);
+            const dotsLayer = <g fill={dotColour}>{g.dots.map((_, i) => { const p = geometricPoint(g, i, UNIT, PAD); return <circle key={i} cx={p.x} cy={p.y} r={UNIT * 0.07} />; })}</g>;
+            const outline = (group: number, colour: string, animate = false) => (
+                <g fill="none" stroke={colour} strokeWidth={UNIT * 0.06} strokeLinejoin="round">
+                    {g.shapes.filter(sh => sh.group === group).map((sh, i) => <path key={i} d={shapePath(g, sh, UNIT, PAD)} pathLength={1} className={animate ? 'kolam-draw' : undefined} />)}
+                </g>
+            );
+            const filled = g.shapes.some(sh => sh.fill);
+            return {
+                viewBox: `0 0 ${side} ${side}`,
+                list: [
+                    {
+                        title: '1. Prepare the ground',
+                        text: `Sweep and wet the floor, or coat it the traditional way. This design is drawn on a ${ground.name.toLowerCase()}.`,
+                        tip: ground.material,
+                        picture: bg,
+                    },
+                    {
+                        title: '2. Put down the dots',
+                        text: `Make a square grid of ${g.size} rows of ${g.size} dots, ${g.size * g.size} in all. Start with the middle row and the middle column so the grid stays square.`,
+                        tip: 'Keep the gaps between dots equal; every straight line of the design runs from one dot to another.',
+                        picture: <>{bg}{dotsLayer}</>,
+                    },
+                    ...g.groups.map((title, i) => ({
+                        title: `${3 + i}. Draw ${title}`,
+                        text: `Join the dots with straight lines to draw ${title}. A line from one dot to another passes exactly through every dot on its way.`,
+                        tip: i === 0 ? 'Pinch the powder between thumb and finger and let it run in a steady line from dot to dot.' : 'Check the new lines against the ones already drawn: the design is the same on every side.',
+                        picture: <>{bg}{g.groups.slice(0, i).map((_, j) => <g key={j}>{outline(j, g.line)}</g>)}<g key={`${step}-${i}`}>{outline(i, HIGHLIGHT, true)}</g>{dotsLayer}</>,
+                    })),
+                    {
+                        title: `${3 + g.groups.length}. ${filled ? 'Fill the colours' : 'Finished'}`,
+                        text: filled
+                            ? 'Fill the shapes with their colours, from the middle outwards. Leave the lines and dots showing between them.'
+                            : 'The design is complete: white lines and dots on the ground, as it is traditionally drawn.',
+                        tip: filled ? 'Fill the largest shapes first and the small ones last.' : undefined,
+                        colours: filled,
+                        picture: <>{bg}{g.shapes.map((sh, i) => <path key={i} d={shapePath(g, sh, UNIT, PAD)} fill={sh.fill ?? 'none'} stroke={g.line} strokeWidth={UNIT * 0.06} strokeLinejoin="round" />)}{dotsLayer}</>,
                     },
                 ],
             };
@@ -236,9 +283,9 @@ const DrawGuide: React.FC = () => {
                 },
             ].map((s, i) => ({ ...s, title: s.title.match(/^\d/) ? s.title : `${i + 1}. ${s.title}` })),
         };
-    }, [mode, design, loops, symmetry, radial, traced, colours, step]);
+    }, [mode, design, loops, symmetry, radial, traced, colours, step, k.geometric]);
 
-    const signature = `${mode}|${JSON.stringify(design)}|${radial.rings.length}|${radial.rings[0]?.count}|${traced?.layers.length}`;
+    const signature = `${mode}|${JSON.stringify(design)}|${radial.rings.length}|${radial.rings[0]?.count}|${traced?.layers.length}|${k.geometric.pattern}${k.geometric.size}`;
     useEffect(() => { setStep(0); setPlaying(false); }, [signature]);
 
     const last = steps.list.length - 1;
@@ -283,7 +330,7 @@ const DrawGuide: React.FC = () => {
                                 <h3 className="font-heading text-2xl text-kaavi">{current.title}</h3>
                                 <p className="text-ink leading-relaxed">{current.text}</p>
                                 {current.tip && <p className="text-sm text-muted border-l-4 border-marigold pl-3">{current.tip}</p>}
-                                {current.colours && <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam'} />}
+                                {current.colours && <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam' || mode === 'geometric'} />}
                             </Card>
                             <div className="flex justify-center gap-3">
                                 <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}>Previous</Button>

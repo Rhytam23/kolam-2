@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@fontsource/hind-madurai": "^5.3.0",
+    "@fontsource/noto-serif-malayalam": "^5.3.0",
+    "@fontsource/noto-serif-oriya": "^5.3.0",
     "@fontsource/tiro-bangla": "^5.3.0",
     "@fontsource/tiro-devanagari-hindi": "^5.3.0",
     "@fontsource/tiro-kannada": "^5.3.0",

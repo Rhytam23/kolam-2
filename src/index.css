@@ -2,8 +2,22 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Theme colours as "r g b". Each art form's page sets its own (see src/lib/theme.ts). */
+:root {
+  --floor: 90 36 22;
+  --floor-2: 114 48 28;
+  --rice: 247 243 234;
+  --brass: 201 151 58;
+  --brass-light: 232 194 113;
+  --kaavi: 166 58 30;
+  --paper: 255 248 238;
+  --ink: 59 36 22;
+  --muted: 107 84 67;
+}
+
 body {
   @apply bg-paper text-ink font-sans;
+  transition: background-color 0.4s;
 }
 
 .font-heading {
@@ -12,34 +26,34 @@ body {
 
 /* Cream paper with a faint pulli (dot) grid, like the dots laid out before drawing a kolam. */
 .paper-bg {
-  background-color: #FFF8EE;
-  background-image: radial-gradient(rgba(166, 58, 30, 0.12) 1.2px, transparent 1.3px);
+  background-color: rgb(var(--paper));
+  background-image: radial-gradient(rgb(var(--kaavi) / 0.12) 1.2px, transparent 1.3px);
   background-size: 28px 28px;
 }
 
 /* A red-oxide floor: warm light in the middle, darker at the edges, with a fine speckle. */
 .floor-bg {
-  background-color: #5A2416;
+  background-color: rgb(var(--floor));
   background-image:
-    radial-gradient(ellipse at 50% 30%, rgba(142, 59, 36, 0.55), transparent 70%),
+    radial-gradient(ellipse at 50% 30%, rgb(var(--floor-2) / 0.75), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 /* Pulli dots in rice flour, for the floor. */
 .floor-dots {
-  background-image: radial-gradient(rgba(247, 243, 234, 0.13) 1.4px, transparent 1.5px);
+  background-image: radial-gradient(rgb(var(--rice) / 0.13) 1.4px, transparent 1.5px);
   background-size: 34px 34px;
 }
 
 .gradient-text {
-  background: linear-gradient(90deg, #A63A1E, #C62839 45%, #F08A00);
+  background: linear-gradient(90deg, rgb(var(--kaavi)), rgb(var(--kaavi) / 0.82));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .brass-text {
-  background: linear-gradient(180deg, #F3D48C, #C9973A 70%, #A87A2A);
+  background: linear-gradient(180deg, rgb(var(--brass-light)), rgb(var(--brass-light)) 45%, rgb(var(--brass)));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -50,7 +64,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  color: #C9973A;
+  color: rgb(var(--brass));
 }
 .brass-rule::before,
 .brass-rule::after {
@@ -65,7 +79,7 @@ body {
 
 /* The double red border drawn around a doorstep kolam. */
 .kolam-border {
-  border: 3px double rgba(166, 58, 30, 0.55);
+  border: 3px double rgb(var(--kaavi) / 0.55);
 }
 
 /* Rice flour catches the light on a dark floor. */

@@ -2,6 +2,9 @@ import React, { useMemo } from 'react';
 import { designDots, loopPaths } from '../../utils/kolamLogic';
 import { radialGuideDots, ringPath, ringStyle, type RadialDesign } from '../../utils/radial';
 import type { Design } from '../../types/kolam';
+import { geometricPoint, shapePath, type GeometricDesign } from '../../utils/geometric';
+import { buildDesign, type DesignSpec } from '../../data/designs';
+import { PALETTES } from '../../lib/colours';
 
 export const RED_FLOOR = '#8E3B24';
 export const RICE = '#F7F3EA';
@@ -77,9 +80,13 @@ interface KolamFrameProps {
     /** Follow this progress instead of `stage` (used by the scroll-driven hero). */
     progress?: DrawProgress;
     showDots?: boolean;
+    /** Colour of the line before any colour is added (rice flour by default). */
+    line?: string;
+    /** The ground under the design, so the dots show up on it. */
+    dotGround?: string;
 }
 
-export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage = 'line', colours = [], animate = false, progress, showDots = true }) => {
+export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage = 'line', colours = [], animate = false, progress, showDots = true, line: lineColour = RICE, dotGround = '#000000' }) => {
     const w = (design.cols - 1 + 2 * PAD) * UNIT;
     const h = (design.rows - 1 + 2 * PAD) * UNIT;
     const dots = designDots(design);
@@ -91,14 +98,14 @@ export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage = 'line', 
         return (
             <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 w-full h-full">
                 <g filter="url(#rice)">
-                    {loops.map((d, i) => <path key={i} d={d} stroke={RICE} {...line} />)}
+                    {loops.map((d, i) => <path key={i} d={d} stroke={lineColour} {...line} />)}
                     {progress.colour > 0 && colours.length > 0 && (
                         <g opacity={clamp01(progress.colour)}>
                             {loops.map((d, i) => <path key={i} d={d} stroke={colours[i % colours.length]} {...line} />)}
                         </g>
                     )}
                     {showDots && dots.map((p, i) => (
-                        <circle key={`${p.x},${p.y}`} cx={(PAD + p.x) * UNIT} cy={(PAD + p.y) * UNIT} r={UNIT * 0.09} fill={RICE} style={shownStyle(i < shown)} />
+                        <circle key={`${p.x},${p.y}`} cx={(PAD + p.x) * UNIT} cy={(PAD + p.y) * UNIT} r={UNIT * 0.09} fill={isDarkGround(dotGround) ? RICE : '#3B2416'} style={shownStyle(i < shown)} />
                     ))}
                 </g>
             </svg>
@@ -234,5 +241,58 @@ export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'col
                 ))}
             </g>
         </svg>
+    );
+};
+
+// ---------------------------------------------------------------- straight-line frames
+
+/** A straight-line design drawn as by hand: the dot grid, then each group of shapes, then colour. */
+export const GeometricFrame: React.FC<{ design: GeometricDesign; progress?: DrawProgress }> = ({ design, progress = { dots: 1, lines: 1, colour: 1 } }) => {
+    const unit = 40;
+    const side = (design.size + 1) * unit;
+    const paths = useMemo(() => design.shapes.map(shape => shapePath(design, shape, unit)), [design]);
+    const shownDots = Math.round(clamp01(progress.dots) * design.dots.length);
+    const groups = design.groups.length;
+    const colour = clamp01(progress.colour);
+    const dotColour = isDarkGround(design.background) ? RICE : '#3B2416';
+    return (
+        <svg viewBox={`0 0 ${side} ${side}`} className="absolute inset-0 w-full h-full">
+            {colour > 0 && (
+                <g opacity={colour}>
+                    {design.shapes.map((shape, i) => shape.fill && <path key={i} d={paths[i]} fill={shape.fill} />)}
+                </g>
+            )}
+            <g fill="none" stroke={design.line} strokeWidth={unit * 0.06} strokeLinejoin="round" strokeLinecap="round">
+                {design.shapes.map((shape, i) => {
+                    const drawn = clamp01(progress.lines * groups - shape.group);
+                    return drawn > 0 && <path key={i} d={paths[i]} {...dashTo(drawn)} />;
+                })}
+            </g>
+            <g fill={dotColour}>
+                {design.dots.map((_, i) => {
+                    const p = geometricPoint(design, i, unit);
+                    return <circle key={i} cx={p.x} cy={p.y} r={unit * 0.07} style={shownStyle(i < shownDots)} />;
+                })}
+            </g>
+        </svg>
+    );
+};
+
+const isDarkGround = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    return 0.299 * r + 0.587 * g + 0.114 * b < 140;
+};
+
+/** Any design, from its spec, drawn to the given progress (finished if none is given). */
+export const DesignFrame: React.FC<{ spec: DesignSpec; progress?: DrawProgress; rough?: boolean }> = ({ spec, progress, rough = true }) => {
+    const built = useMemo(() => buildDesign(spec), [spec]);
+    const full = progress ?? { dots: 1, lines: 1, colour: 1 };
+    if (built.mode === 'radial') return <RangoliFrame design={built.design} progress={full} rough={rough} />;
+    if (built.mode === 'geometric') return <GeometricFrame design={built.design} progress={full} />;
+    const colours = PALETTES[spec.palette].colors;
+    return (
+        <div className="absolute inset-[6%]">
+            <KolamFrame design={built.design} progress={{ ...full, colour: colours.length > 1 ? full.colour : 0 }} colours={colours} line={colours[0]} dotGround={PALETTES[spec.palette].background} />
+        </div>
     );
 };

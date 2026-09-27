@@ -11,6 +11,7 @@ import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, row
 import { tracedDots, tracedSize } from '../utils/traced';
 import { SectionHeading } from './ui/SectionHeading';
 import { BRAND } from '../lib/brand';
+import { navigate } from '../lib/router';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -32,7 +33,8 @@ interface Drag {
 type Meta = Pick<AnalysisResponse, 'confidence' | 'symmetry' | 'radial' | 'palette'>;
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
-const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+// The studio and the drawing guide are on their own page.
+const openStudio = (part: 'generator' | 'walkthrough') => navigate(`/studio#${part}`);
 
 const KolamAnalyzer: React.FC = () => {
     const k = useKolam();
@@ -271,7 +273,7 @@ const KolamAnalyzer: React.FC = () => {
         } else if (traced) {
             k.setMode('traced');
         }
-        scrollTo('generator');
+        openStudio('generator');
     };
 
     const makeSimilar = () => {
@@ -287,7 +289,7 @@ const KolamAnalyzer: React.FC = () => {
         } else {
             k.makeSimilar(meta?.radial?.order ?? 8, meta?.palette ?? []);
         }
-        scrollTo('generator');
+        openStudio('generator');
     };
 
     // ------------------------------------------------------------ dot editing
@@ -497,7 +499,7 @@ const KolamAnalyzer: React.FC = () => {
                             confidence={meta?.confidence ?? null}
                             onRecreate={recreate}
                             onSimilar={makeSimilar}
-                            onDraw={() => { recreate(); scrollTo('walkthrough'); }}
+                            onDraw={() => { recreate(); openStudio('walkthrough'); }}
                         />
 
                         <Card>

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import base64
+import html
 import json
 import mimetypes
+import re
 import time
 from collections import deque
 
@@ -10,6 +12,7 @@ import cv2
 import numpy as np
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 import config
@@ -184,7 +187,31 @@ async def security_headers(request: Request, call_next):
         headers['Cache-Control'] = 'no-cache'
     return response
 
+def page_html(template: str, title: str, description: str) -> str:
+    """The app's index.html, titled and described for one page, so shared links show the right text."""
+    t, d = html.escape(title, quote=True), html.escape(description, quote=True)
+    out = re.sub(r'<title>.*?</title>', f'<title>{t}</title>', template, count=1, flags=re.S)
+    for attr, value in (('name="description"', d), ('property="og:title"', t), ('property="og:description"', d),
+                        ('name="twitter:title"', t), ('name="twitter:description"', d)):
+        out = re.sub(rf'(<meta {attr} content=")[^"]*(")', lambda m: m.group(1) + value + m.group(2), out, count=1)
+    return out
+
+
+def add_page_routes(static_dir) -> None:
+    """Answer every page of the app (/, /kolam, /read, ...) with index.html; see routes.json from the build."""
+    routes_file, index_file = static_dir / 'routes.json', static_dir / 'index.html'
+    if not (routes_file.is_file() and index_file.is_file()):
+        return
+    template = index_file.read_text(encoding='utf-8')
+    for route in json.loads(routes_file.read_text(encoding='utf-8')):
+        body = page_html(template, route['title'], route['description'])
+        app.add_api_route(route['path'], lambda body=body: HTMLResponse(body), methods=['GET'], include_in_schema=False)
+        # Ahead of the static files mounted at '/', which would otherwise answer first.
+        app.router.routes.insert(0, app.router.routes.pop())
+
+
 if STATIC_DIR.is_dir():
+    add_page_routes(STATIC_DIR)
     app.mount('/', StaticFiles(directory=STATIC_DIR, html=True), name='app')
 
 

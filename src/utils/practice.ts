@@ -1,6 +1,7 @@
 import type { Design, Point } from '../types/kolam';
 import { designDots, loopBends } from './kolamLogic';
 import { radialGuideDots, ringStrokes, type RadialDesign } from './radial';
+import { geometricPoint, outlineDots, type GeometricDesign } from './geometric';
 
 /*
  * Practice: the visitor draws a design by tapping its dots in order. A design is a list of strokes
@@ -24,7 +25,9 @@ export interface Stroke {
 }
 
 export interface PracticePlan {
-    kind: 'kolam' | 'radial';
+    kind: 'kolam' | 'radial' | 'geometric';
+    /** Ring the dot where the next line starts, when its start is not obvious. */
+    showStart: boolean;
     viewBox: string;
     dots: Point[];
     /** The colour each dot is put down in, where the design's dots are coloured from the start. */
@@ -58,6 +61,7 @@ export const kolamPlan = (design: Design): PracticePlan => {
     }));
     return {
         kind: 'kolam',
+        showStart: true,
         viewBox: `0 0 ${(design.cols - 1 + 2 * PAD) * KOLAM_UNIT} ${(design.rows - 1 + 2 * PAD) * KOLAM_UNIT}`,
         dots: dots.map(d => ({ x: (PAD + d.x) * KOLAM_UNIT, y: (PAD + d.y) * KOLAM_UNIT })),
         dotColours: dots.map(() => undefined),
@@ -71,7 +75,7 @@ export const kolamPlan = (design: Design): PracticePlan => {
     };
 };
 
-const SHAPES: Record<string, string> = { lotus: 'petals', leaf: 'leaves', drop: 'petals', loop: 'circle', curl: 'curls' };
+const SHAPES: Record<string, string> = { lotus: 'petals', leaf: 'leaves', drop: 'petals', loop: 'circle', curl: 'curls', wedge: 'segments' };
 
 export const radialPlan = (design: RadialDesign): PracticePlan => {
     const guide = radialGuideDots(design);
@@ -96,6 +100,7 @@ export const radialPlan = (design: RadialDesign): PracticePlan => {
     });
     return {
         kind: 'radial',
+        showStart: false,
         viewBox: '-1.1 -1.1 2.2 2.2',
         dots: guide.map(({ x, y }) => ({ x, y })),
         dotColours: guide.map(d => d.color),
@@ -106,6 +111,34 @@ export const radialPlan = (design: RadialDesign): PracticePlan => {
         groups,
         anyOrder: true,
         shapes,
+    };
+};
+
+/** Straight-line designs: each shape is drawn dot to dot along its edges, back to its first corner. */
+export const geometricPlan = (design: GeometricDesign): PracticePlan => {
+    const point = (i: number) => geometricPoint(design, i, KOLAM_UNIT, PAD);
+    const strokes: Stroke[] = design.shapes.map(shape => {
+        const dots = outlineDots(design, shape);
+        const pieces = dots.slice(1).map((dot, k) => {
+            const a = point(dots[k]);
+            const b = point(dot);
+            return `M${a.x} ${a.y}L${b.x} ${b.y}`;
+        });
+        return { dots, pieces, closed: true, group: shape.group };
+    });
+    return {
+        kind: 'geometric',
+        showStart: true,
+        viewBox: `0 0 ${(design.size + 1) * KOLAM_UNIT} ${(design.size + 1) * KOLAM_UNIT}`,
+        dots: design.dots.map((_, i) => point(i)),
+        dotColours: design.dots.map(() => undefined),
+        dotSizes: design.dots.map(() => undefined),
+        dotRadius: KOLAM_UNIT * 0.08,
+        lineWidth: KOLAM_UNIT * 0.06,
+        strokes,
+        groups: design.groups,
+        anyOrder: true,
+        shapes: design.groups.map(() => 'shapes'),
     };
 };
 

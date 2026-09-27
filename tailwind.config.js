@@ -4,25 +4,25 @@ export default {
   theme: {
     extend: {
       colors: {
-        paper: '#FFF8EE',     // a freshly washed threshold
+        paper: 'rgb(var(--paper) / <alpha-value>)',     // a freshly washed threshold
         sand: '#FBEBD3',
-        ink: '#3B2416',       // dark brown text
-        muted: '#6B5443',
-        kaavi: '#A63A1E',     // red-earth border colour
+        ink: 'rgb(var(--ink) / <alpha-value>)',       // dark brown text
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        kaavi: 'rgb(var(--kaavi) / <alpha-value>)',     // red-earth border colour
         marigold: '#F08A00',
         turmeric: '#E1AD01',
         leaf: '#2E7D32',
         kumkum: '#C62839',
-        floor: '#5A2416',     // deep red-oxide floor of the landing
-        'floor-2': '#72301C',
-        brass: '#C9973A',     // lamp brass, for accents on the dark floor
-        'brass-light': '#E8C271',
-        rice: '#F7F3EA',      // rice flour
+        floor: 'rgb(var(--floor) / <alpha-value>)',     // deep red-oxide floor of the landing
+        'floor-2': 'rgb(var(--floor-2) / <alpha-value>)',
+        brass: 'rgb(var(--brass) / <alpha-value>)',     // lamp brass, for accents on the dark floor
+        'brass-light': 'rgb(var(--brass-light) / <alpha-value>)',
+        rice: 'rgb(var(--rice) / <alpha-value>)',      // rice flour
       },
       fontFamily: {
         heading: ['"Tiro Tamil"', 'Georgia', 'serif'],
         sans: ['"Hind Madurai"', 'system-ui', 'sans-serif'],
-        script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', '"Tiro Kannada"', 'serif'],
+        script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', '"Tiro Kannada"', '"Noto Serif Malayalam"', '"Noto Serif Oriya"', 'serif'],
       },
       animation: {
         'fade-in-down': 'fade-in-down 0.5s ease-out forwards',

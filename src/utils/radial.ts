@@ -3,8 +3,8 @@
  * rings, each repeating one motif N times around the centre, so it has N-fold symmetry by construction.
  */
 
-export type Motif = 'lotus' | 'leaf' | 'drop' | 'loop' | 'dot' | 'curl';
-export type RadialStyle = 'lotus' | 'alpana' | 'marigold' | 'star' | 'curls' | 'festival';
+export type Motif = 'lotus' | 'leaf' | 'drop' | 'loop' | 'dot' | 'curl' | 'wedge';
+export type RadialStyle = 'lotus' | 'alpana' | 'marigold' | 'star' | 'curls' | 'festival' | 'pookalam' | 'aripan' | 'jhoti';
 
 export interface RadialRing {
   motif: Motif;
@@ -43,10 +43,13 @@ export const RADIAL_STYLES: Record<RadialStyle, { label: string; hint: string }>
   marigold: { label: 'Marigold', hint: 'Many small rounded petals, like a flower-petal rangoli (pookalam).' },
   star: { label: 'Star', hint: 'Pointed leaves with a ring of dots at the edge.' },
   festival: { label: 'Festival', hint: 'Many bands of lotus petals, leaves and teardrops, as in large Diwali and Pongal rangolis.' },
+  pookalam: { label: 'Pookalam', hint: 'Rings of flower petals in alternating colours, as laid in Kerala for Onam.' },
+  aripan: { label: 'Aripan', hint: 'White lotus outlines with petals filled in vermilion and turmeric, as in Mithila.' },
+  jhoti: { label: 'Jhoti', hint: 'Single flowing white outlines of lotus and paddy, as painted in Odisha.' },
   curls: { label: 'Curls', hint: 'Rings of curls, each drawn round its own dot, with coloured dots, as in many pulli kolams.' },
 };
 
-const MOTIFS: Record<Exclude<RadialStyle, 'alpana' | 'curls' | 'festival'>, Motif[]> = {
+const MOTIFS: Record<Exclude<RadialStyle, 'alpana' | 'curls' | 'festival' | 'pookalam' | 'aripan' | 'jhoti'>, Motif[]> = {
   lotus: ['lotus', 'lotus', 'leaf', 'lotus'],
   marigold: ['drop', 'drop', 'drop', 'drop'],
   star: ['leaf', 'leaf', 'lotus', 'leaf'],
@@ -159,11 +162,82 @@ const makeFestival = ({ petals, layers, colors, background }: RadialOptions): Ra
   return { rings, centre: colors[(used.length + 1) % colors.length], background, outline: '#FFFFFF' };
 };
 
+/** One band of a layered design: [motif, count, inner, outer, fullness, offset, filled, colour]. */
+type Band = [Motif, number, number, number, number, boolean, boolean, string];
+
+/** Rings from bands given centre-out on a 0..1 scale, stretched to fill the circle up to `edge`. */
+const ringsFromBands = (bands: Band[], edge = 0.93): RadialRing[] => {
+  const scale = edge / Math.max(...bands.map(b => b[3]));
+  return bands.map(([motif, count, a, b, full, offset, filled, color]) => {
+    const inner = a * scale;
+    const outer = b * scale;
+    const gap = (2 * Math.PI * ((inner + outer) / 2)) / count;
+    // For a wedge the width is the share of its step it covers; for other motifs, width over length.
+    const width = motif === 'wedge' ? full : Math.min(1.1, (full * gap) / (outer - inner));
+    return { motif, count, inner, outer, width, color, filled, offset };
+  }).reverse();
+};
+
+/**
+ * A pookalam: rings of petals laid in alternating colours round a flower centre, with a
+ * scalloped edge of petals and a ring of leaves. `layers` adds rings.
+ */
+const makePookalam = ({ petals, layers, colors, background }: RadialOptions): RadialDesign => {
+  const c = (i: number) => colors[i % colors.length];
+  const n = petals;
+  const bands: Band[] = [
+    ['lotus', n, 0.06, 0.22, 1.05, false, true, c(1)],
+    ['wedge', 2 * n, 0.22, 0.36, 0.5, false, true, c(0)],
+    ['wedge', 2 * n, 0.22, 0.36, 0.5, true, true, c(2)],
+    ['lotus', 2 * n, 0.36, 0.52, 1.0, false, true, c(3)],
+    ['wedge', 2 * n, 0.52, 0.64, 0.5, true, true, c(1)],
+    ['wedge', 2 * n, 0.52, 0.64, 0.5, false, true, c(4)],
+    ['drop', 2 * n, 0.64, 0.8, 0.95, true, true, c(0)],
+    ['leaf', 4 * n, 0.78, 0.94, 0.8, false, true, c(5)],
+  ];
+  const used = bands.slice(0, Math.min(bands.length, 2 + layers * 2));
+  return { rings: ringsFromBands(used), centre: c(2), background, outline: 'none' };
+};
+
+/** Aripan: white lotus outlines round a sun-like centre, some petals filled with vermilion and turmeric. */
+const makeAripan = ({ petals, layers, colors, background }: RadialOptions): RadialDesign => {
+  const [line, vermilion = line, turmeric = line] = colors;
+  const n = petals;
+  const bands: Band[] = [
+    ['lotus', n, 0.06, 0.26, 1.0, false, true, vermilion],
+    ['drop', 2 * n, 0.2, 0.38, 0.7, true, true, turmeric],
+    ['lotus', n, 0.3, 0.6, 1.0, true, false, line],
+    ['lotus', n, 0.4, 0.58, 0.55, true, true, vermilion],
+    ['lotus', n, 0.56, 0.88, 0.85, false, false, line],
+    ['dot', 2 * n, 0.9, 0.94, 1, true, true, turmeric],
+  ];
+  const used = bands.slice(0, Math.min(bands.length, 2 + layers));
+  return { rings: ringsFromBands(used), centre: turmeric, background, outline: line };
+};
+
+/** Jhoti chita: single white outlines of lotus petals, paddy leaves and small drops, with dots. */
+const makeJhoti = ({ petals, layers, colors, background }: RadialOptions): RadialDesign => {
+  const line = colors[0];
+  const n = petals;
+  // Bands kept apart, so each outline flows on its own as a single white line.
+  const bands: Band[] = [
+    ['lotus', n, 0.08, 0.34, 1.0, false, false, line],
+    ['leaf', 2 * n, 0.38, 0.58, 0.45, true, false, line],
+    ['lotus', n, 0.6, 0.9, 0.9, false, false, line],
+    ['dot', 2 * n, 0.93, 0.97, 1, true, true, line],
+  ];
+  const used = bands.slice(0, Math.min(bands.length, 1 + layers));
+  return { rings: ringsFromBands(used), centre: line, background, outline: line };
+};
+
 export const makeRadial = (options: RadialOptions): RadialDesign => {
   const { petals, layers, style, colors, background } = options;
   if (style === 'alpana') return makeAlpana(options);
   if (style === 'curls') return makeCurls(options);
   if (style === 'festival') return makeFestival(options);
+  if (style === 'pookalam') return makePookalam(options);
+  if (style === 'aripan') return makeAripan(options);
+  if (style === 'jhoti') return makeJhoti(options);
   const rings: RadialRing[] = [];
   const band = 0.82 / layers;
   const outline = '#FFFFFF';
@@ -263,6 +337,9 @@ const motifSegments = (motif: Motif, a: number, b: number, widthRatio: number): 
       const start = at(Math.PI, R);
       return [...tip, ['M', start[0], start[1]], ...spiral(at, Math.PI, Math.PI - 2.4 * Math.PI, R, R * 0.46)];
     }
+    case 'wedge':
+      // Wedges are normally built from their ring (see ringSegments), which knows the angle.
+      return wedgeSegments(a, b, widthRatio * 0.3);
     case 'loop':
     case 'dot': {
       const rx = motif === 'dot' ? len / 2 : len / 2;
@@ -294,8 +371,25 @@ const rotate = (segments: Segment[], angle: number) => {
 };
 
 /** One motif of a ring, before it is turned into place. */
-const ringSegments = (ring: RadialRing) =>
-  ring.flip ? motifSegments(ring.motif, ring.outer, ring.inner, ring.width) : motifSegments(ring.motif, ring.inner, ring.outer, ring.width);
+const ringSegments = (ring: RadialRing): Segment[] => {
+  if (ring.motif === 'wedge') return wedgeSegments(ring.inner, ring.outer, (ring.width * Math.PI) / ring.count);
+  return ring.flip ? motifSegments(ring.motif, ring.outer, ring.inner, ring.width) : motifSegments(ring.motif, ring.inner, ring.outer, ring.width);
+};
+
+/** A filled segment of a ring, between radii a and b, `half` radians either side of the +x axis. */
+const wedgeSegments = (a: number, b: number, half: number): Segment[] => {
+  const at = (phi: number, r: number): [number, number] => [r * Math.cos(phi), r * Math.sin(phi)];
+  const line = (from: [number, number], to: [number, number]): Segment =>
+    ['C', from[0] + (to[0] - from[0]) / 3, from[1] + (to[1] - from[1]) / 3, from[0] + (2 * (to[0] - from[0])) / 3, from[1] + (2 * (to[1] - from[1])) / 3, to[0], to[1]];
+  return [
+    ['M', ...at(-half, a)],
+    line(at(-half, a), at(-half, b)),
+    ...spiral(at, -half, half, b, b),
+    line(at(half, b), at(half, a)),
+    ...spiral(at, half, -half, a, a),
+    ['Z'],
+  ];
+};
 
 /** SVG path (centre at 0,0, radius 1) of one whole ring. */
 export const ringPath = (ring: RadialRing) => {

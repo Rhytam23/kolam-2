@@ -8,8 +8,10 @@ const segment = (p: number, from: number, to: number) => Math.min(1, Math.max(0,
 export interface HeroScene {
     name: string;
     steps: readonly string[];
-    /** The same design in the studio, for "Learn to draw this". */
+    /** The design as drawn here. */
     design: { style: RadialStyle; petals: number; layers: number; palette: PaletteName };
+    /** Where to learn it: the art form's page, and which of its designs this is. */
+    page: { slug: string; design: number };
 }
 
 export const SCENES: readonly HeroScene[] = [
@@ -18,11 +20,13 @@ export const SCENES: readonly HeroScene[] = [
         // A pulli kolam: the dots go down in colour first, and each curl is wound round one.
         steps: ['Place the coloured dots', 'Wind a curl round each dot'],
         design: { style: 'curls', petals: 8, layers: 3, palette: 'darkFloor' },
+        page: { slug: 'kolam', design: 1 },
     },
     {
         name: 'Festival rangoli',
         steps: ['Place the dots', 'Join them ring by ring', 'Fill the colours'],
         design: { style: 'festival', petals: 12, layers: 4, palette: 'festival' },
+        page: { slug: 'rangoli', design: 0 },
     },
 ];
 

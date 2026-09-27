@@ -29,7 +29,8 @@ const KolamDivider: React.FC<{ spacing?: number; tone?: 'rice' | 'kaavi'; classN
         const design = makeDesign(1, dots, () => true);
         return { paths: loopPaths(design, UNIT, 1), points: designDots(design) };
     }, [dots]);
-    const colour = tone === 'rice' ? '#F7F3EA' : '#A63A1E';
+    // The page's own colours: rice-flour lines on the dark sections, the accent colour on paper.
+    const colour = tone === 'rice' ? 'rgb(var(--rice))' : 'rgb(var(--kaavi))';
 
     return (
         <div className={`px-4 ${className}`} aria-hidden>
@@ -40,8 +41,8 @@ const KolamDivider: React.FC<{ spacing?: number; tone?: 'rice' | 'kaavi'; classN
                     className={`block w-full ${tone === 'rice' ? 'glow' : 'opacity-60'}`}
                     style={{ height: (2 * UNIT * width) / ((dots + 1) * UNIT) || undefined }}
                 >
-                    {paths.map((d, i) => <path key={i} d={d} fill="none" stroke={colour} strokeWidth={1.8} strokeLinecap="round" />)}
-                    {points.map(p => <circle key={p.x} cx={(p.x + 1) * UNIT} cy={UNIT} r={1.9} fill={colour} />)}
+                    {paths.map((d, i) => <path key={i} d={d} fill="none" style={{ stroke: colour }} strokeWidth={1.8} strokeLinecap="round" />)}
+                    {points.map(p => <circle key={p.x} cx={(p.x + 1) * UNIT} cy={UNIT} r={1.9} style={{ fill: colour }} />)}
                 </svg>
             </div>
         </div>

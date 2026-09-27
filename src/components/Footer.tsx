@@ -2,6 +2,8 @@ import React from 'react';
 import Diya from './landing/Diya';
 import KolamDivider from './landing/KolamDivider';
 import InstallApp from './InstallApp';
+import { Link } from '../lib/router';
+import { TRADITIONS } from '../data/traditions';
 import { BRAND } from '../lib/brand';
 
 const REPO = 'https://github.com/Rhytam23/kolam-2';
@@ -9,11 +11,25 @@ const REPO = 'https://github.com/Rhytam23/kolam-2';
 const Footer: React.FC = () => (
     <footer className="floor-bg text-rice pt-10 pb-8 px-4">
         <KolamDivider tone="rice" spacing={40} className="mb-10" />
-        <div className="container mx-auto grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+        <nav aria-label="Art forms and pages" className="container mx-auto mb-10 text-sm">
+            <p className="font-semibold text-brass-light mb-3">Art forms</p>
+            <ul className="flex flex-wrap gap-x-5 gap-y-2">
+                {TRADITIONS.map(t => (
+                    <li key={t.slug}><Link to={`/${t.slug}`} className="text-rice underline decoration-brass/60 underline-offset-4 hover:text-brass-light">{t.name}</Link></li>
+                ))}
+            </ul>
+            <p className="font-semibold text-brass-light mt-5 mb-3">Tools</p>
+            <ul className="flex flex-wrap gap-x-5 gap-y-2">
+                {[['/', 'Home'], ['/read', 'Read a photo'], ['/studio', 'Design Studio'], ['/about', 'About and research']].map(([to, label]) => (
+                    <li key={to}><Link to={to} className="text-rice underline decoration-brass/60 underline-offset-4 hover:text-brass-light">{label}</Link></li>
+                ))}
+            </ul>
+        </nav>
+        <div className="container mx-auto grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-sm border-t border-brass/30 pt-8">
             <div>
                 <p className="font-heading text-2xl brass-text">{BRAND}</p>
                 <p className="mt-2 text-rice/80">
-                    Reading and teaching the design principles of kolam, rangoli, muggulu, rangavalli, alpana and mandana.
+                    Reading, teaching and drawing the floor art of India, from kolam and rangoli to alpana, pookalam and mandana.
                 </p>
             </div>
             <div>

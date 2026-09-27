@@ -103,3 +103,19 @@ def test_security_headers():
     assert headers['x-content-type-options'] == 'nosniff'
     assert headers['x-frame-options'] == 'DENY'
     assert "default-src 'self'" in headers['content-security-policy']
+
+
+def test_each_page_has_its_own_address_and_title(tmp_path):
+    (tmp_path / 'index.html').write_text(
+        '<html><head><title>Home</title><meta name="description" content="x" />'
+        '<meta property="og:title" content="Home" /></head><body></body></html>', encoding='utf-8')
+    (tmp_path / 'routes.json').write_text(json.dumps([
+        {'path': '/test-alpana', 'title': 'Alpana (আলপনা) · Chittara', 'description': 'Rice paste on red earth & more'},
+    ]), encoding='utf-8')
+    main.add_page_routes(tmp_path)
+    page = client.get('/test-alpana')
+    assert page.status_code == 200
+    assert '<title>Alpana (আলপনা) · Chittara</title>' in page.text
+    assert 'content="Rice paste on red earth &amp; more"' in page.text
+    assert '<meta property="og:title" content="Alpana (আলপনা) · Chittara" />' in page.text
+    assert client.get('/api/health').status_code == 200

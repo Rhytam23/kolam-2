@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { expectedDots, finishGroup, isFinished, kolamPlan, radialPlan, startPractice, tapDot, currentGroup, type PracticePlan, type PracticeState } from './practice';
+import { expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, startPractice, tapDot, currentGroup, type PracticePlan, type PracticeState } from './practice';
 import { diamondDesign, makeSingleLine, squareDesign } from './kolamLogic';
 import { makeRadial } from './radial';
+import { makeGeometric, GEOMETRIC_PATTERNS, type GeometricPattern } from './geometric';
 import { PALETTES } from '../lib/colours';
 
 /** Plays the whole design by always tapping the first expected dot. */
@@ -66,5 +67,20 @@ describe('practice', () => {
         const plan = radialPlan(makeRadial({ petals: 8, layers: 3, style: 'curls', ...PALETTES.darkFloor }));
         const state = finishGroup(plan, startPractice(plan));
         expect(currentGroup(plan, state)).toBe(1);
+    });
+
+    it('draws every straight-line design dot by dot along its edges', () => {
+        for (const pattern of Object.keys(GEOMETRIC_PATTERNS) as GeometricPattern[]) {
+            const plan = geometricPlan(makeGeometric({ pattern, size: 9, ...PALETTES.sankranti }));
+            // Each step of a line goes to a neighbouring dot, straight or diagonally.
+            for (const stroke of plan.strokes) {
+                stroke.dots.slice(1).forEach((dot, k) => {
+                    const a = plan.dots[stroke.dots[k]];
+                    const b = plan.dots[dot];
+                    expect(Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y))).toBe(40);
+                });
+            }
+            expect(isFinished(playThrough(plan).state)).toBe(true);
+        }
     });
 });

@@ -22,11 +22,12 @@ without dots (alpana, most rangoli) are read by their turning symmetry and colou
 
 | | |
 | --- | --- |
+| **Art forms** | Eleven floor-art traditions, each with its own page and colours: kolam (`/kolam`), muggulu (`/muggulu`), rangoli (`/rangoli`), alpana (`/alpana`), pookalam (`/pookalam`), mandana (`/mandana`), aipan (`/aipan`), aripan (`/aripan`), jhoti chita (`/jhoti-chita`), chowk purana (`/chowk-purana`) and chittara (`/chittara`). Each page tells when and how it is made, draws its signature design, and has its own studio, guide and practice. |
 | **Read a design** | Take or upload a photo. For dot kolams, OpenCV finds the dots, fits a rotation- and perspective-tolerant grid, and reads every gap between two dots as a crossing, a turn-back or a join. Free-hand designs are traced colour by colour. |
 | **Design principles** | Dot grid and dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of separate lines (1 = sikku), mirror and turning symmetry (e.g. "8-fold"), and the colours used, each named after its traditional material (rice flour, kaavi, turmeric, kumkum…). |
 | **Recreate** | Dot kolams are redrawn as clean lines on top of your photo; fix missed dots by hand and recreate. Free-hand designs are traced into filled colour layers. |
 | **Make a similar design** | One click starts a new design in the studio with the same grid, or the same symmetry and colours for rangoli and alpana. |
-| **Design Studio** | Dot kolams (square or diamond grids, one-line sikku option) and radial designs: lotus, festival, alpana (double-outlined petals), marigold, star, and a circle of curls wound round dots; 3–16 petals, 1–4 rings. Colour sets: rice flour on a red or dark floor, kaavi on cream, Pongal, Diwali and festival. |
+| **Design Studio** (`/studio`) | Three ways of drawing: dot kolams that loop round the dots (square or diamond grids, one-line sikku option); round designs (lotus, festival, alpana, pookalam, aripan, jhoti, marigold, star, and a circle of curls wound round coloured dots); and straight lines from dot to dot (muggu star, Aipan chowki, Chittara bands, chowk, mandana). Colour sets come from each tradition's real materials. |
 | **Draw it yourself** | A step-by-step guide that follows how floor art is really made: prepare the ground, put down the small dots first, then draw the lines (around the dots for a pulli kolam, from dot to dot for rangoli and alpana) one line or ring at a time, and fill the colours last, with tips and materials for every step. Rangoli and alpana designs can be downloaded with their dots as a printable template. |
 | **Practise it** | Draw the design yourself by tapping its dots in the order the line goes: round each dot for a pulli kolam, dot to dot along each petal for a rangoli, one curl per dot for a curl kolam. A wrong dot shows where to go; a ring or line can be finished for you. |
 | **From dots to design** | As you scroll, the landing page draws a circle-of-curls kolam and then a festival rangoli the way they are made by hand (dots, then lines, then colour), each with *Learn to draw this* and *Practise it*. It also shows the three steps for a rangoli, a pulli kolam and a photo. |
@@ -101,6 +102,10 @@ Hugging Face Spaces, a VPS). It listens on `$PORT` (default 8000) and has a heal
 preview card. Serve it over **HTTPS**: phones only allow installing the app, and the camera
 button, on secure sites.
 
+Every page has its own address (`/kolam`, `/alpana`, …). The server answers each with the app,
+titled for that page, and unknown addresses with the 404 page. A static host needs the same
+rule: serve `index.html` for the addresses listed in `dist/routes.json`.
+
 To host the frontend separately (for example on a static host), build it with
 `VITE_API_BASE_URL=https://your-api.example.com npm run build`, and start the API with
 `CORS_ORIGINS=https://your-frontend.example.com`. See `.env.example`.
@@ -155,7 +160,13 @@ dot is missing).
 ```text
 src/utils/kolamLogic.ts     mirror-curve engine: tracing, symmetry, single-line transform, SVG
 src/utils/radial.ts         radial rangoli / alpana / curl designs and drawing guides
+src/utils/geometric.ts      straight-line designs (muggu, chowki, chittara, chowk, mandana)
 src/utils/practice.ts       practice mode: which dot comes next, and what each tap draws
+src/data/traditions.ts      the art forms: facts, script, colours, designs; also every page's address and title
+src/data/designs.ts         design presets, built and opened in the studio
+src/pages/                  the landing, one page per art form, /read, /studio, /about
+src/lib/router.ts           page addresses without a router library
+src/lib/theme.ts            each page's colours, applied as CSS variables
 src/lib/colours.ts          traditional colours, materials and colour sets
 src/components/             analyzer, generator, walkthrough and page sections
 src/lib/                    API client and .kolam.json helpers

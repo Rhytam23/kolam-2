@@ -5,11 +5,12 @@ import { Label } from './ui/Label';
 import KolamSvg from './KolamSvg';
 import ColourGuide from './ColourGuide';
 import { useKolam, type Mode, type Shape } from './KolamContext';
-import { SYMMETRY_LABELS, designToSvg, diamondDesign, makeSingleLine, squareDesign } from '../utils/kolamLogic';
-import { RADIAL_STYLES, makeRadial, radialToSvg, type RadialStyle } from '../utils/radial';
-import type { Design } from '../types/kolam';
+import { SYMMETRY_LABELS } from '../utils/kolamLogic';
+import { RADIAL_STYLES, type RadialStyle } from '../utils/radial';
+import { GEOMETRIC_PATTERNS, geometricSize, type GeometricPattern } from '../utils/geometric';
 import { PALETTES, type PaletteName } from '../lib/colours';
-import { artworkColours, artworkSvg, kolamDotColour } from '../lib/artwork';
+import { artworkColours, artworkSvg } from '../lib/artwork';
+import { STUDIO_PRESETS, applyPreset, presetBackground, presetSvg, type DesignPreset } from '../data/designs';
 import { downloadBlob, downloadKolamFile, svgToPng } from '../lib/kolamFile';
 import { SectionHeading } from './ui/SectionHeading';
 
@@ -24,11 +25,11 @@ const Toggle: React.FC<{ active: boolean; onClick: () => void; children: React.R
     </button>
 );
 
-const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteName) => void }> = ({ value, onChange }) => (
+const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteName) => void; names: readonly PaletteName[] }> = ({ value, onChange, names }) => (
     <div>
         <Label>Colours</Label>
         <div className="grid grid-cols-2 gap-2">
-            {(Object.keys(PALETTES) as PaletteName[]).map(name => {
+            {names.map(name => {
                 const p = PALETTES[name];
                 return (
                     <button
@@ -49,55 +50,53 @@ const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteNa
     </div>
 );
 
-type Example = { title: string; kind: string; detail: string; mode: Mode; background: string; apply: (k: ReturnType<typeof useKolam>) => void; svg: string };
+/** What a studio offers: the general studio offers everything, a tradition's page only its own. */
+export interface StudioScope {
+    title: string;
+    intro: string;
+    modes: Array<Exclude<Mode, 'traced'>>;
+    radialStyles: readonly RadialStyle[];
+    patterns: readonly GeometricPattern[];
+    palettes: readonly PaletteName[];
+    presets: readonly DesignPreset[];
+}
 
-const kolamExample = (title: string, detail: string, design: Design, palette: PaletteName, apply: Example['apply']): Example => {
-    const { background, colors } = PALETTES[palette];
-    return { title, kind: 'Dot kolam', detail, mode: 'kolam', background, apply, svg: designToSvg(design, { background, stroke: colors, dot: kolamDotColour(background) }) };
+export const FULL_STUDIO: StudioScope = {
+    title: 'Design Studio',
+    intro: 'Make your own floor design, or a similar one to a photo you analysed. Then follow the step-by-step guide below to draw it on your doorstep.',
+    modes: ['kolam', 'radial', 'geometric'],
+    radialStyles: Object.keys(RADIAL_STYLES) as RadialStyle[],
+    patterns: Object.keys(GEOMETRIC_PATTERNS) as GeometricPattern[],
+    palettes: Object.keys(PALETTES) as PaletteName[],
+    presets: STUDIO_PRESETS,
 };
 
-const radialExample = (title: string, kind: string, detail: string, style: RadialStyle, petals: number, layers: number, palette: PaletteName): Example => ({
-    title, kind, detail, mode: 'radial', background: PALETTES[palette].background,
-    svg: radialToSvg(makeRadial({ petals, layers, style, ...PALETTES[palette] })),
-    apply: k => { k.setRadialStyle(style); k.setPetals(petals); k.setLayers(layers); k.setRadialPalette(palette); },
-});
-
-const EXAMPLES: Example[] = [
-    kolamExample('Sikku kolam', '13 dots, one unbroken line', makeSingleLine(diamondDesign(5)), 'kaavi',
-        k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(5); k.setSingleLine(true); k.setKolamPalette('kaavi'); }),
-    kolamExample('Pulli kolam', '25 dots in rice flour on a red floor', diamondDesign(7), 'riceFlour',
-        k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(7); k.setSingleLine(false); k.setKolamPalette('riceFlour'); }),
-    kolamExample('Pongal kolam', '4 × 4 dots, each line in its own colour', squareDesign(4), 'pongal',
-        k => { k.setUseScan(false); k.setShape('square'); k.setSize(4); k.setSingleLine(false); k.setKolamPalette('pongal'); }),
-    radialExample('Festival rangoli', 'Rangoli', 'Six bands of petals, leaves and teardrops', 'festival', 12, 4, 'festival'),
-    radialExample('Alpana', 'Alpana', 'Rice paste on red earth, 8-fold', 'alpana', 8, 3, 'riceFlour'),
-    radialExample('Circle of curls', 'Pulli kolam', 'Curls wound round dots, with coloured dots', 'curls', 8, 3, 'darkFloor'),
-];
+const MODE_LABELS: Record<Mode, string> = { kolam: 'Dot kolam', radial: 'Round designs', geometric: 'Straight lines', traced: 'Traced from your photo' };
 
 const scrollToGuide = () => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' });
 const scrollToStudio = () => document.getElementById('generator')?.scrollIntoView({ behavior: 'smooth' });
 
-const KolamGenerator: React.FC = () => {
+const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO }) => {
     const k = useKolam();
     const { mode, setMode, design, loops, symmetry, scan, useScan, setUseScan, traced } = k;
 
     const [showDots, setShowDots] = useState(true);
     const svg = useMemo(() => artworkSvg(k, { dots: showDots }), [k, showDots]);
     const colours = useMemo(() => artworkColours(k), [k]);
-    const name = mode === 'kolam' ? `kolam-${design.rows}x${design.cols}` : mode === 'radial' ? `rangoli-${k.petals}-fold` : 'traced-drawing';
+    const name = mode === 'kolam' ? `kolam-${design.rows}x${design.cols}` : mode === 'radial' ? `${k.radialStyle}-${k.petals}-fold` : mode === 'geometric' ? `${k.geoPattern}-${k.geometric.size}x${k.geometric.size}` : 'traced-drawing';
     const radialPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.radialColours) ?? null;
+    const geoPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.geoColours) ?? null;
 
-    const tabs: Array<[Mode, string]> = [['kolam', 'Dot kolam'], ['radial', 'Rangoli & alpana']];
-    if (traced) tabs.push(['traced', 'Traced from your photo']);
+    const cards = useMemo(() => scope.presets.map(p => ({ ...p, svg: presetSvg(p.spec), background: presetBackground(p.spec) })), [scope.presets]);
+    const tabs: Array<[Mode, string]> = scope.modes.map(m => [m, MODE_LABELS[m]]);
+    if (traced && scope === FULL_STUDIO) tabs.push(['traced', MODE_LABELS.traced]);
 
     return (
         <section className="py-20 px-4">
             <div className="container mx-auto">
-                <SectionHeading title="Design Studio" className="mb-4" />
-                <p className="text-center text-muted mb-8 max-w-2xl mx-auto">
-                    Make your own floor design, or a similar one to a photo you analysed. Then follow the step-by-step guide below to draw it on your doorstep.
-                </p>
-                <div className="flex justify-center gap-2 mb-10 flex-wrap" role="tablist">
+                <SectionHeading title={scope.title} className="mb-4" />
+                <p className="text-center text-muted mb-8 max-w-2xl mx-auto">{scope.intro}</p>
+                <div className={`flex justify-center gap-2 mb-10 flex-wrap ${tabs.length < 2 ? 'hidden' : ''}`} role="tablist">
                     {tabs.map(([id, label]) => (
                         <Toggle key={id} active={mode === id} onClick={() => setMode(id)}>{label}</Toggle>
                     ))}
@@ -139,7 +138,7 @@ const KolamGenerator: React.FC = () => {
                                     <input type="checkbox" checked={k.singleLine} onChange={e => k.setSingleLine(e.target.checked)} className="accent-kaavi w-4 h-4" />
                                     One continuous line (sikku kolam)
                                 </label>
-                                <PaletteChoice value={k.kolamPalette} onChange={k.setKolamPalette} />
+                                <PaletteChoice value={k.kolamPalette} onChange={k.setKolamPalette} names={scope.palettes} />
                                 <dl className="grid grid-cols-2 gap-3 text-sm">
                                     <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Pulli (dots)</dt><dd className="text-xl">{design.mask.join('').split('1').length - 1}</dd></div>
                                     <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Separate lines</dt><dd className="text-xl">{loops}</dd></div>
@@ -155,7 +154,7 @@ const KolamGenerator: React.FC = () => {
                                 <div>
                                     <Label>Style</Label>
                                     <div className="flex gap-2 flex-wrap">
-                                        {(Object.keys(RADIAL_STYLES) as RadialStyle[]).map(s => (
+                                        {scope.radialStyles.map(s => (
                                             <Toggle key={s} active={k.radialStyle === s} onClick={() => k.setRadialStyle(s)}>{RADIAL_STYLES[s].label}</Toggle>
                                         ))}
                                     </div>
@@ -169,8 +168,31 @@ const KolamGenerator: React.FC = () => {
                                     <Label htmlFor="layers">Rings of petals: {k.layers}</Label>
                                     <input id="layers" type="range" min={1} max={4} value={k.layers} onChange={e => k.setLayers(Number(e.target.value))} className="w-full accent-kaavi" />
                                 </div>
-                                <PaletteChoice value={radialPalette} onChange={k.setRadialPalette} />
+                                <PaletteChoice value={radialPalette} onChange={k.setRadialPalette} names={scope.palettes} />
                                 {!radialPalette && <p className="text-xs text-leaf">Using the colours from your photo.</p>}
+                            </>
+                        )}
+
+                        {mode === 'geometric' && (
+                            <>
+                                <div>
+                                    <Label>Pattern</Label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {scope.patterns.map(p => (
+                                            <Toggle key={p} active={k.geoPattern === p} onClick={() => k.setGeoPattern(p)}>{GEOMETRIC_PATTERNS[p].label}</Toggle>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-muted mt-2">{GEOMETRIC_PATTERNS[k.geoPattern].hint}</p>
+                                </div>
+                                <div>
+                                    <Label htmlFor="geo-size">Dots per side: {k.geometric.size}</Label>
+                                    <input
+                                        id="geo-size" type="range" min={geometricSize(k.geoPattern, 1)} max={13} step={k.geoPattern === 'chowk' ? 4 : 2}
+                                        value={k.geometric.size} onChange={e => k.setGeoSize(Number(e.target.value))}
+                                        className="w-full accent-kaavi"
+                                    />
+                                </div>
+                                <PaletteChoice value={geoPalette} onChange={k.setGeoPalette} names={scope.palettes} />
                             </>
                         )}
 
@@ -181,7 +203,7 @@ const KolamGenerator: React.FC = () => {
                             </p>
                         )}
 
-                        {mode !== 'kolam' && (
+                        {(mode === 'radial' || mode === 'traced') && (
                             <label className="flex items-start gap-3 text-ink">
                                 <input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} className="accent-kaavi w-4 h-4 mt-1" />
                                 <span>
@@ -191,7 +213,7 @@ const KolamGenerator: React.FC = () => {
                             </label>
                         )}
 
-                        <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam'} />
+                        <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam' || mode === 'geometric'} />
 
                         <div className="flex flex-wrap gap-2">
                             <Button size="sm" variant="secondary" onClick={() => downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${name}.svg`)}>SVG</Button>
@@ -211,11 +233,11 @@ const KolamGenerator: React.FC = () => {
                     <p className="mt-2 text-muted">Pick one to open it in the studio, then change its dots, petals or colours.</p>
                 </div>
                 <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
-                    {EXAMPLES.map(example => (
+                    {cards.map(example => (
                         <li key={example.title}>
                             <button
                                 type="button"
-                                onClick={() => { example.apply(k); setMode(example.mode); scrollToStudio(); }}
+                                onClick={() => { applyPreset(k, example.spec); scrollToStudio(); }}
                                 className="group w-full h-full text-left rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-kaavi/15 hover:ring-kaavi/50 hover:shadow-lg hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-kaavi"
                             >
                                 <div className="relative p-4 md:p-6" style={{ backgroundColor: example.background }}>

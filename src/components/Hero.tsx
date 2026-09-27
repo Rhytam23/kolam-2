@@ -5,6 +5,7 @@ import Toran from './landing/Toran';
 import { FloorTile, RangoliFrame } from './landing/FloorArt';
 import { SCENES, heroStory, type HeroScene } from './landing/heroStory';
 import { useKolam, type GuideView } from './KolamContext';
+import { navigate } from '../lib/router';
 import { makeRadial } from '../utils/radial';
 import { PALETTES } from '../lib/colours';
 import { useInView, useIntro, useReducedMotion, useScrollProgress, useViewport } from '../hooks/motion';
@@ -24,19 +25,12 @@ interface HeroProps { onStart: () => void; onGenerate: () => void }
 const sceneDesign = ({ design }: HeroScene) =>
     makeRadial({ petals: design.petals, layers: design.layers, style: design.style, ...PALETTES[design.palette] });
 
-/** Opens a hero design in the studio and scrolls to its guide, showing the steps or practice. */
+/** Opens a hero design on its art form's page, at the guide, showing the steps or practice. */
 const useOpenInGuide = () => {
     const k = useKolam();
     return (scene: HeroScene, view: GuideView) => {
-        const { style, petals, layers, palette } = scene.design;
-        k.setRadialStyle(style);
-        k.setPetals(petals);
-        k.setLayers(layers);
-        k.setRadialPalette(palette);
-        k.setMode('radial');
         k.setGuideView(view);
-        // Let the guide render the new design before scrolling to it.
-        setTimeout(() => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' }), 50);
+        navigate(`/${scene.page.slug}?design=${scene.page.design}#walkthrough`);
     };
 };
 
@@ -199,7 +193,7 @@ const Hero: React.FC<HeroProps> = props => {
                     <button
                         type="button"
                         className="mt-1 text-xs text-rice/75 underline decoration-brass/60 underline-offset-4 hover:text-brass-light"
-                        onClick={() => document.getElementById('process')?.scrollIntoView({ behavior: 'smooth' })}
+                        onClick={() => document.getElementById('traditions')?.scrollIntoView({ behavior: 'smooth' })}
                     >
                         Skip the drawing
                     </button>
