@@ -1,81 +1,123 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from fastapi.middleware.cors import CORSMiddleware
+import base64
+import json
+
 import cv2
 import numpy as np
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from config import MAX_UPLOAD_BYTES, get_allowed_origins
-from detection import deskew_if_needed, detect_dots, estimate_confidence
+from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
+from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
+from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
 
-app = FastAPI()
-
+app = FastAPI(title='SOLVIX Kolam API')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
-    allow_credentials=True,
-    allow_methods=['*'],
+    allow_methods=['GET', 'POST'],
     allow_headers=['*'],
 )
+api = APIRouter(prefix='/api')
 
 
-@app.get('/')
-async def root():
-    return {'message': 'Kolam Analyzer API is running'}
-
-
-@app.get('/health')
+@api.get('/health')
 async def health():
-    return {'status': 'ok'}
+    return {'status': 'ok', 'maxUploadBytes': MAX_UPLOAD_BYTES, 'allowedTypes': ALLOWED_TYPES}
 
 
-@app.post('/analyze')
+def parse_dots(raw: str) -> list[dict]:
+    try:
+        items = json.loads(raw)
+        dots = [{'x': float(d['x']), 'y': float(d['y'])} for d in items]
+    except (ValueError, TypeError, KeyError):
+        raise HTTPException(status_code=422, detail='dots must be a JSON list of {x, y} objects')
+    if len(dots) > MAX_DOTS or not all(0 <= d['x'] <= 1 and 0 <= d['y'] <= 1 for d in dots):
+        raise HTTPException(status_code=422, detail=f'dots must hold at most {MAX_DOTS} points inside the image')
+    return dots
+
+
+@api.post('/analyze')
 async def analyze_kolam(
     file: UploadFile = File(...),
     preset: str = Form('balanced'),
     deskew: bool = Form(True),
+    dots: str | None = Form(None),
 ):
-    if not file.content_type or not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail='File must be an image')
+    if preset not in PRESET_CONFIGS:
+        raise HTTPException(status_code=422, detail=f'Unknown preset. Use one of: {", ".join(PRESET_CONFIGS)}')
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=415, detail='Upload a PNG, JPEG or WebP image')
+
+    contents = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f'Image is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB')
+    manual_dots = parse_dots(dots) if dots is not None else None
+
+    img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        raise HTTPException(status_code=400, detail='Could not read the image')
 
     try:
-        contents = await file.read(MAX_UPLOAD_BYTES + 1)
-        if len(contents) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail='File too large')
-
-        nparr = np.frombuffer(contents, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            raise HTTPException(status_code=400, detail='Could not process image')
-
+        corrected = False
         if deskew:
-            img = deskew_if_needed(img)
-
-        height, width, _ = img.shape
+            img, corrected = deskew_if_needed(img)
+        height, width = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        dots = detect_dots(gray, width, height, preset)
-        confidence = estimate_confidence(len(dots), preset)
 
-        return {
-            'width': width,
-            'height': height,
-            'dots': dots,
-            'preset': preset,
-            'confidence': confidence,
-            'message': (
-                f'Detected {len(dots)} potential dots using the {preset} preset '
-                'with denoising, threshold blending, blob fallback, and geometric cleanup.'
-            ),
-        }
-
-    except HTTPException:
-        raise
+        # Kolams are drawn dark-on-light (paper) or light-on-dark (rice flour on a floor).
+        if manual_dots is not None:
+            found, dark_ink = manual_dots, ink_is_dark(gray, manual_dots)
+        else:
+            readings = []
+            for dark in (True, False):
+                candidate = detect_dots(gray, width, height, preset, dark)
+                fit = infer_lattice(candidate, width, height)
+                readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
+            _, dark_ink, found = max(readings, key=lambda r: r[0])
+        lattice = infer_lattice(found, width, height)
+        ink = stroke_mask(gray, dark_ink)
+        design, clarity = infer_design(lattice, ink) if lattice else (None, 0.0)
     except Exception:
         raise HTTPException(status_code=500, detail='Analysis pipeline failed')
+
+    if lattice:
+        confidence = round(lattice['fit'] * (0.5 + 0.5 * clarity), 2)
+        message = (
+            f'Found {len(found)} dots on a {lattice["rows"]}×{lattice["cols"]} lattice '
+            f'({lattice["fit"]:.0%} of dots fit it) and read how the strands pass between them.'
+        )
+    else:
+        confidence = 0.2 if found else 0.0
+        message = f'Found {len(found)} dots but no regular dot lattice; this looks like a free-hand kolam.'
+
+    response = {
+        'width': width,
+        'height': height,
+        'dots': found,
+        'preset': preset,
+        'confidence': confidence,
+        'message': message,
+        'lattice': lattice,
+        'design': design,
+        'symmetry': image_symmetry(ink),
+    }
+    if corrected:
+        ok, jpeg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        if ok:
+            response['image'] = 'data:image/jpeg;base64,' + base64.b64encode(jpeg.tobytes()).decode()
+    return response
+
+
+app.include_router(api)
+
+if STATIC_DIR.is_dir():
+    app.mount('/', StaticFiles(directory=STATIC_DIR, html=True), name='app')
 
 
 if __name__ == '__main__':
     import uvicorn
 
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+    uvicorn.run(app, host='0.0.0.0', port=PORT)

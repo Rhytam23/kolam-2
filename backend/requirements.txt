@@ -1,5 +1,5 @@
-fastapi
-uvicorn
-python-multipart
-opencv-python-headless
-numpy
+fastapi>=0.110,<1
+uvicorn[standard]>=0.29,<1
+python-multipart>=0.0.9
+opencv-python-headless>=4.9,<6
+numpy>=1.26,<3
