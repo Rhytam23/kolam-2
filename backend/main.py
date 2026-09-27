@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import mimetypes
 
 import cv2
 import numpy as np
@@ -13,6 +14,9 @@ from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, 
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
 from drawing import colour_layers, radial_symmetry
 from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
+
+# So phones recognise the app manifest when the site is installed to the home screen.
+mimetypes.add_type('application/manifest+json', '.webmanifest')
 
 app = FastAPI(title='SOLVIX Kolam API')
 app.add_middleware(

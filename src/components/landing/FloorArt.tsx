@@ -62,6 +62,12 @@ export interface DrawProgress {
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const shownStyle = (visible: boolean): React.CSSProperties => ({ opacity: visible ? 1 : 0, transition: 'opacity 0.25s' });
 
+/**
+ * Shows the first `drawn` fraction of a path. A finished line is drawn solid: browsers measure long
+ * curved paths slightly differently from their true length, which would leave a small gap at the end.
+ */
+const dashTo = (drawn: number) => (drawn >= 1 ? {} : { pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - drawn });
+
 interface KolamFrameProps {
     design: Design;
     /** 'dots' = only the pulli; 'line' = rice-flour line; 'colour' = each line in its own colour. */
@@ -81,7 +87,7 @@ export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage = 'line', 
     if (progress) {
         const loops = loopPaths(design, UNIT, PAD);
         const shown = Math.round(clamp01(progress.dots) * dots.length);
-        const line = { strokeWidth: UNIT * 0.085, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - clamp01(progress.lines), fill: 'none' };
+        const line = { strokeWidth: UNIT * 0.085, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, fill: 'none', ...dashTo(clamp01(progress.lines)) };
         return (
             <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 w-full h-full">
                 <g filter="url(#rice)">
@@ -164,17 +170,17 @@ export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'col
                         // Dot rings are the dots themselves: they are coloured, not drawn round.
                         const drawn = r.motif === 'dot' ? 0 : clamp01(progress.lines * rings.length - i);
                         return drawn > 0 && (
-                            <path key={i} d={paths[i]} fill="none" stroke={RICE} strokeWidth={lineWidth(r)} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - drawn} />
+                            <path key={i} d={paths[i]} fill="none" stroke={RICE} strokeWidth={lineWidth(r)} strokeLinejoin="round" {...dashTo(drawn)} />
                         );
                     })}
-                    {/* The guide dots disappear under the colour. */}
-                    <g opacity={1 - 0.75 * colour}>
+                    {/* Guide dots disappear under the colour, unless they were put down in colour. */}
+                    <g opacity={design.dotsInColour ? 1 : 1 - 0.75 * colour}>
                         {dots.map((p, i) => (
-                            <circle key={i} cx={p.x} cy={p.y} r={p.ring < 0 ? 0.03 : 0.02} fill={RICE} style={shownStyle(i < shownDots)} />
+                            <circle key={i} cx={p.x} cy={p.y} r={p.size ?? (p.ring < 0 ? 0.03 : 0.02)} fill={p.color ?? RICE} style={shownStyle(i < shownDots)} />
                         ))}
                     </g>
                 </g>
-                {colour > 0 && (
+                {colour > 0 && !design.dotsInColour && (
                     <g opacity={colour}>
                         {rings.map((r, i) => {
                             const s = ringStyle(design, r);
@@ -220,8 +226,8 @@ export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'col
                         key={i}
                         cx={p.x}
                         cy={p.y}
-                        r={p.ring < 0 ? 0.03 : 0.022}
-                        fill={RICE}
+                        r={p.size ?? (p.ring < 0 ? 0.03 : 0.022)}
+                        fill={p.color ?? RICE}
                         className={animate ? 'fade-in' : undefined}
                         style={animate ? { animationDelay: `${i * dotDelay}s`, animationDuration: '0.25s' } : undefined}
                     />

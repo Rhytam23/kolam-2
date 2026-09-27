@@ -27,6 +27,10 @@ export interface PracticePlan {
     kind: 'kolam' | 'radial';
     viewBox: string;
     dots: Point[];
+    /** The colour each dot is put down in, where the design's dots are coloured from the start. */
+    dotColours: Array<string | undefined>;
+    /** The radius of each dot, where it differs from dotRadius. */
+    dotSizes: Array<number | undefined>;
     dotRadius: number;
     lineWidth: number;
     strokes: Stroke[];
@@ -56,6 +60,8 @@ export const kolamPlan = (design: Design): PracticePlan => {
         kind: 'kolam',
         viewBox: `0 0 ${(design.cols - 1 + 2 * PAD) * KOLAM_UNIT} ${(design.rows - 1 + 2 * PAD) * KOLAM_UNIT}`,
         dots: dots.map(d => ({ x: (PAD + d.x) * KOLAM_UNIT, y: (PAD + d.y) * KOLAM_UNIT })),
+        dotColours: dots.map(() => undefined),
+        dotSizes: dots.map(() => undefined),
         dotRadius: KOLAM_UNIT * 0.09,
         lineWidth: KOLAM_UNIT * 0.07,
         strokes,
@@ -83,7 +89,7 @@ export const radialPlan = (design: RadialDesign): PracticePlan => {
         if (!shapesOfRing.length) return;
         const group = groups.length;
         groups.push(`ring ${group + 1}`);
-        shapes.push(SHAPES[ring.motif] ?? 'shapes');
+        shapes.push(ring.around ? 'centre circle' : SHAPES[ring.motif] ?? 'shapes');
         for (const s of shapesOfRing) {
             strokes.push({ dots: s.dots.map(nearest), pieces: s.pieces, start: s.whole, finish: s.finish, closed: s.closed, group });
         }
@@ -92,6 +98,8 @@ export const radialPlan = (design: RadialDesign): PracticePlan => {
         kind: 'radial',
         viewBox: '-1.1 -1.1 2.2 2.2',
         dots: guide.map(({ x, y }) => ({ x, y })),
+        dotColours: guide.map(d => d.color),
+        dotSizes: guide.map(d => d.size),
         dotRadius: 0.018,
         lineWidth: 0.014,
         strokes,

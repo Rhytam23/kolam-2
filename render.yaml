@@ -1,0 +1,15 @@
+# One-click hosting on Render (https://render.com): New > Blueprint, then pick this repository.
+# The free plan sleeps after 15 minutes without visitors and takes about a minute to wake up.
+services:
+  - type: web
+    name: solvix-kolam
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # The public address, e.g. https://solvix-kolam.onrender.com, for link previews.
+      # Set it after the first deploy, then deploy again.
+      - key: SITE_URL
+        sync: false

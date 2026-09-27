@@ -24,3 +24,10 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Installable app with offline support, only in the real build (not while developing).
+if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* the site still works without it */ });
+  });
+}

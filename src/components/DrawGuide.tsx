@@ -4,7 +4,7 @@ import { Card } from './ui/Card';
 import ColourGuide from './ColourGuide';
 import { useKolam } from './KolamContext';
 import { SYMMETRY_LABELS, designDots, loopPaths, rowPattern, type SymmetryName } from '../utils/kolamLogic';
-import { DOT_RADIUS, guideDotColour, radialGuideDots, ringPath, ringStyle, type Motif } from '../utils/radial';
+import { DOT_RADIUS, centreRadius, guideDotColour, radialGuideDots, ringPath, ringStyle, type Motif } from '../utils/radial';
 import { layerTransform, tracedBackground, tracedDots, tracedSize } from '../utils/traced';
 import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
@@ -54,7 +54,7 @@ const DrawGuide: React.FC = () => {
             const guideDots = radialGuideDots(radial);
             const dotsOf = (
                 <g fill={dotColour}>
-                    {guideDots.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={p.ring < 0 ? DOT_RADIUS * 1.3 : DOT_RADIUS} />)}
+                    {guideDots.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={p.size ?? (p.ring < 0 ? DOT_RADIUS * 1.3 : DOT_RADIUS)} fill={p.color} />)}
                 </g>
             );
             const joined = (ring: (typeof rings)[number], colour: string, animate = false) => (
@@ -76,27 +76,35 @@ const DrawGuide: React.FC = () => {
                         picture: bg,
                     },
                     {
-                        title: '2. Put down the small dots',
-                        text: `Start with one dot in the centre, then place ${total - 1} small dots around it: ${dotsPerRing}. Dots of the same ring are all the same distance from the centre.`,
-                        tip: 'Take a pinch of powder and touch it to the floor for each dot. Place opposite dots in pairs so the pattern stays even.',
+                        title: radial.dotsInColour ? '2. Put down the dots, in colour' : '2. Put down the small dots',
+                        text: radial.dotsInColour
+                            ? `Start with the ${nearestTraditional(radial.centre).name.toLowerCase()} dot in the centre, then place ${total - 1} dots around it: ${dotsPerRing}. Use the coloured powders now: once the curls are drawn round the dots, they cannot be coloured.`
+                            : `Start with one dot in the centre, then place ${total - 1} small dots around it: ${dotsPerRing}. Dots of the same ring are all the same distance from the centre.`,
+                        tip: radial.dotsInColour
+                            ? 'Keep a pinch of each colour ready and put down every dot of one colour before the next. Every dot will end up inside a line.'
+                            : 'Take a pinch of powder and touch it to the floor for each dot. Place opposite dots in pairs so the pattern stays even.',
                         picture: <>{bg}{dotsOf}</>,
                     },
                     ...rings.map((ring, i) => ({
                         title: `${3 + i}. Join the dots: ring ${i + 1}`,
                         text: ring.motif === 'curl'
                             ? `Wind a curl round each dot of this ring: ${ring.count} curls, pointing ${ring.flip ? 'in towards the centre' : 'outwards'}. Start at the pointed tip, come down one side, round the dot, and curl inwards.`
-                            : ring.count === 1
+                            : ring.around
+                                ? 'Draw a circle round the centre dot, the same distance from it all the way round.'
+                                : ring.count === 1
                                 ? 'Join the dots round the centre into a circle.'
                                 : `${i === 0 ? 'Starting next to the centre, join' : 'Join'} the dots of this ring into ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from dot to dot${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
                         tip: ring.motif === 'curl' ? 'Keep every curl the same size; the dots keep them evenly spaced.' : ring.filled ? 'Draw only the outline now; colour comes at the end.' : ring.double ? 'Draw each outline through the dots, then a second line just inside it. Keep both thin and even.' : 'Keep the line thin and even; alpana outlines are the design itself.',
                         picture: <>{bg}{rings.slice(0, i).map((r, j) => <g key={j}>{joined(r, dotColour)}</g>)}<g key={`${step}-${i}`}>{joined(ring, HIGHLIGHT, true)}</g>{dotsOf}</>,
                     })),
                     {
-                        title: `${3 + rings.length}. Fill the colours`,
-                        text: 'Fill each shape with its colour, working from the centre outwards so you never lean on finished parts. The dots disappear under the colour.',
+                        title: radial.dotsInColour ? `${3 + rings.length}. Finished` : `${3 + rings.length}. Fill the colours`,
+                        text: radial.dotsInColour
+                            ? 'Every dot now sits inside its curl. There is nothing to fill: the colour went down with the dots. Touch up any thin places in the lines.'
+                            : 'Fill each shape with its colour, working from the centre outwards so you never lean on finished parts. The dots disappear under the colour.',
                         tip: radial.rings.some(r => !r.filled) ? 'For alpana, trace the lines with rice paste (pithali) using a fingertip or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.',
                         colours: true,
-                        picture: <>{bg}{radial.rings.map((r, i) => { const st = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={st.fill} stroke={st.stroke} strokeWidth={st.strokeWidth} strokeLinejoin="round" />; })}<circle r={0.09} fill={radial.centre} stroke={radial.outline} strokeWidth={0.012} /></>,
+                        picture: <>{bg}{radial.rings.map((r, i) => { const st = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={st.fill} stroke={st.stroke} strokeWidth={st.strokeWidth} strokeLinejoin="round" />; })}<circle r={centreRadius(radial)} fill={radial.centre} stroke={radial.dotsInColour ? 'none' : radial.outline} strokeWidth={0.012} /></>,
                     },
                 ],
             };

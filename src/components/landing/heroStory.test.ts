@@ -26,7 +26,7 @@ describe('heroStory', () => {
 
     it('finishes the first design before moving on to the second', () => {
         expect(heroStory(0.2, 1)).toMatchObject({ scene: 0, step: 1, done: false });
-        expect(heroStory(0.46, 1)).toMatchObject({ scene: 0, step: 2, done: true });
+        expect(heroStory(0.46, 1)).toMatchObject({ scene: 0, step: 1, done: true });
         expect(heroStory(0.7, 1)).toMatchObject({ scene: 1, step: 1, done: false });
         const end = heroStory(1, 1);
         expect(end).toMatchObject({ scene: 1, step: 2, done: true, mix: 1 });

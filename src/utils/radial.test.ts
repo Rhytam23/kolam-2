@@ -79,3 +79,21 @@ describe('traced guide dots', () => {
     });
   });
 });
+
+describe('circle of curls', () => {
+  const design = makeRadial({ petals: 8, layers: 3, style: 'curls', ...PALETTES.darkFloor });
+
+  it('puts every dot inside a line, and every dot down in colour', () => {
+    const dots = radialGuideDots(design);
+    const curls = design.rings.filter(r => r.motif === 'curl');
+    const curlDots = curls.flatMap(ringDots);
+    expect(dots).toHaveLength(curlDots.length + 1); // one per curl, plus the centre
+    for (const d of dots) {
+      expect(d.color).toBeTruthy();
+      if (d.ring >= 0) expect(curlDots.some(c => Math.hypot(c.x - d.x, c.y - d.y) < 1e-9)).toBe(true);
+    }
+    // No dots outside the lines: nothing lies beyond the outermost curls.
+    const reach = Math.max(...curls.map(r => r.outer));
+    expect(Math.max(...dots.map(d => Math.hypot(d.x, d.y)))).toBeLessThan(reach);
+  });
+});

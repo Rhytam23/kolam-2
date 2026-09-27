@@ -72,16 +72,37 @@ CI runs the same checks and a Docker build on every push (`.github/workflows/ci.
 
 ## Deploy
 
-Build with `--build-arg SITE_URL=https://your-domain` (or `SITE_URL=… npm run build`) so shared
-links show the preview card with an absolute image URL.
+### Easiest: Render (free)
 
-The Docker image runs anywhere that runs containers (Render, Railway, Fly.io, Google Cloud Run,
+1. Merge your branch into `main` on GitHub.
+2. Sign in at [render.com](https://render.com) with GitHub, choose **New > Blueprint**, and pick this
+   repository. Render reads [`render.yaml`](render.yaml), builds the Docker image and gives you an
+   address such as `https://solvix-kolam.onrender.com`.
+3. In the service's **Environment** settings, set `SITE_URL` to that address and deploy again, so
+   shared links show the preview picture.
+4. Open the address on a phone and check that **Try a sample** in *Read a Design* works.
+
+The free plan sleeps when nobody has visited for 15 minutes; the first visit after that takes
+about a minute. A paid instance (or any host below) stays awake. Every push to `main` redeploys.
+
+### Anywhere else
+
+The Docker image runs anywhere that runs containers (Railway, Fly.io, Google Cloud Run,
 Hugging Face Spaces, a VPS). It listens on `$PORT` (default 8000) and has a health check at
-`/api/health`.
+`/api/health`. Build with `--build-arg SITE_URL=https://your-domain` so shared links show the
+preview card. Serve it over **HTTPS**: phones only allow installing the app, and the camera
+button, on secure sites.
 
 To host the frontend separately (for example on a static host), build it with
 `VITE_API_BASE_URL=https://your-api.example.com npm run build`, and start the API with
 `CORS_ORIGINS=https://your-frontend.example.com`. See `.env.example`.
+
+### Phones and tablets
+
+The site adapts to phones, tablets and desktops, and can be installed as an app: *Install the
+app* in the footer (Android, Chrome, Edge), or **Share > Add to Home Screen** in Safari on
+iPhone and iPad. Once installed it opens full screen, and the studio, guide and practice work
+offline; reading a photo needs a connection.
 
 ## API
 
@@ -134,6 +155,8 @@ backend/detection.py        dot detection (OpenCV)
 backend/principles.py       lattice fit, crossing/turn reading, symmetry
 backend/drawing.py          turning symmetry, colour palette and traced layers for any design
 backend/main.py             FastAPI app; also serves the built frontend
+public/                     app icons, manifest and the offline service worker (sw.js)
+render.yaml                 one-click hosting on Render
 ```
 
 ## Feedback

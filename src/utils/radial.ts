@@ -21,6 +21,8 @@ export interface RadialRing {
   double?: boolean;
   /** Point the motif towards the centre instead of away from it. */
   flip?: boolean;
+  /** A circle drawn round the centre dot rather than through guide dots of its own. */
+  around?: boolean;
 }
 
 export interface RadialDesign {
@@ -28,6 +30,11 @@ export interface RadialDesign {
   centre: string;
   background: string;
   outline: string;
+  /**
+   * The dots are put down in colour at the start, as in a pulli kolam: once the lines are drawn
+   * round them they cannot be coloured, and nothing is filled in at the end.
+   */
+  dotsInColour?: boolean;
 }
 
 export const RADIAL_STYLES: Record<RadialStyle, { label: string; hint: string }> = {
@@ -97,8 +104,7 @@ const makeCurls = ({ petals, layers, colors, background }: RadialOptions): Radia
   const accent = (i: number) => accents[i % accents.length];
   const dotRing = (count: number, radius: number, size: number, color: string, offset: boolean): RadialRing =>
     ({ motif: 'dot', count, inner: radius - size / 2, outer: radius + size / 2, width: 1, color, filled: true, offset });
-  const border = petals * 2 ** (layers - 1);
-  const rings: RadialRing[] = [dotRing(border, 0.975, 0.034, accent(1), false), dotRing(border, 0.975, 0.034, accent(0), true)];
+  const rings: RadialRing[] = [];
   // Bands are packed from the outside in. Each inner band has half as many curls as the one
   // outside it, so the curls stay about the same size, and each is as big as its band allows.
   let top = 0.93;
@@ -109,15 +115,18 @@ const makeCurls = ({ petals, layers, colors, background }: RadialOptions): Radia
     const R = fit * rc;
     const length = R * 2.7;
     const width = (2 * R) / length;
-    rings.push({ motif: 'curl', count, inner: rc - R * 0.95, outer: rc - R * 0.95 + length, width, color: line, filled: false, offset: false });
+    const outward: RadialRing = { motif: 'curl', count, inner: rc - R * 0.95, outer: rc - R * 0.95 + length, width, color: line, filled: false, offset: false };
     const inward: RadialRing = { motif: 'curl', count, inner: rc + R * 0.95 - length, outer: rc + R * 0.95, width, color: line, filled: false, offset: true, flip: true };
-    rings.push(inward, dotRing(count, curlDot(inward), R * 0.62, accent(k), true));
+    // Every curl is wound round its own dot, and the dots are coloured: one colour for the curls
+    // pointing out, another for those pointing in.
+    rings.push(outward, dotRing(count, curlDot(outward), R * 0.5, accent(k + 1), false));
+    rings.push(inward, dotRing(count, curlDot(inward), R * 0.5, accent(k), true));
     top = rc - 1.75 * R - 0.03;
   }
-  // A plain circle round the centre.
+  // A plain circle drawn round the centre dot.
   const r = Math.min(0.24, Math.max(0.08, top - 0.04));
-  rings.push({ motif: 'loop', count: 1, inner: -r, outer: r, width: 1, color: line, filled: false, offset: false });
-  return { rings, centre: accent(1), background, outline: line };
+  rings.push({ motif: 'loop', count: 1, inner: -r, outer: r, width: 1, color: line, filled: false, offset: false, around: true });
+  return { rings, centre: accent(1), background, outline: line, dotsInColour: true };
 };
 
 /**
@@ -250,9 +259,9 @@ const motifSegments = (motif: Motif, a: number, b: number, widthRatio: number): 
       const [toT1] = side(t1);
       const [, fromT2] = side(t2);
       const tip: Segment[] = [['M', b, 0], toT1, ...spiral(at, theta, 2 * Math.PI - theta, R, R), fromT2];
-      // The spiral starts from the round end and winds one and a quarter turns inwards.
-      const start = at(Math.PI, R * 0.68);
-      return [...tip, ['M', start[0], start[1]], ...spiral(at, Math.PI, Math.PI - 2.5 * Math.PI, R * 0.68, R * 0.14)];
+      // The spiral leaves the outline at the round end and winds in round the dot, leaving it clear.
+      const start = at(Math.PI, R);
+      return [...tip, ['M', start[0], start[1]], ...spiral(at, Math.PI, Math.PI - 2.4 * Math.PI, R, R * 0.46)];
     }
     case 'loop':
     case 'dot': {
@@ -312,6 +321,7 @@ export const ringPath = (ring: RadialRing) => {
 export const ringDots = (ring: RadialRing): Array<{ x: number; y: number }> => {
   const step = (2 * Math.PI) / ring.count;
   const local: Array<[number, number]> = [];
+  if (ring.around) return [];
   if (ring.motif === 'dot') {
     local.push([(ring.inner + ring.outer) / 2, 0]);
   } else if (ring.motif === 'curl') {
@@ -352,15 +362,38 @@ export const DOT_RADIUS = 0.016;
 /** Guide dots closer than this are put down as one. */
 const MERGE = 0.05;
 
-export const radialGuideDots = (design: RadialDesign) => {
-  const dots: Array<{ x: number; y: number; ring: number }> = [{ x: 0, y: 0, ring: -1 }];
+export interface GuideDot {
+  x: number;
+  y: number;
+  /** Index, from the centre outwards, of the ring that first needs this dot (-1 for the centre). */
+  ring: number;
+  /** The colour the dot is put down in, for designs whose dots are coloured from the start. */
+  color?: string;
+  /** Its radius, when it is one of the design's coloured dots. */
+  size?: number;
+}
+
+export const radialGuideDots = (design: RadialDesign): GuideDot[] => {
+  const dots: GuideDot[] = [{ x: 0, y: 0, ring: -1 }];
   [...design.rings].reverse().forEach((ring, index) => {
     for (const p of ringDots(ring)) {
       if (!dots.some(d => Math.hypot(d.x - p.x, d.y - p.y) < MERGE)) dots.push({ ...p, ring: index });
     }
   });
+  if (design.dotsInColour) {
+    // Each dot takes the colour of the coloured dot drawn at the same place.
+    const coloured = design.rings.filter(r => r.motif === 'dot').flatMap(r => ringDots(r).map(p => ({ ...p, color: r.color, size: (r.outer - r.inner) / 2 })));
+    for (const d of dots) {
+      const match = d.ring < 0 ? { color: design.centre, size: centreRadius(design) } : coloured.find(c => Math.hypot(c.x - d.x, c.y - d.y) < MERGE);
+      d.color = match?.color;
+      d.size = match?.size;
+    }
+  }
   return dots;
 };
+
+/** Radius of the centre dot as drawn in the finished design. */
+export const centreRadius = (design: RadialDesign) => (design.dotsInColour ? 0.06 : 0.09);
 
 /** Dot colour that shows up on the ground. */
 export const guideDotColour = (background: string) => {
@@ -385,10 +418,10 @@ export const radialToSvg = (design: RadialDesign, size = 480, { dots = false } =
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1.1 -1.1 2.2 2.2" width="${size}" height="${size}">`
     + `<rect x="-1.1" y="-1.1" width="2.2" height="2.2" fill="${design.background}"/>`
     + rings
-    + `<circle r="0.09" fill="${design.centre}" stroke="${design.outline}" stroke-width="0.012"/>`
+    + `<circle r="${centreRadius(design)}" fill="${design.centre}"${design.dotsInColour ? '' : ` stroke="${design.outline}" stroke-width="0.012"`}/>`
     + (dots
       ? `<g fill="${guideDotColour(design.background)}">`
-        + radialGuideDots(design).map(p => `<circle cx="${fmt(p.x)}" cy="${fmt(p.y)}" r="${DOT_RADIUS}"/>`).join('')
+        + radialGuideDots(design).filter(p => !p.color).map(p => `<circle cx="${fmt(p.x)}" cy="${fmt(p.y)}" r="${DOT_RADIUS}"/>`).join('')
         + '</g>'
       : '')
     + '</svg>';
@@ -439,6 +472,10 @@ export const ringStrokes = (ring: RadialRing): MotifStroke[] => {
     const c = Math.cos(angle);
     const s = Math.sin(angle);
     const turn = (x: number, y: number): Pt => [x * c - y * s, x * s + y * c];
+    if (ring.around) {
+      strokes.push({ dots: [[0, 0]], pieces: [], whole: rotate(base, angle), closed: false });
+      continue;
+    }
     if (ring.motif === 'curl') {
       const centre = curlDot(ring);
       strokes.push({ dots: [turn(centre, 0)], pieces: [], whole: rotate(base, angle), closed: false });

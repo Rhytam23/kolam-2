@@ -15,7 +15,8 @@ export interface HeroScene {
 export const SCENES: readonly HeroScene[] = [
     {
         name: 'Circle of curls',
-        steps: ['Place the dots', 'Wind a curl round each dot', 'Colour the dots'],
+        // A pulli kolam: the dots go down in colour first, and each curl is wound round one.
+        steps: ['Place the coloured dots', 'Wind a curl round each dot'],
         design: { style: 'curls', petals: 8, layers: 3, palette: 'darkFloor' },
     },
     {
@@ -46,11 +47,13 @@ export interface HeroStory {
  */
 export const heroStory = (scroll: number, intro: number): HeroStory => {
     const enter = segment(scroll, 0, 0.1);
-    const first = { dots: Math.max(intro, segment(scroll, 0, 0.05)), lines: segment(scroll, 0.1, 0.34), colour: segment(scroll, 0.34, 0.42) };
+    // The first design's dots are coloured from the start, so it has no colouring step.
+    const first = { dots: Math.max(intro, segment(scroll, 0, 0.05)), lines: segment(scroll, 0.1, 0.42), colour: 0 };
     const second = { dots: segment(scroll, 0.55, 0.63), lines: segment(scroll, 0.63, 0.82), colour: segment(scroll, 0.82, 0.92) };
     const mix = segment(scroll, 0.5, 0.55);
     const scene = mix < 0.5 ? 0 : 1;
     const current = scene === 0 ? first : second;
     const step = current.colour > 0 ? 2 : current.lines > 0 ? 1 : 0;
-    return { enter, first, second, mix, scene, step, done: current.colour >= 1 };
+    const done = scene === 0 ? first.lines >= 1 : second.colour >= 1;
+    return { enter, first, second, mix, scene, step, done };
 };

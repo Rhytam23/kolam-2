@@ -199,6 +199,13 @@ const Hero: React.FC<HeroProps> = props => {
                             ? <LearnButtons scene={scene} />
                             : <p className="text-sm text-rice/75">Keep scrolling to draw it ↓</p>}
                     </div>
+                    <button
+                        type="button"
+                        className="mt-1 text-xs text-rice/75 underline decoration-brass/60 underline-offset-4 hover:text-brass-light"
+                        onClick={() => document.getElementById('process')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                        Skip the drawing
+                    </button>
                 </div>
             </div>
         </section>

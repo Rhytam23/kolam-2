@@ -1,13 +1,14 @@
 import React from 'react';
 import Diya from './landing/Diya';
 import KolamDivider from './landing/KolamDivider';
+import InstallApp from './InstallApp';
 
 const REPO = 'https://github.com/Rhytam23/kolam-2';
 
 const Footer: React.FC = () => (
     <footer className="floor-bg text-rice pt-10 pb-8 px-4">
         <KolamDivider tone="rice" spacing={40} className="mb-10" />
-        <div className="container mx-auto grid gap-8 md:grid-cols-3 text-sm">
+        <div className="container mx-auto grid gap-8 sm:grid-cols-2 lg:grid-cols-4 text-sm">
             <div>
                 <p className="font-heading text-2xl brass-text">SOLVIX Kolam AI</p>
                 <p className="mt-2 text-rice/80">
@@ -20,6 +21,10 @@ const Footer: React.FC = () => (
                 <p className="text-rice/80">
                     Photos are analysed on our server and are not stored. Saved designs stay in your own browser unless you export them.
                 </p>
+            </div>
+            <div id="install">
+                <p className="font-semibold text-brass-light mb-2">Use it as an app</p>
+                <InstallApp />
             </div>
             <div>
                 <p className="font-semibold text-brass-light mb-2">Open source</p>
