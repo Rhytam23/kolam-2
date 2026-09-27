@@ -1,13 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BRAND } from '../lib/brand';
 import { Link } from '../lib/router';
-import { TRADITIONS } from '../data/traditions';
+import { READ_A_PHOTO, TRADITIONS, readerPath, traditionBySlug } from '../data/traditions';
 
-const PAGES = [
-    { label: 'Read a photo', to: '/read' },
-    { label: 'Studio', to: '/studio' },
-    { label: 'About', to: '/about' },
-] as const;
+/** On an art form's pages "Read a photo" opens that art form's reader; elsewhere, the page that explains it. */
+const pagesFor = (path: string) => {
+    const tradition = traditionBySlug(path.split('/')[1]);
+    return [
+        { label: 'Read a photo', to: tradition ? readerPath(tradition.slug) : READ_A_PHOTO },
+        { label: 'Studio', to: '/studio' },
+        { label: 'About', to: '/about' },
+    ];
+};
 
 const Header: React.FC<{ path: string }> = ({ path }) => {
     // 'top': clear, over the page's first section; 'floor': over a dark section; 'paper': over the tools.
@@ -47,6 +51,7 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
     }[look];
     const linkClass = dark ? 'text-rice hover:text-brass-light' : 'text-ink hover:text-kaavi';
     const current = (to: string) => (path === to ? { 'aria-current': 'page' as const } : {});
+    const PAGES = pagesFor(path);
 
     return (
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${(menuOpen || formsOpen) && look === 'top' ? 'bg-floor/95' : bar}`}>

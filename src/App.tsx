@@ -5,17 +5,22 @@ import { KolamProvider } from './components/KolamContext';
 import { FloorArtDefs } from './components/landing/FloorArt';
 import Landing from './pages/Landing';
 import TraditionPage from './pages/TraditionPage';
-import { AboutPage, NotFoundPage, ReadPage, StudioPage } from './pages/Pages';
-import { ROUTES, traditionBySlug } from './data/traditions';
+import { AboutPage, NotFoundPage, StudioPage } from './pages/Pages';
+import { ReadGuidePage, TraditionReadPage } from './pages/ReadPages';
+import { READ_A_PHOTO, ROUTES, traditionBySlug } from './data/traditions';
 import { usePath } from './lib/router';
 
 const page = (path: string) => {
     if (path === '/') return <Landing />;
-    if (path === '/read') return <ReadPage />;
+    if (path === READ_A_PHOTO) return <ReadGuidePage />;
     if (path === '/studio') return <StudioPage />;
     if (path === '/about') return <AboutPage />;
-    const tradition = traditionBySlug(path.slice(1));
-    return tradition ? <TraditionPage key={tradition.slug} tradition={tradition} /> : <NotFoundPage />;
+    // /alpana is the art form's page, /alpana/read-a-photo its photo reader.
+    const [, slug, sub] = path.split('/');
+    const tradition = traditionBySlug(slug);
+    if (tradition && sub === undefined) return <TraditionPage key={tradition.slug} tradition={tradition} />;
+    if (tradition && `/${sub}` === READ_A_PHOTO) return <TraditionReadPage key={tradition.slug} tradition={tradition} />;
+    return <NotFoundPage />;
 };
 
 const App: React.FC = () => {

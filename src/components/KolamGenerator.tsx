@@ -89,7 +89,9 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
 
     const cards = useMemo(() => scope.presets.map(p => ({ ...p, svg: presetSvg(p.spec), background: presetBackground(p.spec) })), [scope.presets]);
     const tabs: Array<[Mode, string]> = scope.modes.map(m => [m, MODE_LABELS[m]]);
-    if (traced && scope === FULL_STUDIO) tabs.push(['traced', MODE_LABELS.traced]);
+    // A design read from a photo can be of another kind than this studio offers: keep its tab.
+    if (traced && !tabs.some(([m]) => m === 'traced')) tabs.push(['traced', MODE_LABELS.traced]);
+    if (!tabs.some(([m]) => m === mode)) tabs.push([mode, MODE_LABELS[mode]]);
 
     return (
         <section className="py-20 px-4">
@@ -199,7 +201,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                         {mode === 'traced' && traced && (
                             <p className="text-sm text-muted">
                                 Your photo, traced into {traced.layers.length} colour layer{traced.layers.length === 1 ? '' : 's'}. The guide below shows
-                                which colour to lay down first. To make a new design in the same spirit, open <strong>Rangoli & alpana</strong>.
+                                which colour to lay down first. To make a new design in the same spirit, choose <strong>{MODE_LABELS[tabs.find(([m]) => m !== 'traced')?.[0] ?? 'radial']}</strong> above.
                             </p>
                         )}
 

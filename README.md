@@ -23,7 +23,7 @@ without dots (alpana, most rangoli) are read by their turning symmetry and colou
 | | |
 | --- | --- |
 | **Art forms** | Eleven floor-art traditions, each with its own page and colours: kolam (`/kolam`), muggulu (`/muggulu`), rangoli (`/rangoli`), alpana (`/alpana`), pookalam (`/pookalam`), mandana (`/mandana`), aipan (`/aipan`), aripan (`/aripan`), jhoti chita (`/jhoti-chita`), chowk purana (`/chowk-purana`) and chittara (`/chittara`). Each page tells when and how it is made, draws its signature design, and has its own studio, guide and practice. |
-| **Read a design** | Take or upload a photo. For dot kolams, OpenCV finds the dots, fits a rotation- and perspective-tolerant grid, and reads every gap between two dots as a crossing, a turn-back or a join. Free-hand designs are traced colour by colour. |
+| **Read a design** | `/read-a-photo` explains the steps; each art form has its own reader in its own colours, such as `/alpana/read-a-photo`, with that art form's design as the sample. Take or upload a photo. For dot kolams, OpenCV finds the dots, fits a rotation- and perspective-tolerant grid, and reads every gap between two dots as a crossing, a turn-back or a join. Free-hand designs are traced colour by colour. |
 | **Design principles** | Dot grid and dots per row (e.g. `1-3-5-3-1`), crossings/turns/joins, number of separate lines (1 = sikku), mirror and turning symmetry (e.g. "8-fold"), and the colours used, each named after its traditional material (rice flour, kaavi, turmeric, kumkum…). |
 | **Recreate** | Dot kolams are redrawn as clean lines on top of your photo; fix missed dots by hand and recreate. Free-hand designs are traced into filled colour layers. |
 | **Make a similar design** | One click starts a new design in the studio with the same grid, or the same symmetry and colours for rangoli and alpana. |
@@ -89,7 +89,7 @@ CI runs the same checks and a Docker build on every push (`.github/workflows/ci.
    address such as `https://chittara.onrender.com`.
 3. In the service's **Environment** settings, set `SITE_URL` to that address and deploy again, so
    shared links show the preview picture.
-4. Open the address on a phone and check that **Try a sample** in *Read a Design* works.
+4. Open the address on a phone and open an art form's reader, such as `/kolam/read-a-photo`, and check that **Try a sample** works.
 
 The free plan sleeps when nobody has visited for 15 minutes; the first visit after that takes
 about a minute. A paid instance (or any host below) stays awake. Every push to `main` redeploys.
@@ -164,7 +164,7 @@ src/utils/geometric.ts      straight-line designs (muggu, chowki, chittara, chow
 src/utils/practice.ts       practice mode: which dot comes next, and what each tap draws
 src/data/traditions.ts      the art forms: facts, script, colours, designs; also every page's address and title
 src/data/designs.ts         design presets, built and opened in the studio
-src/pages/                  the landing, one page per art form, /read, /studio, /about
+src/pages/                  the landing, one page and one photo reader per art form, /read-a-photo, /studio, /about
 src/lib/router.ts           page addresses without a router library
 src/lib/theme.ts            each page's colours, applied as CSS variables
 src/lib/colours.ts          traditional colours, materials and colour sets

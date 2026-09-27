@@ -12,7 +12,7 @@ import Diya from '../components/landing/Diya';
 import Reveal from '../components/landing/Reveal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { applyPreset, presetBackground } from '../data/designs';
-import { traditionBySlug, type Tradition } from '../data/traditions';
+import { readerPath, traditionBySlug, type Tradition } from '../data/traditions';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
 import { Link, currentSearch, navigate } from '../lib/router';
 import { useTimeline } from '../hooks/motion';
@@ -59,10 +59,12 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
         return () => applyTheme(DEFAULT_THEME);
     }, [t]);
 
-    // Open the page on its signature design, or on the one asked for (?design=2).
+    // Open the page on its signature design, or on the one asked for (?design=2). A design read from a
+    // photo (?from=photo) is kept as it is.
     useEffect(() => {
-        const asked = Number(new URLSearchParams(currentSearch()).get('design'));
-        applyPreset(k, (t.designs[asked] ?? t.designs[0]).spec);
+        const search = new URLSearchParams(currentSearch());
+        if (search.get('from') === 'photo') return;
+        applyPreset(k, (t.designs[Number(search.get('design'))] ?? t.designs[0]).spec);
     }, [t.slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const scope: StudioScope = useMemo(() => ({
@@ -92,10 +94,11 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
                         <h1 className="font-heading text-5xl md:text-6xl text-rice mt-1">{t.name}</h1>
                         <div className="brass-rule max-w-sm mx-auto lg:mx-0 my-6" aria-hidden><Diya className="h-9 w-9 shrink-0" /></div>
                         <p className="text-lg text-rice/90 max-w-xl mx-auto lg:mx-0">{t.about[0]}</p>
-                        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+                        <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3 justify-center lg:justify-start">
                             <Button variant="brass" onClick={() => openGuide('steps')}>Learn to draw it</Button>
                             <Button variant="outline-light" onClick={() => openGuide('practice')}>Practise it</Button>
                             <Button variant="outline-light" onClick={() => navigate(`/${t.slug}#generator`)}>Make your own</Button>
+                            <Button variant="outline-light" onClick={() => navigate(readerPath(t.slug))}>Read a photo</Button>
                         </div>
                     </div>
                     <LiveDesign tradition={t} />

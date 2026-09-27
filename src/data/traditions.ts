@@ -290,15 +290,27 @@ export const TRADITIONS: Tradition[] = [
 
 export const traditionBySlug = (slug: string) => TRADITIONS.find(t => t.slug === slug);
 
+/** The page that explains reading a photo; each art form has its own reader under it (/alpana/read-a-photo). */
+export const READ_A_PHOTO = '/read-a-photo';
+export const readerPath = (slug: string) => `/${slug}${READ_A_PHOTO}`;
+
+/** "a kolam", "an alpana", "an aipan". */
+export const withArticle = (name: string) => `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name.toLowerCase()}`;
+
 /** Paths the app answers, with the title and description each page is shared with. */
 export const ROUTES: Array<{ path: string; title: string; description: string }> = [
   { path: '/', title: 'Chittara – Kolam, rangoli and alpana', description: 'Read, learn and draw the floor art of India: kolam, rangoli, alpana, muggulu, pookalam, mandana and more, dots first, then lines, then colour.' },
-  { path: '/read', title: 'Read a design from a photo · Chittara', description: 'Photograph a kolam, rangoli or alpana to find its dots, symmetry and colours, and redraw it.' },
+  { path: READ_A_PHOTO, title: 'How to read a design from a photo · Chittara', description: 'Choose the art form, photograph the design, and Chittara finds its dots, symmetry and colours so you can draw it again.' },
   { path: '/studio', title: 'Design Studio · Chittara', description: 'Make your own kolam, rangoli, alpana or muggulu, then learn to draw it step by step.' },
   { path: '/about', title: 'About · Chittara', description: 'Why Chittara was made, what its name means, and the research behind it.' },
   ...TRADITIONS.map(t => ({
     path: `/${t.slug}`,
     title: `${t.name} (${t.script.word}) · Chittara`,
     description: `${t.name} from ${t.region}: ${t.about[0]}`,
+  })),
+  ...TRADITIONS.map(t => ({
+    path: readerPath(t.slug),
+    title: `Read a photo of ${withArticle(t.name)} · Chittara`,
+    description: `Photograph ${withArticle(t.name)} and Chittara finds its dots, symmetry and colours, then helps you draw it again.`,
   })),
 ];

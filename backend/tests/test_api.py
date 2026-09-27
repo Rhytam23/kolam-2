@@ -41,6 +41,13 @@ def test_analyze_with_corrected_dots():
     assert len(res.json()['dots']) == len(first['dots']) - 1
 
 
+def test_art_forms_without_dots_skip_the_grid():
+    body = upload(crossing_kolam(3, 3), preset='clean-scan', grid='false').json()
+    assert body['lattice'] is None and body['design'] is None
+    assert body['dots'] == []
+    assert body['layers']
+
+
 def test_rejects_bad_input():
     img = crossing_kolam(2, 2)
     assert upload(img, preset='nope').status_code == 422

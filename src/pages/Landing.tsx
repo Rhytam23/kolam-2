@@ -8,10 +8,10 @@ import TraditionGallery from '../components/TraditionGallery';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Link, navigate } from '../lib/router';
-import { TRADITIONS } from '../data/traditions';
+import { READ_A_PHOTO, TRADITIONS } from '../data/traditions';
 
 const TOOLS = [
-    { to: '/read', title: 'Read a design from a photo', text: 'Photograph a kolam, rangoli or alpana: find its dots, symmetry and colours, and redraw it.' },
+    { to: READ_A_PHOTO, title: 'Read a design from a photo', text: 'Choose the art form, photograph the design, and find its dots, symmetry and colours to draw it again.' },
     { to: '/studio', title: 'Design Studio', text: 'Make your own design in any style, change its size and colours, and download it.' },
     { to: '/studio#walkthrough', title: 'Learn and practise', text: 'Follow the steps one at a time, then draw it yourself by tapping the dots in order.' },
 ];
@@ -19,7 +19,7 @@ const TOOLS = [
 /** The home page: the drawing hero, every art form, how designs are made, and the tools. */
 const Landing: React.FC = () => (
     <>
-        <ErrorBoundary name="home page"><Hero onStart={() => navigate('/read')} onGenerate={() => navigate('/studio')} /></ErrorBoundary>
+        <ErrorBoundary name="home page"><Hero onStart={() => navigate(READ_A_PHOTO)} onGenerate={() => navigate('/studio')} /></ErrorBoundary>
         <div className="floor-bg">
             <KolamDivider tone="rice" spacing={40} className="pt-4" />
             <section id="traditions" className="scroll-mt-16 py-20 px-4">
