@@ -16,10 +16,10 @@ export default {
       },
       fontFamily: {
         heading: ['"Tiro Tamil"', 'Georgia', 'serif'],
-        sans: ['"Mukta Malar"', 'system-ui', 'sans-serif'],
+        sans: ['"Hind Madurai"', 'system-ui', 'sans-serif'],
+        script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', 'serif'],
       },
       animation: {
-        'spin-slow': 'spin 90s linear infinite',
         'fade-in-down': 'fade-in-down 0.5s ease-out forwards',
       },
       keyframes: {

@@ -3,6 +3,14 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+// Self-hosted fonts (no third-party requests). Each file only downloads when its script appears on the page.
+import '@fontsource/hind-madurai/400.css';
+import '@fontsource/hind-madurai/600.css';
+import '@fontsource/hind-madurai/700.css';
+import '@fontsource/tiro-tamil/400.css';
+import '@fontsource/tiro-telugu/400.css';
+import '@fontsource/tiro-devanagari-hindi/400.css';
+import '@fontsource/tiro-bangla/400.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
