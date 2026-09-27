@@ -17,6 +17,8 @@ export interface RadialRing {
   filled: boolean;
   /** Turn the ring by half a step so its motifs sit between the ones of the ring outside it. */
   offset: boolean;
+  /** Draw a second, smaller outline inside each motif, as alpana petals are painted. */
+  double?: boolean;
 }
 
 export interface RadialDesign {
@@ -28,14 +30,13 @@ export interface RadialDesign {
 
 export const RADIAL_STYLES: Record<RadialStyle, { label: string; hint: string }> = {
   lotus: { label: 'Lotus', hint: 'Layers of filled lotus petals, as in many rangolis.' },
-  alpana: { label: 'Alpana', hint: 'White outlined petals and dots, as painted with rice paste in Bengal.' },
+  alpana: { label: 'Alpana', hint: 'Double-outlined lotus petals and dots, as painted with rice paste in Bengal.' },
   marigold: { label: 'Marigold', hint: 'Many small rounded petals, like a flower-petal rangoli (pookalam).' },
   star: { label: 'Star', hint: 'Pointed leaves with a ring of dots at the edge.' },
 };
 
-const MOTIFS: Record<RadialStyle, Motif[]> = {
+const MOTIFS: Record<Exclude<RadialStyle, 'alpana'>, Motif[]> = {
   lotus: ['lotus', 'lotus', 'leaf', 'lotus'],
-  alpana: ['loop', 'lotus', 'loop', 'lotus'],
   marigold: ['drop', 'drop', 'drop', 'drop'],
   star: ['leaf', 'leaf', 'lotus', 'leaf'],
 };
@@ -48,17 +49,46 @@ export interface RadialOptions {
   background: string;
 }
 
-export const makeRadial = ({ petals, layers, style, colors, background }: RadialOptions): RadialDesign => {
+/**
+ * Alpana: a border of dots, then bands of double-outlined petals that touch their neighbours, with
+ * teardrops on the outside and lotus petals towards the centre.
+ */
+const makeAlpana = ({ petals, layers, colors, background }: RadialOptions): RadialDesign => {
+  const rings: RadialRing[] = [{ motif: 'dot', count: petals * 2, inner: 0.95, outer: 1, width: 1, color: colors[0], filled: true, offset: false }];
+  const band = 0.77 / layers;
+  for (let k = 0; k < layers; k++) {
+    const outer = 0.9 - k * band;
+    const inner = Math.max(0.13, outer - band * 1.3);
+    const motif: Motif = k === 0 && layers > 1 ? 'drop' : 'lotus';
+    const gap = (2 * Math.PI * ((inner + outer) / 2)) / petals;
+    rings.push({
+      motif,
+      count: petals,
+      inner,
+      outer,
+      width: Math.min(motif === 'drop' ? 0.9 : 1.1, (1.05 * gap) / (outer - inner)),
+      color: colors[k % colors.length],
+      filled: false,
+      offset: k % 2 === 0,
+      double: true,
+    });
+  }
+  return { rings, centre: colors[0], background, outline: colors[0] };
+};
+
+export const makeRadial = (options: RadialOptions): RadialDesign => {
+  const { petals, layers, style, colors, background } = options;
+  if (style === 'alpana') return makeAlpana(options);
   const rings: RadialRing[] = [];
   const band = 0.82 / layers;
-  const outline = style === 'alpana' ? colors[0] : '#FFFFFF';
-  if (style === 'star' || style === 'alpana') {
+  const outline = '#FFFFFF';
+  if (style === 'star') {
     rings.push({ motif: 'dot', count: petals * 2, inner: 0.94, outer: 1, width: 1, color: colors[0], filled: true, offset: false });
   }
   // How much of the space between neighbouring motifs each motif fills.
-  const fullness = { lotus: 0.95, alpana: 0.75, marigold: 0.8, star: 0.8 }[style];
+  const fullness = { lotus: 0.95, marigold: 0.8, star: 0.8 }[style];
   for (let k = 0; k < layers; k++) {
-    const outer = (style === 'star' || style === 'alpana' ? 0.9 : 1) - k * band;
+    const outer = (style === 'star' ? 0.9 : 1) - k * band;
     const inner = Math.max(0.12, outer - band * 1.6);
     const count = style === 'marigold' ? petals * (k === 0 ? 2 : 1) : petals;
     const gap = (2 * Math.PI * ((inner + outer) / 2)) / count;
@@ -68,8 +98,8 @@ export const makeRadial = ({ petals, layers, style, colors, background }: Radial
       inner,
       outer,
       width: Math.min(0.9, (fullness * gap) / (outer - inner)),
-      color: colors[(k + (style === 'alpana' ? 0 : 1)) % colors.length],
-      filled: style !== 'alpana',
+      color: colors[(k + 1) % colors.length],
+      filled: true,
       offset: k % 2 === 1,
     });
   }
@@ -128,8 +158,15 @@ const rotate = (segments: Segment[], angle: number) => {
 export const ringPath = (ring: RadialRing) => {
   const step = (2 * Math.PI) / ring.count;
   const base = motifSegments(ring.motif, ring.inner, ring.outer, ring.width);
+  // The inner outline of a double motif: a little shorter and narrower, sitting inside the first.
+  const inset = (ring.outer - ring.inner) * 0.17;
+  const inner = ring.double ? motifSegments(ring.motif, ring.inner + inset * 1.4, ring.outer - inset, ring.width * 0.8) : [];
   let path = '';
-  for (let i = 0; i < ring.count; i++) path += rotate(base, i * step + (ring.offset ? step / 2 : 0) - Math.PI / 2);
+  for (let i = 0; i < ring.count; i++) {
+    const angle = i * step + (ring.offset ? step / 2 : 0) - Math.PI / 2;
+    path += rotate(base, angle);
+    if (ring.double) path += rotate(inner, angle);
+  }
   return path;
 };
 

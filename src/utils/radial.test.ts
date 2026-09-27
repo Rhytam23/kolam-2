@@ -8,7 +8,7 @@ describe('radial designs', () => {
     for (const style of Object.keys(RADIAL_STYLES) as RadialStyle[]) {
       const design = makeRadial({ petals: 7, layers: 3, style, ...PALETTES.pongal });
       for (const ring of design.rings) {
-        expect(ringPath(ring).split('M').length - 1).toBe(ring.count);
+        expect(ringPath(ring).split('M').length - 1).toBe(ring.count * (ring.double ? 2 : 1));
         const numbers = ringPath(ring).match(/-?\d+(\.\d+)?/g)!.map(Number);
         for (let i = 0; i < numbers.length; i += 2) expect(Math.hypot(numbers[i], numbers[i + 1])).toBeLessThanOrEqual(1.25);
       }

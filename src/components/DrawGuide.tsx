@@ -78,7 +78,7 @@ const DrawGuide: React.FC = () => {
                     ...rings.map((ring, i) => ({
                         title: `${3 + i}. Join the dots: ring ${i + 1}`,
                         text: `${i === 0 ? 'Starting next to the centre, join' : 'Join'} the dots of this ring into ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from dot to dot${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
-                        tip: ring.filled ? 'Draw only the outline now; colour comes at the end.' : 'Keep the line thin and even; alpana outlines are the design itself.',
+                        tip: ring.filled ? 'Draw only the outline now; colour comes at the end.' : ring.double ? 'Draw each outline through the dots, then a second line just inside it. Keep both thin and even.' : 'Keep the line thin and even; alpana outlines are the design itself.',
                         picture: <>{bg}{rings.slice(0, i).map((r, j) => <g key={j}>{joined(r, dotColour)}</g>)}<g key={`${step}-${i}`}>{joined(ring, HIGHLIGHT, true)}</g>{dotsOf}</>,
                     })),
                     {

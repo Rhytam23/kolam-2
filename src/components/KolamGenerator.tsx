@@ -7,6 +7,7 @@ import ColourGuide from './ColourGuide';
 import { useKolam, type Mode, type Shape } from './KolamContext';
 import { SYMMETRY_LABELS, designToSvg, diamondDesign, makeSingleLine, squareDesign } from '../utils/kolamLogic';
 import { RADIAL_STYLES, makeRadial, radialToSvg, type RadialStyle } from '../utils/radial';
+import type { Design } from '../types/kolam';
 import { PALETTES, type PaletteName } from '../lib/colours';
 import { artworkColours, artworkSvg, kolamDotColour } from '../lib/artwork';
 import { downloadBlob, downloadKolamFile, svgToPng } from '../lib/kolamFile';
@@ -48,48 +49,33 @@ const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteNa
     </div>
 );
 
-type Example = { title: string; mode: Mode; apply: (k: ReturnType<typeof useKolam>) => void; svg: string };
+type Example = { title: string; kind: string; detail: string; mode: Mode; background: string; apply: (k: ReturnType<typeof useKolam>) => void; svg: string };
+
+const kolamExample = (title: string, detail: string, design: Design, palette: PaletteName, apply: Example['apply']): Example => {
+    const { background, colors } = PALETTES[palette];
+    return { title, kind: 'Dot kolam', detail, mode: 'kolam', background, apply, svg: designToSvg(design, { background, stroke: colors, dot: kolamDotColour(background) }) };
+};
+
+const radialExample = (title: string, kind: string, detail: string, style: RadialStyle, petals: number, layers: number, palette: PaletteName): Example => ({
+    title, kind, detail, mode: 'radial', background: PALETTES[palette].background,
+    svg: radialToSvg(makeRadial({ petals, layers, style, ...PALETTES[palette] })),
+    apply: k => { k.setRadialStyle(style); k.setPetals(petals); k.setLayers(layers); k.setRadialPalette(palette); },
+});
 
 const EXAMPLES: Example[] = [
-    {
-        title: 'Sikku kolam · one line',
-        mode: 'kolam',
-        svg: designToSvg(makeSingleLine(squareDesign(5)), { background: PALETTES.kaavi.background, stroke: PALETTES.kaavi.colors, dot: kolamDotColour(PALETTES.kaavi.background) }),
-        apply: k => { k.setUseScan(false); k.setShape('square'); k.setSize(5); k.setSingleLine(true); k.setKolamPalette('kaavi'); },
-    },
-    {
-        title: 'Diamond pulli kolam',
-        mode: 'kolam',
-        svg: designToSvg(diamondDesign(7), { background: PALETTES.riceFlour.background, stroke: PALETTES.riceFlour.colors, dot: '#F7F3EA' }),
-        apply: k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(7); k.setSingleLine(false); k.setKolamPalette('riceFlour'); },
-    },
-    {
-        title: 'Pongal colours · 4 loops',
-        mode: 'kolam',
-        svg: designToSvg(squareDesign(4), { background: PALETTES.pongal.background, stroke: PALETTES.pongal.colors, dot: '#3B2416' }),
-        apply: k => { k.setUseScan(false); k.setShape('square'); k.setSize(4); k.setSingleLine(false); k.setKolamPalette('pongal'); },
-    },
-    {
-        title: 'Lotus rangoli',
-        mode: 'radial',
-        svg: radialToSvg(makeRadial({ petals: 8, layers: 3, style: 'lotus', ...PALETTES.pongal })),
-        apply: k => { k.setRadialStyle('lotus'); k.setPetals(8); k.setLayers(3); k.setRadialPalette('pongal'); },
-    },
-    {
-        title: 'Alpana',
-        mode: 'radial',
-        svg: radialToSvg(makeRadial({ petals: 8, layers: 3, style: 'alpana', ...PALETTES.riceFlour })),
-        apply: k => { k.setRadialStyle('alpana'); k.setPetals(8); k.setLayers(3); k.setRadialPalette('riceFlour'); },
-    },
-    {
-        title: 'Diwali star',
-        mode: 'radial',
-        svg: radialToSvg(makeRadial({ petals: 6, layers: 2, style: 'star', ...PALETTES.diwali })),
-        apply: k => { k.setRadialStyle('star'); k.setPetals(6); k.setLayers(2); k.setRadialPalette('diwali'); },
-    },
+    kolamExample('Sikku kolam', '13 dots, one unbroken line', makeSingleLine(diamondDesign(5)), 'kaavi',
+        k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(5); k.setSingleLine(true); k.setKolamPalette('kaavi'); }),
+    kolamExample('Pulli kolam', '25 dots in rice flour on a red floor', diamondDesign(7), 'riceFlour',
+        k => { k.setUseScan(false); k.setShape('diamond'); k.setSize(7); k.setSingleLine(false); k.setKolamPalette('riceFlour'); }),
+    kolamExample('Pongal kolam', '4 × 4 dots, each line in its own colour', squareDesign(4), 'pongal',
+        k => { k.setUseScan(false); k.setShape('square'); k.setSize(4); k.setSingleLine(false); k.setKolamPalette('pongal'); }),
+    radialExample('Lotus rangoli', 'Rangoli', '8 petals in 3 rings', 'lotus', 8, 3, 'pongal'),
+    radialExample('Alpana', 'Alpana', 'Rice paste on red earth, 8-fold', 'alpana', 8, 3, 'riceFlour'),
+    radialExample('Diwali rangoli', 'Rangoli', 'An 8-pointed star for the night of lamps', 'star', 8, 3, 'diwali'),
 ];
 
 const scrollToGuide = () => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' });
+const scrollToStudio = () => document.getElementById('generator')?.scrollIntoView({ behavior: 'smooth' });
 
 const KolamGenerator: React.FC = () => {
     const k = useKolam();
@@ -220,20 +206,31 @@ const KolamGenerator: React.FC = () => {
                     </div>
                 </div>
 
-                <h3 className="font-heading text-2xl mt-16 mb-6 text-center text-kaavi">Try these</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-                    {EXAMPLES.map(example => (
-                        <button
-                            key={example.title}
-                            type="button"
-                            onClick={() => { example.apply(k); setMode(example.mode); }}
-                            className="rounded-2xl border border-kaavi/15 bg-white/80 p-3 hover:border-kaavi transition-colors"
-                        >
-                            <KolamSvg svg={example.svg} className="aspect-square" label={example.title} />
-                            <p className="mt-2 text-sm text-ink">{example.title}</p>
-                        </button>
-                    ))}
+                <div className="mt-20 mb-8 text-center">
+                    <h3 className="font-heading text-3xl text-kaavi">Start from a traditional design</h3>
+                    <p className="mt-2 text-muted">Pick one to open it in the studio, then change its dots, petals or colours.</p>
                 </div>
+                <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
+                    {EXAMPLES.map(example => (
+                        <li key={example.title}>
+                            <button
+                                type="button"
+                                onClick={() => { example.apply(k); setMode(example.mode); scrollToStudio(); }}
+                                className="group w-full h-full text-left rounded-2xl overflow-hidden bg-white shadow-sm ring-1 ring-kaavi/15 hover:ring-kaavi/50 hover:shadow-lg hover:-translate-y-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-kaavi"
+                            >
+                                <div className="relative p-4 md:p-6" style={{ backgroundColor: example.background }}>
+                                    <KolamSvg svg={example.svg} className="aspect-square" label={example.title} />
+                                    <span className="absolute top-2.5 left-2.5 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-kaavi shadow-sm">{example.kind}</span>
+                                </div>
+                                <div className="p-3 md:p-4 border-t border-kaavi/10">
+                                    <p className="font-heading text-lg md:text-xl text-ink">{example.title}</p>
+                                    <p className="text-xs md:text-sm text-muted">{example.detail}</p>
+                                    <p className="mt-2 text-sm font-semibold text-kaavi group-hover:underline underline-offset-4">Open in the studio →</p>
+                                </div>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
             </div>
         </section>
     );
