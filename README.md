@@ -43,7 +43,7 @@ SOLVIX is a comprehensive **React + TypeScript + FastAPI** platform designed to 
 ## 📂 Project Structure
 
 ```text
-E:\kolam-2
+kolam-2/
 ├── src/               # Main source code
 │   ├── components/    # Reusable UI components & feature logic
 │   ├── utils/         # Core geometric & procedural logic
@@ -55,7 +55,6 @@ E:\kolam-2
 │   └── requirements.txt
 ├── docs/              # Project documentation & summaries
 ├── public/            # Static assets & banners
-├── scripts/           # Utility scripts (copy.js, copy.py)
 ├── package.json       # Dependencies & NPM scripts
 └── vite.config.ts     # Project configuration
 ```
@@ -87,6 +86,16 @@ python main.py
 > [!NOTE]
 > The backend will be accessible at `http://localhost:8000`.
 
+### 3. Environment Variables
+Copy `.env.example` to `.env.local` in the project root if you need to point the frontend at a
+backend running somewhere other than `http://localhost:8000`:
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` sets `VITE_API_BASE_URL`; it's gitignored, so your local value is never committed.
+
 ---
 
 ## 🔮 Roadmap
@@ -98,7 +107,7 @@ python main.py
 ---
 
 ## 📜 License
-*Project created as part of the SOLVIX – Kolam AI initiative. All rights reserved.*
+MIT — see [LICENSE](LICENSE). Project created as part of the SOLVIX – Kolam AI initiative.
 
 ---
 <p align="center">
