@@ -6,7 +6,6 @@ import KolamAnalyzer from './components/KolamAnalyzer';
 import KolamGenerator from './components/KolamGenerator';
 import KolamWalkthrough from './components/KolamWalkthrough';
 import Research from './components/Research';
-import Team from './components/Team';
 import Contact from './components/Contact';
 import Footer from './components/Footer';
 import { KolamProvider } from './components/KolamContext';
@@ -19,7 +18,6 @@ const App: React.FC = () => {
         generator: useRef<HTMLDivElement>(null),
         walkthrough: useRef<HTMLDivElement>(null),
         research: useRef<HTMLDivElement>(null),
-        team: useRef<HTMLDivElement>(null),
         contact: useRef<HTMLDivElement>(null),
     };
 
@@ -44,7 +42,6 @@ const App: React.FC = () => {
                         <div ref={sections.generator}><KolamGenerator /></div>
                         <div ref={sections.walkthrough}><KolamWalkthrough /></div>
                         <div ref={sections.research}><Research /></div>
-                        <div ref={sections.team}><Team /></div>
                         <div ref={sections.contact}><Contact /></div>
                     </main>
                     <Footer />

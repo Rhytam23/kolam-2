@@ -1,8 +1,6 @@
 # 🌀 SOLVIX – Kolam AI
 > **Bridging Ancient Geometry with Advanced Artificial Intelligence**
 
-![SOLVIX Banner](./public/banner.png)
-
 SOLVIX is a comprehensive **React + TypeScript + FastAPI** platform designed to analyze, proceduralize, and celebrate the intricate art of traditional **Kolam** (Rangoli). By combining computer vision, interactive geometry tools, and educational walkthroughs, SOLVIX brings traditional heritage into the digital age.
 
 ---
@@ -114,23 +112,3 @@ MIT — see [LICENSE](LICENSE). Project created as part of the SOLVIX – Kolam 
   <b>Built with ❤️ by the SOLVIX Team</b>
 </p>
 
----
-
-## 📖 Project Understanding (Future Reference)
-
-SOLVIX analyzes, proceduralizes and teaches traditional Kolam (Rangoli) art using computer
-vision: it detects dot lattices from photos/scans, lets you correct them by hand, generates new
-patterns algorithmically from the detected lattice, and walks through how a given Kolam is
-constructed step by step.
-
-**Stack:** React 19 + TypeScript + Vite (frontend) · FastAPI + OpenCV + NumPy (backend, CV
-detection).
-**Status:** functional CV + generative-art platform blending heritage and technology.
-
-## 🎯 Where This Can Be Used
-
-- Cultural-heritage/education technology — digitising and teaching a traditional art form.
-- Computer-vision portfolio piece (dot detection under noisy real-world photos is a genuinely
-  hard CV problem, worth highlighting).
-- **Hackathons:** very strong fit for heritage/culture + AI tracks (common in Indian hackathons
-  specifically) — it's visually striking and demos in seconds with a phone photo.

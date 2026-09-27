@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 interface HeaderProps {
-    scrollToSection: (section: 'home' | 'about' | 'analyzer' | 'generator' | 'walkthrough' | 'research' | 'team' | 'contact') => void;
+    scrollToSection: (section: 'home' | 'about' | 'analyzer' | 'generator' | 'walkthrough' | 'research' | 'contact') => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ scrollToSection }) => {
@@ -22,7 +22,6 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection }) => {
         { label: 'Generator', key: 'generator' },
         { label: 'Walkthrough', key: 'walkthrough' },
         { label: 'Research', key: 'research' },
-        { label: 'Team', key: 'team' },
         { label: 'Contact', key: 'contact' },
     ] as const;
 
