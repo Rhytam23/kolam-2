@@ -1,200 +1,88 @@
-import React, { createContext, useEffect, useMemo, useState, useContext } from 'react';
-import { generateDots, generateKolamPath } from '../utils/kolamLogic';
-import type {
-  AnalysisSummary,
-  Point,
-  WorkspaceImportPayload,
-  WorkspaceSnapshot,
-} from '../types/kolam';
-import {
-  loadSavedWorkspaces,
-  normalizeGridSize,
-  persistSavedWorkspaces,
-  sanitizeWorkspacePayload,
-} from '../lib/storage/workspaceStorage';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { countLoops, diamondDesign, makeSingleLine, squareDesign, symmetries, type SymmetryName } from '../utils/kolamLogic';
+import type { Design, KolamFile, Lattice, Point, SavedKolam } from '../types/kolam';
+import { loadSaved, persistSaved, toKolamFile } from '../lib/kolamFile';
+
+export type Shape = 'square' | 'diamond';
+
+/** A kolam read from a photo (or loaded from a file): the design plus where its dots sit in the image. */
+export interface Scan {
+  design: Design;
+  lattice: Lattice | null;
+}
 
 interface KolamContextValue {
-  gridSize: number;
-  setGridSize: (size: number) => void;
-  generatedDots: Point[];
-  generatedPath: string;
-  analyzerDots: Point[];
-  setAnalyzerDots: (dots: Point[]) => void;
-  selectedDots: Point[];
-  setSelectedDots: (dots: Point[]) => void;
-  analysisSummary: AnalysisSummary | null;
-  setAnalysisSummary: (summary: AnalysisSummary | null) => void;
-  syncAnalyzerToGenerator: () => void;
-  resetWorkspace: () => void;
-  savedWorkspaces: WorkspaceSnapshot[];
-  saveWorkspace: () => void;
-  loadWorkspace: (id: string) => void;
-  removeWorkspace: (id: string) => void;
-  exportDots: () => void;
-  importWorkspace: (payload: WorkspaceImportPayload) => void;
-  snapDotsToGrid: () => void;
+  size: number;
+  setSize: (size: number) => void;
+  shape: Shape;
+  setShape: (shape: Shape) => void;
+  singleLine: boolean;
+  setSingleLine: (on: boolean) => void;
+  scan: Scan | null;
+  setScan: (scan: Scan | null) => void;
+  useScan: boolean;
+  setUseScan: (on: boolean) => void;
+  dots: Point[];
+  setDots: (dots: Point[]) => void;
+  /** What the generator and walkthrough show. */
+  design: Design;
+  loops: number;
+  symmetry: SymmetryName[];
+  saved: SavedKolam[];
+  save: () => void;
+  remove: (id: string) => void;
+  open: (file: KolamFile) => void;
+  currentFile: () => KolamFile;
 }
 
 const KolamContext = createContext<KolamContextValue | null>(null);
 
-const clusterCoordinates = (values: number[], tolerance = 0.03) => {
-  const sorted = [...values].sort((a, b) => a - b);
-  const clusters: number[][] = [];
-
-  sorted.forEach((value) => {
-    const current = clusters[clusters.length - 1];
-    if (!current || Math.abs(current[current.length - 1] - value) > tolerance) {
-      clusters.push([value]);
-    } else {
-      current.push(value);
-    }
-  });
-
-  return clusters.map(cluster => cluster.reduce((sum, v) => sum + v, 0) / cluster.length);
-};
-
-const snapPoint = (value: number, anchors: number[]) => {
-  if (!anchors.length) return value;
-  return anchors.reduce(
-    (closest, anchor) => Math.abs(anchor - value) < Math.abs(closest - value) ? anchor : closest,
-    anchors[0],
-  );
-};
-
 export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [gridSize, setGridSizeState] = useState(5);
-  const [analyzerDots, setAnalyzerDots] = useState<Point[]>([]);
-  const [selectedDots, setSelectedDots] = useState<Point[]>([]);
-  const [analysisSummary, setAnalysisSummary] = useState<AnalysisSummary | null>(null);
-  const [savedWorkspaces, setSavedWorkspaces] = useState<WorkspaceSnapshot[]>(() => loadSavedWorkspaces());
+  const [size, setSize] = useState(5);
+  const [shape, setShape] = useState<Shape>('square');
+  const [singleLine, setSingleLine] = useState(true);
+  const [scan, setScanState] = useState<Scan | null>(null);
+  const [useScan, setUseScan] = useState(false);
+  const [dots, setDots] = useState<Point[]>([]);
+  const [saved, setSaved] = useState<SavedKolam[]>(loadSaved);
 
-  useEffect(() => {
-    persistSavedWorkspaces(savedWorkspaces);
-  }, [savedWorkspaces]);
+  useEffect(() => persistSaved(saved), [saved]);
 
-  const normalizedGridSize = normalizeGridSize(gridSize);
-  const generatedDots = useMemo(() => generateDots(normalizedGridSize, 500, 500), [normalizedGridSize]);
-  const generatedPath = useMemo(() => generateKolamPath(normalizedGridSize, 500, 500), [normalizedGridSize]);
+  const setScan = useCallback((next: Scan | null) => {
+    setScanState(next);
+    setUseScan(!!next);
+    // Show a scanned kolam as it was drawn; the user can still join it into one line.
+    if (next) setSingleLine(false);
+  }, []);
 
-  const setGridSize = (size: number) => {
-    setGridSizeState(normalizeGridSize(size));
-  };
+  const design = useMemo(() => {
+    const base = useScan && scan ? scan.design : shape === 'square' ? squareDesign(size) : diamondDesign(size);
+    return singleLine ? makeSingleLine(base) : base;
+  }, [useScan, scan, shape, size, singleLine]);
+  const loops = useMemo(() => countLoops(design), [design]);
+  const symmetry = useMemo(() => symmetries(design), [design]);
 
-  const syncAnalyzerToGenerator = () => {
-    if (!analyzerDots.length) return;
-    setSelectedDots(analyzerDots);
-    setAnalysisSummary({
-      message: `Synced ${analyzerDots.length} detected dots into the workspace reference layer.`,
-      source: 'manual',
-    });
-  };
+  const currentFile = useCallback(() => toKolamFile(design, dots, useScan ? scan?.lattice ?? null : null), [design, dots, useScan, scan]);
 
-  const snapDotsToGrid = () => {
-    if (!analyzerDots.length) return;
-    const xAnchors = clusterCoordinates(analyzerDots.map(dot => dot.x));
-    const yAnchors = clusterCoordinates(analyzerDots.map(dot => dot.y));
-    const snapped = analyzerDots.map(dot => ({
-      x: snapPoint(dot.x, xAnchors),
-      y: snapPoint(dot.y, yAnchors),
-    }));
-    setAnalyzerDots(snapped);
-    setSelectedDots(snapped);
-    setAnalysisSummary({
-      message: `Snapped ${snapped.length} dots into a cleaner lattice alignment.`,
-      source: 'manual',
-    });
-  };
-
-  const resetWorkspace = () => {
-    setAnalyzerDots([]);
-    setSelectedDots([]);
-    setAnalysisSummary(null);
-    setGridSizeState(5);
-  };
-
-  const saveWorkspace = () => {
-    const snapshot: WorkspaceSnapshot = {
-      id: `${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      gridSize: normalizedGridSize,
-      analyzerDots,
-      selectedDots,
-      summary: analysisSummary,
-    };
-    setSavedWorkspaces(prev => [snapshot, ...prev].slice(0, 10));
-  };
-
-  const loadWorkspace = (id: string) => {
-    const found = savedWorkspaces.find(item => item.id === id);
-    if (!found) return;
-    setGridSizeState(found.gridSize);
-    setAnalyzerDots(found.analyzerDots);
-    setSelectedDots(found.selectedDots);
-    setAnalysisSummary(found.summary);
-  };
-
-  const importWorkspace = (payload: WorkspaceImportPayload) => {
-    const normalized = sanitizeWorkspacePayload(payload);
-    setGridSizeState(normalized.gridSize);
-    setAnalyzerDots(normalized.analyzerDots);
-    setSelectedDots(normalized.selectedDots.length ? normalized.selectedDots : normalized.analyzerDots);
-    setAnalysisSummary(normalized.summary);
-  };
-
-  const removeWorkspace = (id: string) => {
-    setSavedWorkspaces(prev => prev.filter(item => item.id !== id));
-  };
-
-  const exportDots = () => {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      gridSize: normalizedGridSize,
-      analyzerDots,
-      selectedDots,
-      summary: analysisSummary,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `kolam-workspace-${Date.now()}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const value = useMemo(
-    () => ({
-      gridSize: normalizedGridSize,
-      setGridSize,
-      generatedDots,
-      generatedPath,
-      analyzerDots,
-      setAnalyzerDots,
-      selectedDots,
-      setSelectedDots,
-      analysisSummary,
-      setAnalysisSummary,
-      syncAnalyzerToGenerator,
-      resetWorkspace,
-      savedWorkspaces,
-      saveWorkspace,
-      loadWorkspace,
-      removeWorkspace,
-      exportDots,
-      importWorkspace,
-      snapDotsToGrid,
-    }),
-    [normalizedGridSize, generatedDots, generatedPath, analyzerDots, selectedDots, analysisSummary, savedWorkspaces],
-  );
+  const value = useMemo<KolamContextValue>(() => ({
+    size, setSize, shape, setShape, singleLine, setSingleLine,
+    scan, setScan, useScan, setUseScan, dots, setDots,
+    design, loops, symmetry,
+    saved,
+    save: () => setSaved(prev => [{ ...currentFile(), id: `${Date.now()}` }, ...prev].slice(0, 10)),
+    remove: id => setSaved(prev => prev.filter(item => item.id !== id)),
+    open: file => {
+      setScan({ design: file.design, lattice: file.lattice ?? null });
+      setDots(file.dots ?? []);
+    },
+    currentFile,
+  }), [size, shape, singleLine, scan, setScan, useScan, dots, design, loops, symmetry, saved, currentFile]);
 
   return <KolamContext.Provider value={value}>{children}</KolamContext.Provider>;
 };
 
 export const useKolam = () => {
   const context = useContext(KolamContext);
-  if (!context) {
-    throw new Error('useKolam must be used inside KolamProvider');
-  }
+  if (!context) throw new Error('useKolam must be used inside KolamProvider');
   return context;
 };
-

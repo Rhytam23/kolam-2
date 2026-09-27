@@ -1,62 +1,100 @@
-import type { WorkspaceImportPayload, WorkspaceSnapshot } from '../../types/kolam';
+import type { Design, KolamFile, Lattice, Point, SavedKolam } from '../types/kolam';
 
-const STORAGE_KEY = 'solvix_kolam_workspace_v1';
-const MAX_SAVED_WORKSPACES = 10;
+const STORAGE_KEY = 'solvix_kolam_saved_v2';
+const MAX_SAVED = 10;
+const MAX_SIDE = 30;
 
-const isFiniteNumber = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object';
+const isPoint = (v: unknown): v is Point => isObject(v) && isNumber(v.x) && isNumber(v.y);
+const isRows = (v: unknown, count: number, length: number, pattern: RegExp): v is string[] =>
+  Array.isArray(v) && v.length === count && v.every(row => typeof row === 'string' && row.length === length && pattern.test(row));
 
-const isPoint = (value: unknown): value is { x: number; y: number } => {
-  return !!value && typeof value === 'object' && isFiniteNumber((value as { x?: unknown }).x) && isFiniteNumber((value as { y?: unknown }).y);
+export const isDesign = (v: unknown): v is Design => {
+  if (!isObject(v) || !Number.isInteger(v.rows) || !Number.isInteger(v.cols)) return false;
+  const rows = v.rows as number;
+  const cols = v.cols as number;
+  if (rows < 1 || cols < 1 || rows > MAX_SIDE || cols > MAX_SIDE) return false;
+  if (!isRows(v.mask, rows, cols, /^[01]*$/)
+    || !isRows(v.h, rows, cols - 1, /^[xpj.]*$/)
+    || !isRows(v.v, rows - 1, cols, /^[xpj.]*$/)) return false;
+  // A port exists exactly where both neighbouring dots exist.
+  const on = (i: number, j: number) => (v.mask as string[])[j][i] === '1';
+  return (v.h as string[]).every((row, j) => [...row].every((s, i) => (s !== '.') === (on(i, j) && on(i + 1, j))))
+    && (v.v as string[]).every((row, j) => [...row].every((s, i) => (s !== '.') === (on(i, j) && on(i, j + 1))));
 };
 
-const isAnalysisSummary = (value: unknown): value is WorkspaceSnapshot['summary'] => {
-  if (value === null) return true;
-  if (!value || typeof value !== 'object') return false;
-  const summary = value as { message?: unknown; source?: unknown };
-  return typeof summary.message === 'string' && (summary.source === 'upload' || summary.source === 'generator' || summary.source === 'manual');
+const isLattice = (v: unknown): v is Lattice =>
+  isObject(v) && isPoint(v.origin) && isPoint(v.u) && isPoint(v.v)
+  && [v.rows, v.cols, v.angle, v.spacing, v.fit].every(isNumber);
+
+/** Validates untrusted JSON (an imported file or localStorage) as a `.kolam.json` document. */
+export const parseKolamFile = (v: unknown): KolamFile | null => {
+  if (!isObject(v) || v.format !== 'kolam' || v.version !== 1 || !isDesign(v.design)) return null;
+  return {
+    format: 'kolam',
+    version: 1,
+    createdAt: typeof v.createdAt === 'string' ? v.createdAt : new Date().toISOString(),
+    design: v.design,
+    dots: Array.isArray(v.dots) ? v.dots.filter(isPoint) : [],
+    lattice: isLattice(v.lattice) ? v.lattice : null,
+  };
 };
 
-export const normalizeGridSize = (size: number) => {
-  const safeOdd = size % 2 === 0 ? size + 1 : size;
-  return Math.min(15, Math.max(3, safeOdd));
-};
+export const toKolamFile = (design: Design, dots: Point[], lattice: Lattice | null): KolamFile => ({
+  format: 'kolam',
+  version: 1,
+  createdAt: new Date().toISOString(),
+  design,
+  dots,
+  lattice,
+});
 
-export const loadSavedWorkspaces = (): WorkspaceSnapshot[] => {
+export const loadSaved = (): SavedKolam[] => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as unknown;
     if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter((item): item is WorkspaceSnapshot => {
-      if (!item || typeof item !== 'object') return false;
-      const workspace = item as Partial<WorkspaceSnapshot>;
-      return (
-        typeof workspace.id === 'string' &&
-        typeof workspace.createdAt === 'string' &&
-        isFiniteNumber(workspace.gridSize) &&
-        Array.isArray(workspace.analyzerDots) &&
-        workspace.analyzerDots.every(isPoint) &&
-        Array.isArray(workspace.selectedDots) &&
-        workspace.selectedDots.every(isPoint) &&
-        isAnalysisSummary(workspace.summary)
-      );
+    return parsed.flatMap(item => {
+      const file = parseKolamFile(item);
+      return file && isObject(item) && typeof item.id === 'string' ? [{ ...file, id: item.id }] : [];
     });
   } catch {
     return [];
   }
 };
 
-export const persistSavedWorkspaces = (workspaces: WorkspaceSnapshot[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(workspaces.slice(0, MAX_SAVED_WORKSPACES)));
+export const persistSaved = (items: SavedKolam[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items.slice(0, MAX_SAVED)));
+  } catch {
+    // Storage can be full or disabled (private mode); saving is a convenience, so ignore.
+  }
 };
 
-export const sanitizeWorkspacePayload = (payload: WorkspaceImportPayload) => ({
-  gridSize: normalizeGridSize(payload.gridSize ?? 5),
-  analyzerDots: Array.isArray(payload.analyzerDots) ? payload.analyzerDots.filter(isPoint) : [],
-  selectedDots: Array.isArray(payload.selectedDots) ? payload.selectedDots.filter(isPoint) : [],
-  summary: isAnalysisSummary(payload.summary) ? payload.summary : { message: 'Imported workspace from JSON.', source: 'manual' as const },
-});
+export const downloadBlob = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
+export const downloadKolamFile = (file: KolamFile) =>
+  downloadBlob(new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }), `kolam-${Date.now()}.kolam.json`);
+
+/** Rasterises an SVG string (with explicit width/height) to a PNG blob. */
+export const svgToPng = (svg: string, scale = 2) => new Promise<Blob>((resolve, reject) => {
+  const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob => (blob ? resolve(blob) : reject(new Error('PNG export failed'))), 'image/png');
+  };
+  img.onerror = () => reject(new Error('PNG export failed'));
+  img.src = url;
+});

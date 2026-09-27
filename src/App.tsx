@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import Header from './components/Header';
+import React from 'react';
+import Header, { type SectionId } from './components/Header';
 import Hero from './components/Hero';
 import About from './components/About';
 import KolamAnalyzer from './components/KolamAnalyzer';
@@ -10,45 +10,30 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import { KolamProvider } from './components/KolamContext';
 
-const App: React.FC = () => {
-    const sections = {
-        home: useRef<HTMLDivElement>(null),
-        about: useRef<HTMLDivElement>(null),
-        analyzer: useRef<HTMLDivElement>(null),
-        generator: useRef<HTMLDivElement>(null),
-        walkthrough: useRef<HTMLDivElement>(null),
-        research: useRef<HTMLDivElement>(null),
-        contact: useRef<HTMLDivElement>(null),
-    };
+const scrollTo = (id: SectionId) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
-    const scrollToSection = (section: keyof typeof sections) => {
-        sections[section].current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    return (
-        <KolamProvider>
-            <div className="bg-[#0c0a18] min-h-screen text-gray-200 overflow-x-hidden">
-                <div className="absolute inset-0 z-0 opacity-10">
-                    <div className="absolute bottom-0 left-0 h-96 w-96 bg-gradient-to-tr from-[#FF9933] to-transparent rounded-full blur-[150px]"></div>
-                    <div className="absolute top-0 right-0 h-96 w-96 bg-gradient-to-bl from-[#33A1C9] to-transparent rounded-full blur-[150px]"></div>
-                </div>
-
-                <div className="relative z-10">
-                    <Header scrollToSection={scrollToSection} />
-                    <main>
-                        <div ref={sections.home}><Hero scrollToSection={() => scrollToSection('analyzer')} /></div>
-                        <div ref={sections.about}><About /></div>
-                        <div ref={sections.analyzer}><KolamAnalyzer /></div>
-                        <div ref={sections.generator}><KolamGenerator /></div>
-                        <div ref={sections.walkthrough}><KolamWalkthrough /></div>
-                        <div ref={sections.research}><Research /></div>
-                        <div ref={sections.contact}><Contact /></div>
-                    </main>
-                    <Footer />
-                </div>
+const App: React.FC = () => (
+    <KolamProvider>
+        <div className="bg-[#0c0a18] min-h-screen text-gray-200 overflow-x-hidden relative">
+            <div className="absolute inset-0 z-0 opacity-10 pointer-events-none">
+                <div className="absolute bottom-0 left-0 h-96 w-96 bg-gradient-to-tr from-[#FF9933] to-transparent rounded-full blur-[150px]" />
+                <div className="absolute top-0 right-0 h-96 w-96 bg-gradient-to-bl from-[#33A1C9] to-transparent rounded-full blur-[150px]" />
             </div>
-        </KolamProvider>
-    );
-};
+            <div className="relative z-10">
+                <Header onNavigate={scrollTo} />
+                <main>
+                    <div id="home"><Hero onStart={() => scrollTo('analyzer')} /></div>
+                    <div id="about" className="scroll-mt-16"><About /></div>
+                    <div id="analyzer" className="scroll-mt-16"><KolamAnalyzer /></div>
+                    <div id="generator" className="scroll-mt-16"><KolamGenerator /></div>
+                    <div id="walkthrough" className="scroll-mt-16"><KolamWalkthrough /></div>
+                    <div id="research" className="scroll-mt-16"><Research /></div>
+                    <div id="contact" className="scroll-mt-16"><Contact /></div>
+                </main>
+                <Footer />
+            </div>
+        </div>
+    </KolamProvider>
+);
 
 export default App;

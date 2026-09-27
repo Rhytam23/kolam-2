@@ -2,110 +2,137 @@ import React from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
-import { useKolam } from './KolamContext';
+import KolamSvg from './KolamSvg';
+import { useKolam, type Shape } from './KolamContext';
+import { SYMMETRY_LABELS, designToSvg, diamondDesign, makeSingleLine, squareDesign } from '../utils/kolamLogic';
+import { downloadBlob, downloadKolamFile, svgToPng } from '../lib/kolamFile';
+
+const EXAMPLES: Array<{ title: string; shape: Shape; size: number; singleLine: boolean }> = [
+    { title: '5×5 sikku (one line)', shape: 'square', size: 5, singleLine: true },
+    { title: '1-3-5-7-5-3-1 diamond', shape: 'diamond', size: 7, singleLine: true },
+    { title: '4×4 pulli, 4 loops', shape: 'square', size: 4, singleLine: false },
+];
+
+const exampleDesign = (e: (typeof EXAMPLES)[number]) => {
+    const base = e.shape === 'square' ? squareDesign(e.size) : diamondDesign(e.size);
+    return e.singleLine ? makeSingleLine(base) : base;
+};
+const EXAMPLE_DESIGNS = EXAMPLES.map(exampleDesign);
+
+const Toggle: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className={`px-4 py-2 rounded-full text-sm border transition-colors ${active ? 'bg-orange-500/20 border-orange-400 text-orange-300' : 'border-gray-600 text-gray-400 hover:text-white'}`}
+    >
+        {children}
+    </button>
+);
 
 const KolamGenerator: React.FC = () => {
     const {
-        gridSize,
-        setGridSize,
-        generatedDots,
-        generatedPath,
-        selectedDots,
-        analysisSummary,
-        resetWorkspace,
-        exportDots,
+        size, setSize, shape, setShape, singleLine, setSingleLine,
+        scan, useScan, setUseScan, design, loops, symmetry, currentFile,
     } = useKolam();
 
-    const size = 500;
-    const scale = size / 500;
-
-    const svgContent = `
-<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-    <rect width="100%" height="100%" fill="transparent"/>
-    ${generatedDots.map(d => `<circle cx="${d.x * scale}" cy="${d.y * scale}" r="4" fill="white" opacity="0.8"/>`).join('')}
-    ${selectedDots.map(d => `<circle cx="${d.x * size}" cy="${d.y * size}" r="6" fill="#FDB813" opacity="0.45"/>`).join('')}
-    <path d="${generatedPath}" stroke="#E91E63" stroke-width="6" fill="none" opacity="0.3" filter="blur(2px)"/>
-    <path d="${generatedPath}" stroke="#FF9933" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>`;
-
-    const downloadGeneratedSVG = () => {
-        const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `kolam-${gridSize}x${gridSize}.svg`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const comparisonDelta = Math.abs(generatedDots.length - selectedDots.length);
+    const name = `kolam-${design.rows}x${design.cols}`;
+    const downloadSvg = () =>
+        downloadBlob(new Blob([designToSvg(design, { background: '#0c0a18' })], { type: 'image/svg+xml' }), `${name}.svg`);
+    const downloadPng = async () => downloadBlob(await svgToPng(designToSvg(design, { background: '#0c0a18' })), `${name}.png`);
+    const dotCount = design.mask.join('').split('1').length - 1;
 
     return (
-        <section className="py-20 px-4 bg-[#0c0a18] bg-opacity-50 relative">
-            <div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#33A1C9 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-            <div className="container mx-auto relative z-10">
-                <h2 className="font-heading text-4xl md:text-5xl text-center mb-12 gradient-text">Procedural Kolam Generator</h2>
-                <div className="grid lg:grid-cols-3 gap-12 items-center">
-                    <div className="lg:col-span-1 space-y-6">
-                        <Card>
-                            <h3 className="text-2xl font-bold mb-6 text-center text-orange-400">Customize Grid</h3>
-                            <div className="space-y-6">
+        <section className="py-20 px-4 relative">
+            <div className="container mx-auto">
+                <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Kolam Generator</h2>
+                <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
+                    Each dot is wrapped by strands that either cross or bounce off a mirror between neighbouring dots.
+                    Switching crossings to mirrors joins separate loops into the single continuous line of a sikku kolam.
+                </p>
+                <div className="grid lg:grid-cols-3 gap-10 items-start">
+                    <Card className="space-y-6">
+                        {scan && (
+                            <div>
+                                <Label>Source</Label>
+                                <div className="flex gap-2 flex-wrap">
+                                    <Toggle active={!useScan} onClick={() => setUseScan(false)}>Presets</Toggle>
+                                    <Toggle active={useScan} onClick={() => setUseScan(true)}>Analysed kolam</Toggle>
+                                </div>
+                            </div>
+                        )}
+                        {!useScan && (
+                            <>
                                 <div>
-                                    <Label htmlFor="grid-size">Grid Size: {gridSize} x {gridSize}</Label>
+                                    <Label>Dot arrangement</Label>
+                                    <div className="flex gap-2">
+                                        <Toggle active={shape === 'square'} onClick={() => setShape('square')}>Square</Toggle>
+                                        <Toggle active={shape === 'diamond'} onClick={() => setShape('diamond')}>Diamond</Toggle>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label htmlFor="grid-size">Size: {design.rows} × {design.cols}</Label>
                                     <input
                                         id="grid-size"
                                         type="range"
-                                        min="3"
-                                        max="15"
-                                        step="2"
-                                        value={gridSize}
-                                        onChange={(e) => setGridSize(Number(e.target.value))}
+                                        min={shape === 'square' ? 2 : 3}
+                                        max={13}
+                                        step={shape === 'square' ? 1 : 2}
+                                        value={design.rows}
+                                        onChange={e => setSize(Number(e.target.value))}
                                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
                                     />
-                                    <p className="text-xs text-gray-500 mt-2">Odd sizes are enforced to preserve the continuous-loop construction.</p>
                                 </div>
+                            </>
+                        )}
+                        <label className="flex items-center gap-3 text-gray-300">
+                            <input type="checkbox" checked={singleLine} onChange={e => setSingleLine(e.target.checked)} className="accent-orange-500 w-4 h-4" />
+                            Draw with one continuous line (sikku)
+                        </label>
 
-                                <div className="flex flex-col space-y-4 pt-4">
-                                    <Button onClick={downloadGeneratedSVG} variant="secondary">Download SVG</Button>
-                                    <Button onClick={exportDots} variant="secondary">Export Workspace JSON</Button>
-                                    <Button onClick={resetWorkspace} variant="secondary">Reset Workspace</Button>
-                                </div>
-                            </div>
-                        </Card>
+                        <dl className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="bg-black/20 rounded-lg p-3"><dt className="text-gray-500">Dots</dt><dd className="text-xl text-white">{dotCount}</dd></div>
+                            <div className="bg-black/20 rounded-lg p-3"><dt className="text-gray-500">Loops</dt><dd className="text-xl text-white">{loops}</dd></div>
+                        </dl>
+                        <div className="flex flex-wrap gap-2">
+                            {symmetry.length === 0 && <span className="text-xs text-gray-500">No symmetry</span>}
+                            {symmetry.map(s => (
+                                <span key={s} className="text-xs px-2 py-1 rounded-full bg-indigo-500/20 text-indigo-200">{SYMMETRY_LABELS[s]}</span>
+                            ))}
+                        </div>
 
-                        <Card>
-                            <p className="text-xs uppercase tracking-[0.2em] text-saffron mb-3">Connected Workflow</p>
-                            <p className="text-gray-300 text-sm leading-relaxed mb-4">
-                                This generator uses the shared Kolam workspace. Uploaded analyzer dots appear as a reference overlay here, helping you compare procedural output against detected structure.
-                            </p>
-                            <div className="space-y-2 text-sm text-gray-400">
-                                <p>Generated grid dots: <span className="text-white font-semibold">{generatedDots.length}</span></p>
-                                <p>Analyzer reference dots: <span className="text-white font-semibold">{selectedDots.length}</span></p>
-                                <p>Dot count delta: <span className="text-white font-semibold">{comparisonDelta}</span></p>
-                                {analysisSummary && <p className="text-saffron">{analysisSummary.message}</p>}
-                            </div>
-                        </Card>
-                    </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={downloadSvg}>SVG</Button>
+                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={downloadPng}>PNG</Button>
+                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={() => downloadKolamFile(currentFile())}>.kolam</Button>
+                        </div>
+                    </Card>
 
-                    <div className="lg:col-span-2 flex items-center justify-center">
-                        <div className="w-full max-w-lg aspect-square bg-indigo-900/10 rounded-xl p-8 shadow-2xl border border-indigo-500/20 backdrop-blur-sm">
-                            <div className="w-full h-full">
-                                <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: svgContent }} />
-                            </div>
+                    <div className="lg:col-span-2 flex justify-center">
+                        <div className="w-full max-w-xl aspect-square bg-indigo-900/10 rounded-xl p-6 border border-indigo-500/20">
+                            <KolamSvg design={design} className="w-full h-full" label={`Generated kolam with ${loops} loop(s)`} />
                         </div>
                     </div>
                 </div>
 
-                <div className="mt-20">
-                    <h3 className="text-3xl font-bold mb-8 text-center text-saffron">Reference Kolams</h3>
-                    <p className="text-center text-gray-400 mb-8 max-w-2xl mx-auto">These traditional Kolam designs serve as our procedural generation standard, ensuring that connecting lines perfectly intersect exactly at the core dots (Padi Kolam style alignment).</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {['/media__1772279165321.png', '/media__1772279186819.png', '/media__1772279201882.png'].map((src, idx) => (
-                            <div key={idx} className="rounded-xl overflow-hidden shadow-lg border border-indigo-500/20 hover:scale-105 transition-transform bg-indigo-900/10 backdrop-blur-sm">
-                                <img src={src} alt={`Kolam Reference ${idx + 1}`} className="w-full h-auto object-cover aspect-square opacity-90 hover:opacity-100" />
-                            </div>
-                        ))}
-                    </div>
+                <h3 className="text-2xl font-bold mt-16 mb-6 text-center text-saffron">Try these</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                    {EXAMPLES.map((example, index) => (
+                        <button
+                            key={example.title}
+                            type="button"
+                            onClick={() => {
+                                setUseScan(false);
+                                setShape(example.shape);
+                                setSize(example.size);
+                                setSingleLine(example.singleLine);
+                            }}
+                            className="rounded-xl border border-indigo-500/20 bg-indigo-900/10 p-4 hover:border-orange-400 transition-colors"
+                        >
+                            <KolamSvg design={EXAMPLE_DESIGNS[index]} className="aspect-square" label={example.title} />
+                            <p className="mt-3 text-sm text-gray-300">{example.title}</p>
+                        </button>
+                    ))}
                 </div>
             </div>
         </section>

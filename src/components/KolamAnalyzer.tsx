@@ -1,419 +1,404 @@
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
+import DesignPrinciples from './DesignPrinciples';
 import { useKolam } from './KolamContext';
-import type { AnalysisPreset, AnalysisResponse, Point } from '../types/kolam';
-import { analyzeKolam } from '../lib/api/kolamApi';
+import { ANALYSIS_PRESETS, type AnalysisPreset, type ImageSymmetry, type Point } from '../types/kolam';
+import { ACCEPTED_TYPES, MAX_UPLOAD_MB, analyzeKolam } from '../lib/api';
+import { downloadBlob, downloadKolamFile, parseKolamFile, svgToPng } from '../lib/kolamFile';
+import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, snapToLattice } from '../utils/kolamLogic';
 
-const ZOOM_LEVELS = [1, 1.25, 1.5, 2];
-const PRESETS: AnalysisPreset[] = ['balanced', 'clean-scan', 'phone-photo', 'noisy-background'];
+const ZOOM_LEVELS = [1, 1.5, 2];
+const HIT_RADIUS_PX = 12;
+
+interface Drag {
+    index: number;
+    before: Point[];
+    start: Point;
+    moved: boolean;
+}
+
+const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
 const KolamAnalyzer: React.FC = () => {
-    const [image, setImage] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const { dots, setDots, scan, setScan, saved, save, remove, open, currentFile } = useKolam();
+
+    const [file, setFile] = useState<File | null>(null);
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [meta, setMeta] = useState<{ confidence: number; symmetry: ImageSymmetry | null } | null>(null);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [status, setStatus] = useState<string>('Upload a Kolam to begin analysis.');
-    const [imgDimensions, setImgDimensions] = useState<{ width: number, height: number } | null>(null);
+    const [status, setStatus] = useState('Upload a photo or scan of a kolam, or try the sample.');
     const [history, setHistory] = useState<Point[][]>([]);
     const [future, setFuture] = useState<Point[][]>([]);
+    const [edited, setEdited] = useState(false);
     const [zoomIndex, setZoomIndex] = useState(0);
-    const [preset, setPreset] = useState<(typeof PRESETS)[number]>('balanced');
+    const [preset, setPreset] = useState<AnalysisPreset>('balanced');
     const [deskew, setDeskew] = useState(true);
-    const [confidence, setConfidence] = useState<number | null>(null);
-
-    const {
-        analyzerDots,
-        setAnalyzerDots,
-        setSelectedDots,
-        setAnalysisSummary,
-        syncAnalyzerToGenerator,
-        saveWorkspace,
-        savedWorkspaces,
-        loadWorkspace,
-        removeWorkspace,
-        exportDots,
-        importWorkspace,
-        snapDotsToGrid,
-    } = useKolam();
+    const [showRecreation, setShowRecreation] = useState(true);
+    const [surface, setSurface] = useState({ w: 0, h: 0 });
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const surfaceRef = useRef<HTMLDivElement>(null);
     const imageRef = useRef<HTMLImageElement>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const dragIndexRef = useRef<number | null>(null);
-    const imageUrlRef = useRef<string | null>(null);
+    const jsonInputRef = useRef<HTMLInputElement>(null);
+    const dragRef = useRef<Drag | null>(null);
     const abortRef = useRef<AbortController | null>(null);
+    const objectUrlRef = useRef<string | null>(null);
 
-    const pushHistory = useCallback((dots: Point[]) => {
-        setHistory(prev => [...prev, dots]);
-        setFuture([]);
+    const hasSurface = !!imageUrl || dots.length > 0;
+    const zoom = ZOOM_LEVELS[zoomIndex];
+
+    // Release the object URL and cancel requests when leaving.
+    useEffect(() => () => {
+        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+        abortRef.current?.abort();
     }, []);
 
-    const applyDots = useCallback((dots: Point[], message: string) => {
-        setAnalyzerDots(dots);
-        setSelectedDots(dots);
-        setAnalysisSummary({ message, source: 'manual' });
-        setStatus(message);
-    }, [setAnalyzerDots, setSelectedDots, setAnalysisSummary]);
+    // Keep the canvas the same size as the displayed image (or blank board).
+    useEffect(() => {
+        const node = surfaceRef.current;
+        if (!node) return;
+        const observer = new ResizeObserver(() => setSurface({ w: node.clientWidth, h: node.clientHeight }));
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [hasSurface]);
 
-    const handleImportJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        try {
-            const text = await file.text();
-            const payload = JSON.parse(text);
-            importWorkspace(payload);
-            setStatus('Workspace imported from JSON.');
-            setError(null);
-        } catch {
-            setError('Failed to import workspace JSON.');
-        }
-    };
-
-    const exportOverlayPng = () => {
+    useEffect(() => {
         const canvas = canvasRef.current;
-        const img = imageRef.current;
-        if (!canvas || !img) return;
-
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = canvas.width;
-        exportCanvas.height = canvas.height;
-        const ctx = exportCanvas.getContext('2d');
+        if (!canvas || !surface.w) return;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = surface.w * dpr;
+        canvas.height = surface.h * dpr;
+        const ctx = canvas.getContext('2d');
         if (!ctx) return;
+        ctx.scale(dpr, dpr);
 
-        ctx.drawImage(img, 0, 0, exportCanvas.width, exportCanvas.height);
-        ctx.drawImage(canvas, 0, 0);
-
-        const link = document.createElement('a');
-        link.href = exportCanvas.toDataURL('image/png');
-        link.download = `kolam-overlay-${Date.now()}.png`;
-        link.click();
-    };
-
-    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.size > 5 * 1024 * 1024) {
-            setError('File size must be less than 5MB.');
-            return;
+        if (showRecreation && scan?.lattice) {
+            const { origin: o, u, v } = scan.lattice;
+            ctx.save();
+            ctx.transform(surface.w * u.x, surface.h * u.y, surface.w * v.x, surface.h * v.y, surface.w * o.x, surface.h * o.y);
+            ctx.lineWidth = 0.07;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'rgba(255, 153, 51, 0.9)';
+            ctx.stroke(new Path2D(designPath(scan.design)));
+            ctx.restore();
         }
-        if (!['image/png', 'image/jpeg'].includes(file.type)) {
-            setError('Only PNG and JPEG files are allowed.');
-            return;
-        }
+        dots.forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x * surface.w, p.y * surface.h, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#138808';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+        });
+    }, [dots, scan, showRecreation, surface]);
 
-        setError(null);
-        setConfidence(null);
-        setIsLoading(true);
-        setHistory([]);
-        setFuture([]);
-        setAnalyzerDots([]);
-        setSelectedDots([]);
-        setStatus('Uploading image to analysis service...');
+    // ------------------------------------------------------------ analysis
 
-        const objectUrl = URL.createObjectURL(file);
-        if (imageUrlRef.current) {
-            URL.revokeObjectURL(imageUrlRef.current);
-        }
-        imageUrlRef.current = objectUrl;
-        setImage(objectUrl);
-
+    const runAnalysis = async (source: File, manualDots?: Point[]) => {
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
-
+        setLoading(true);
+        setError(null);
+        setStatus(manualDots ? 'Recreating from your dots…' : 'Analyzing…');
         try {
-            const data: AnalysisResponse = await analyzeKolam(file, {
-                preset,
-                deskew,
-                signal: controller.signal,
-            });
-            setAnalyzerDots(data.dots);
-            setSelectedDots(data.dots);
-            setImgDimensions({ width: data.width, height: data.height });
-            setStatus(data.message || `Detected ${data.dots.length} potential dots.`);
-            setConfidence(data.confidence ?? null);
-            setAnalysisSummary({ message: data.message || `Detected ${data.dots.length} potential dots.`, source: 'upload' });
+            const data = await analyzeKolam(source, { preset, deskew, dots: manualDots, signal: controller.signal });
+            if (data.image) setImageUrl(data.image);
+            setDots(data.dots);
+            setScan(data.design ? { design: data.design, lattice: data.lattice } : null);
+            setMeta({ confidence: data.confidence, symmetry: data.symmetry });
+            setStatus(data.message);
+            setEdited(false);
+            if (!manualDots) {
+                setHistory([]);
+                setFuture([]);
+            }
         } catch (err) {
-            if ((err as Error).name !== 'AbortError') {
-                console.error(err);
-                setError('Failed to connect to analysis server. Make sure the Python backend is running.');
-                setStatus('Analyzer offline. You can still manually place and edit reference dots.');
-            }
+            if ((err as Error).name === 'AbortError') return;
+            setError((err as Error).message);
+            setStatus('You can still place dots by hand, or try another image or preset.');
         } finally {
-            setIsLoading(false);
+            if (abortRef.current === controller) setLoading(false);
         }
     };
 
-    const draw = useCallback(() => {
-        const canvas = canvasRef.current;
-        const img = imageRef.current;
-        if (!canvas || !img || !imgDimensions) return;
+    const loadImage = (next: File) => {
+        if (!ACCEPTED_TYPES.includes(next.type)) {
+            setError('Please upload a PNG, JPEG or WebP image.');
+            return;
+        }
+        if (next.size > MAX_UPLOAD_MB * 1024 * 1024) {
+            setError(`Images must be smaller than ${MAX_UPLOAD_MB} MB.`);
+            return;
+        }
+        if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+        objectUrlRef.current = URL.createObjectURL(next);
+        setImageUrl(objectUrlRef.current);
+        setFile(next);
+        setDots([]);
+        setScan(null);
+        setMeta(null);
+        setZoomIndex(0);
+        void runAnalysis(next);
+    };
 
-        const displayWidth = img.width;
-        const displayHeight = img.height;
+    const loadSample = async () => {
+        const svg = designToSvg(makeSingleLine(diamondDesign(5)), { background: '#ffffff', stroke: '#1f1f1f', dot: '#1f1f1f' });
+        loadImage(new File([await svgToPng(svg)], 'sample-kolam.png', { type: 'image/png' }));
+    };
 
-        canvas.width = displayWidth;
-        canvas.height = displayHeight;
+    const clearImage = () => {
+        abortRef.current?.abort();
+        setImageUrl(null);
+        setFile(null);
+        setMeta(null);
+        setHistory([]);
+        setFuture([]);
+        setEdited(false);
+    };
 
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+    const openFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const picked = e.target.files?.[0];
+        e.target.value = '';
+        if (!picked) return;
+        try {
+            const parsed = parseKolamFile(JSON.parse(await picked.text()));
+            if (!parsed) throw new Error('invalid');
+            clearImage();
+            open(parsed);
+            setError(null);
+            setStatus(`Opened ${picked.name}. Its kolam is now in the generator.`);
+        } catch {
+            setError('That file is not a valid .kolam.json file.');
+        }
+    };
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // ------------------------------------------------------------ dot editing
 
-        analyzerDots.forEach((point, index) => {
-            const x = point.x * displayWidth;
-            const y = point.y * displayHeight;
+    const changeDots = (next: Point[], message: string) => {
+        setHistory(h => [...h.slice(-49), dots]);
+        setFuture([]);
+        setDots(next);
+        setEdited(true);
+        setStatus(message);
+    };
 
-            ctx.beginPath();
-            ctx.arc(x, y, 10, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(253, 184, 19, 0.18)';
-            ctx.fill();
+    const pointerPosition = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        return { point: { x: clamp((e.clientX - rect.left) / rect.width), y: clamp((e.clientY - rect.top) / rect.height) }, rect };
+    };
 
-            ctx.beginPath();
-            ctx.arc(x, y, 5, 0, 2 * Math.PI);
-            ctx.fillStyle = '#138808';
-            ctx.fill();
+    const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const { point, rect } = pointerPosition(e);
+        const index = dots.findIndex(d => Math.hypot((d.x - point.x) * rect.width, (d.y - point.y) * rect.height) < HIT_RADIUS_PX);
+        e.currentTarget.setPointerCapture(e.pointerId);
+        dragRef.current = { index, before: dots, start: point, moved: false };
+    };
 
-            ctx.beginPath();
-            ctx.arc(x, y, 2.5, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
+    const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const drag = dragRef.current;
+        if (!drag || drag.index < 0) return;
+        const { point, rect } = pointerPosition(e);
+        if (!drag.moved && Math.hypot((point.x - drag.start.x) * rect.width, (point.y - drag.start.y) * rect.height) < 3) return;
+        drag.moved = true;
+        setDots(drag.before.map((d, k) => (k === drag.index ? point : d)));
+    };
 
-            ctx.fillStyle = '#FDB813';
-            ctx.font = '10px Poppins';
-            ctx.fillText(String(index + 1), x + 8, y - 8);
-        });
-    }, [analyzerDots, imgDimensions]);
-
-    useEffect(() => {
-        if (imageRef.current?.complete) {
-            draw();
+    const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        const drag = dragRef.current;
+        dragRef.current = null;
+        if (!drag) return;
+        if (drag.index < 0) {
+            changeDots([...dots, pointerPosition(e).point], `Added a dot · ${dots.length + 1} dots.`);
+        } else if (drag.moved) {
+            setHistory(h => [...h.slice(-49), drag.before]);
+            setFuture([]);
+            setEdited(true);
+            setStatus('Moved a dot.');
         } else {
-            imageRef.current?.addEventListener('load', draw);
-        }
-        return () => imageRef.current?.removeEventListener('load', draw);
-    }, [draw, analyzerDots, image]);
-
-    useEffect(() => {
-        return () => {
-            if (imageUrlRef.current) {
-                URL.revokeObjectURL(imageUrlRef.current);
-            }
-            abortRef.current?.abort();
-        };
-    }, []);
-
-    const getNormalizedCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.PointerEvent<HTMLCanvasElement>) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return null;
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / canvas.width;
-        const y = (e.clientY - rect.top) / canvas.height;
-        return { x, y };
-    };
-
-    const findNearbyDotIndex = (x: number, y: number, threshold = 0.02) => analyzerDots.findIndex(p => Math.hypot(p.x - x, p.y - y) < threshold);
-
-    const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (dragIndexRef.current !== null) return;
-        const coords = getNormalizedCoords(e);
-        if (!coords) return;
-
-        const existingDotIndex = findNearbyDotIndex(coords.x, coords.y);
-        pushHistory(analyzerDots);
-
-        const nextPoints = existingDotIndex >= 0
-            ? analyzerDots.filter((_, idx) => idx !== existingDotIndex)
-            : [...analyzerDots, coords];
-
-        applyDots(nextPoints, `Manual refinement active · ${nextPoints.length} dots in workspace.`);
-    };
-
-    const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-        const coords = getNormalizedCoords(e);
-        if (!coords) return;
-        const existingDotIndex = findNearbyDotIndex(coords.x, coords.y, 0.025);
-        if (existingDotIndex >= 0) {
-            pushHistory(analyzerDots);
-            dragIndexRef.current = existingDotIndex;
-            (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+            changeDots(drag.before.filter((_, k) => k !== drag.index), `Removed a dot · ${dots.length - 1} dots.`);
         }
     };
 
-    const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-        if (dragIndexRef.current === null) return;
-        const coords = getNormalizedCoords(e);
-        if (!coords) return;
-        const next = analyzerDots.map((dot, idx) => idx === dragIndexRef.current ? { x: Math.min(1, Math.max(0, coords.x)), y: Math.min(1, Math.max(0, coords.y)) } : dot);
-        setAnalyzerDots(next);
-        setSelectedDots(next);
-    };
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-        if (dragIndexRef.current !== null) {
-            dragIndexRef.current = null;
-            (e.target as HTMLCanvasElement).releasePointerCapture(e.pointerId);
-            setAnalysisSummary({ message: `Dragged dot positions updated · ${analyzerDots.length} dots in workspace.`, source: 'manual' });
-            setStatus(`Dragged dot positions updated · ${analyzerDots.length} dots in workspace.`);
-        }
-    };
-
-    const clearPoints = () => {
-        pushHistory(analyzerDots);
-        applyDots([], 'Workspace points cleared.');
-    };
-
-    const handleSnap = () => {
-        pushHistory(analyzerDots);
-        snapDotsToGrid();
-        setStatus('Auto-snapped dots into a cleaner lattice.');
+    const onPointerCancel = () => {
+        const drag = dragRef.current;
+        dragRef.current = null;
+        if (drag?.moved) setDots(drag.before);
     };
 
     const undo = () => {
-        if (!history.length) return;
         const previous = history[history.length - 1];
-        setHistory(prev => prev.slice(0, -1));
-        setFuture(prev => [analyzerDots, ...prev]);
-        applyDots(previous, `Undo applied · ${previous.length} dots in workspace.`);
+        if (!previous) return;
+        setHistory(h => h.slice(0, -1));
+        setFuture(f => [dots, ...f]);
+        setDots(previous);
+        setEdited(true);
     };
 
     const redo = () => {
-        if (!future.length) return;
         const next = future[0];
-        setFuture(prev => prev.slice(1));
-        setHistory(prev => [...prev, analyzerDots]);
-        applyDots(next, `Redo applied · ${next.length} dots in workspace.`);
+        if (!next) return;
+        setFuture(f => f.slice(1));
+        setHistory(h => [...h, dots]);
+        setDots(next);
+        setEdited(true);
     };
 
-    const cycleZoom = () => setZoomIndex(prev => (prev + 1) % ZOOM_LEVELS.length);
-    const zoom = ZOOM_LEVELS[zoomIndex];
+    const exportOverlay = () => {
+        const canvas = canvasRef.current;
+        const img = imageRef.current;
+        if (!canvas || !img) return;
+        const out = document.createElement('canvas');
+        out.width = canvas.width;
+        out.height = canvas.height;
+        const ctx = out.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, out.width, out.height);
+        ctx.drawImage(canvas, 0, 0);
+        out.toBlob(blob => blob && downloadBlob(blob, `kolam-overlay-${Date.now()}.png`), 'image/png');
+    };
+
+    // ------------------------------------------------------------ view
 
     return (
         <section className="py-20 px-4 container mx-auto">
-            <h2 className="font-heading text-4xl md:text-5xl text-center mb-12 gradient-text">Kolam Analyzer</h2>
+            <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Kolam Analyzer</h2>
+            <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
+                Finds the dot grid, reads whether strands cross or turn between each pair of dots, and recreates the kolam from that.
+            </p>
 
             <div className="max-w-6xl mx-auto space-y-8">
                 <Card>
-                    <div className="grid md:grid-cols-[1.2fr_0.8fr] gap-6 items-start">
-                        <div className="flex flex-col space-y-4">
-                            <Label htmlFor="kolam-upload" className="text-xl">Upload a Kolam Image (PNG/JPEG)</Label>
+                    <div
+                        className="grid md:grid-cols-[1.3fr_1fr] gap-6 items-end"
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={e => {
+                            e.preventDefault();
+                            const dropped = e.dataTransfer.files?.[0];
+                            if (dropped) loadImage(dropped);
+                        }}
+                    >
+                        <div className="space-y-3">
+                            <Label htmlFor="kolam-upload" className="text-lg">Kolam image (PNG, JPEG or WebP, up to {MAX_UPLOAD_MB} MB)</Label>
                             <input
                                 id="kolam-upload"
                                 type="file"
-                                accept="image/png, image/jpeg"
-                                onChange={handleFileChange}
+                                accept={ACCEPTED_TYPES.join(',')}
+                                onChange={e => {
+                                    const picked = e.target.files?.[0];
+                                    e.target.value = '';
+                                    if (picked) loadImage(picked);
+                                }}
                                 className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-500/20 file:text-orange-300 hover:file:bg-orange-500/30 cursor-pointer"
                             />
-                            <div className="grid sm:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="preset">Detection Preset</Label>
-                                    <select id="preset" value={preset} onChange={(e) => setPreset(e.target.value as (typeof PRESETS)[number])} className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:ring-orange-500 focus:border-orange-500 transition-colors">
-                                        {PRESETS.map(option => <option key={option} value={option}>{option}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex items-end">
-                                    <label className="flex items-center gap-3 text-sm text-gray-300">
-                                        <input type="checkbox" checked={deskew} onChange={(e) => setDeskew(e.target.checked)} className="accent-orange-500" />
-                                        Enable perspective correction
-                                    </label>
-                                </div>
-                            </div>
-                            <div className="flex gap-3 flex-wrap">
-                                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>Import Workspace JSON</Button>
-                                <input ref={fileInputRef} type="file" accept="application/json" onChange={handleImportJson} className="hidden" />
-                                <Button variant="secondary" onClick={exportOverlayPng} disabled={!image || !analyzerDots.length}>Export Overlay PNG</Button>
-                            </div>
-                            {error && <p className="text-red-500 text-sm bg-red-900/20 px-4 py-2 rounded">{error}</p>}
-                            {isLoading && <p className="text-saffron animate-pulse font-medium">✨ Visualizing Kolam...</p>}
-                            <p className="text-sm text-gray-400">{status}</p>
-                            {confidence !== null && <p className="text-sm text-saffron">Estimated detection confidence: {(confidence * 100).toFixed(0)}%</p>}
+                            <p className="text-xs text-gray-500">Or drop an image here. Best results come from a top-down photo with good contrast.</p>
                         </div>
-
-                        <div className="bg-black/20 rounded-xl border border-white/5 p-5 space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.2em] text-saffron mb-2">Workspace Summary</p>
-                                <p className="text-3xl font-heading text-white">{analyzerDots.length}</p>
-                                <p className="text-sm text-gray-400">active dots available for downstream generation</p>
+                                <Label htmlFor="preset">Image type</Label>
+                                <select
+                                    id="preset"
+                                    value={preset}
+                                    onChange={e => setPreset(e.target.value as AnalysisPreset)}
+                                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-lg text-white"
+                                >
+                                    {ANALYSIS_PRESETS.map(option => <option key={option} value={option}>{option}</option>)}
+                                </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button variant="secondary" className="w-full" onClick={syncAnalyzerToGenerator} disabled={!analyzerDots.length}>Sync</Button>
-                                <Button variant="secondary" className="w-full" onClick={cycleZoom}>Zoom {zoom}×</Button>
-                                <Button variant="secondary" className="w-full" onClick={undo} disabled={!history.length}>Undo</Button>
-                                <Button variant="secondary" className="w-full" onClick={redo} disabled={!future.length}>Redo</Button>
-                                <Button variant="secondary" className="w-full" onClick={handleSnap} disabled={!analyzerDots.length}>Auto-Snap</Button>
-                                <Button variant="secondary" className="w-full" onClick={saveWorkspace} disabled={!analyzerDots.length}>Save</Button>
-                                <Button variant="secondary" className="w-full" onClick={exportDots} disabled={!analyzerDots.length}>Export JSON</Button>
-                            </div>
-                            <Button variant="secondary" className="w-full" onClick={clearPoints} disabled={!analyzerDots.length}>Clear Workspace</Button>
+                            <Button variant="secondary" className="!px-3 !py-2 text-sm" onClick={loadSample} disabled={loading}>Try a sample</Button>
+                            <label className="col-span-2 flex items-center gap-2 text-sm text-gray-300">
+                                <input type="checkbox" checked={deskew} onChange={e => setDeskew(e.target.checked)} className="accent-orange-500" />
+                                Straighten a photographed sheet (perspective correction)
+                            </label>
                         </div>
+                    </div>
+                    <div className="mt-4 space-y-2" aria-live="polite">
+                        {loading && <p className="text-saffron animate-pulse">Analyzing the kolam…</p>}
+                        {error && <p className="text-red-400 text-sm bg-red-900/20 px-4 py-2 rounded">{error}</p>}
+                        <p className="text-sm text-gray-400">{status}</p>
                     </div>
                 </Card>
 
-                <div className="grid lg:grid-cols-[1.3fr_0.7fr] gap-8">
-                    <div>
-                        {image && (
-                            <Card className="overflow-hidden">
-                                <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-3">
-                                    <h3 className="text-xl font-semibold text-gray-200">Interactive Analysis</h3>
-                                    <div className="space-x-4 text-sm text-gray-400">
-                                        <span>Click to add/remove</span>
-                                        <span>·</span>
-                                        <span>Drag to reposition</span>
-                                        <span>·</span>
-                                        <span>{analyzerDots.length} dots in workspace</span>
-                                    </div>
+                <div className="grid lg:grid-cols-[1.4fr_1fr] gap-8 items-start">
+                    <Card>
+                        {hasSurface ? (
+                            <>
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    <Button variant="secondary" className="!px-3 !py-1.5 text-sm" onClick={undo} disabled={!history.length}>Undo</Button>
+                                    <Button variant="secondary" className="!px-3 !py-1.5 text-sm" onClick={redo} disabled={!future.length}>Redo</Button>
+                                    <Button variant="secondary" className="!px-3 !py-1.5 text-sm" onClick={() => scan?.lattice && changeDots(snapToLattice(scan.lattice, dots), 'Snapped the dots onto the lattice.')} disabled={!scan?.lattice || !dots.length}>Snap to grid</Button>
+                                    <Button variant="secondary" className="!px-3 !py-1.5 text-sm" onClick={() => changeDots([], 'Cleared all dots.')} disabled={!dots.length}>Clear dots</Button>
+                                    <Button variant="secondary" className="!px-3 !py-1.5 text-sm" onClick={() => setZoomIndex(z => (z + 1) % ZOOM_LEVELS.length)}>Zoom {zoom}×</Button>
+                                    <label className="flex items-center gap-2 text-sm text-gray-300 ml-auto">
+                                        <input type="checkbox" checked={showRecreation} onChange={e => setShowRecreation(e.target.checked)} className="accent-orange-500" />
+                                        Show recreation
+                                    </label>
                                 </div>
-
-                                <div className="relative w-full overflow-auto bg-black/20 rounded-lg p-4">
-                                    <div className="relative inline-block origin-top-left" style={{ transform: `scale(${zoom})`, transformOrigin: 'top left' }}>
-                                        <img
-                                            ref={imageRef}
-                                            src={image}
-                                            alt="Kolam Analysis"
-                                            className="max-w-full max-h-[70vh] object-contain block select-none pointer-events-none"
-                                        />
+                                <div className="w-full overflow-auto max-h-[75vh] rounded-lg bg-black/30">
+                                    <div ref={surfaceRef} className="relative" style={{ width: `${zoom * 100}%` }}>
+                                        {imageUrl
+                                            ? <img ref={imageRef} src={imageUrl} alt="Uploaded kolam" className="block w-full h-auto select-none pointer-events-none" draggable={false} />
+                                            : <div className="w-full aspect-square" />}
                                         <canvas
                                             ref={canvasRef}
-                                            onClick={handleCanvasClick}
-                                            onPointerDown={handlePointerDown}
-                                            onPointerMove={handlePointerMove}
-                                            onPointerUp={handlePointerUp}
-                                            onPointerLeave={handlePointerUp}
-                                            className="absolute top-0 left-0 w-full h-full cursor-crosshair touch-none"
+                                            onPointerDown={onPointerDown}
+                                            onPointerMove={onPointerMove}
+                                            onPointerUp={onPointerUp}
+                                            onPointerCancel={onPointerCancel}
+                                            className="absolute inset-0 w-full h-full cursor-crosshair touch-none"
                                         />
                                     </div>
                                 </div>
-
-                                <div className="mt-4 text-center text-sm text-gray-500">
-                                    Detected {analyzerDots.length} dots. Refine detection manually, switch presets for different image conditions, optionally auto-snap them into a cleaner lattice, then sync them into the generator reference layer.
+                                <p className="mt-3 text-xs text-gray-500">
+                                    Click to add a dot, click a dot to remove it, drag to move it. Then recreate the kolam from your corrected dots.
+                                </p>
+                                <div className="flex flex-wrap gap-2 mt-4">
+                                    <Button className="!px-4 !py-2 text-sm" onClick={() => file && runAnalysis(file, dots)} disabled={!file || !edited || loading || dots.length < 4}>
+                                        Recreate from my dots
+                                    </Button>
+                                    <Button variant="secondary" className="!px-4 !py-2 text-sm" onClick={exportOverlay} disabled={!imageUrl}>Overlay PNG</Button>
                                 </div>
-                            </Card>
+                            </>
+                        ) : (
+                            <div className="aspect-video flex items-center justify-center text-center text-gray-500 border-2 border-dashed border-gray-700 rounded-lg p-6">
+                                Your kolam will appear here with its detected dots and the recreated strands on top.
+                            </div>
                         )}
-                    </div>
+                    </Card>
 
-                    <Card>
-                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Saved Workspaces</h3>
-                        <div className="space-y-3 max-h-[480px] overflow-auto pr-1">
-                            {savedWorkspaces.length === 0 && <p className="text-sm text-gray-500">No saved workspaces yet.</p>}
-                            {savedWorkspaces.map((workspace) => (
-                                <div key={workspace.id} className="border border-white/10 rounded-lg p-3 bg-black/10">
-                                    <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="space-y-8">
+                        <DesignPrinciples scan={scan} imageSymmetry={meta?.symmetry ?? null} confidence={meta?.confidence ?? null} />
+
+                        <Card>
+                            <div className="flex items-center justify-between mb-4 gap-2">
+                                <h3 className="text-xl font-semibold text-gray-200">Saved kolams</h3>
+                                <div className="flex gap-3 text-sm">
+                                    <button className="text-saffron disabled:text-gray-600" onClick={save} disabled={!scan && !dots.length}>Save</button>
+                                    <button className="text-saffron disabled:text-gray-600" onClick={() => downloadKolamFile(currentFile())} disabled={!scan && !dots.length}>Export</button>
+                                    <button className="text-saffron" onClick={() => jsonInputRef.current?.click()}>Import</button>
+                                </div>
+                            </div>
+                            <input ref={jsonInputRef} type="file" accept=".json,application/json" onChange={openFile} className="hidden" />
+                            <div className="space-y-2 max-h-80 overflow-auto">
+                                {saved.length === 0 && <p className="text-sm text-gray-500">Saved kolams stay in this browser. Export a .kolam.json file to share one.</p>}
+                                {saved.map(item => (
+                                    <div key={item.id} className="flex items-center justify-between gap-3 border border-white/10 rounded-lg p-3 bg-black/10">
                                         <div>
-                                            <div className="text-sm font-semibold text-white">{workspace.analyzerDots.length} dots · {workspace.gridSize}×{workspace.gridSize}</div>
-                                            <div className="text-xs text-gray-500">{new Date(workspace.createdAt).toLocaleString()}</div>
+                                            <p className="text-sm text-white">{item.design.rows}×{item.design.cols} · {countLoops(item.design)} loop(s)</p>
+                                            <p className="text-xs text-gray-500">{new Date(item.createdAt).toLocaleString()}</p>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => loadWorkspace(workspace.id)} className="text-xs text-saffron">Load</button>
-                                            <button onClick={() => removeWorkspace(workspace.id)} className="text-xs text-red-400">Delete</button>
+                                        <div className="flex gap-3 text-xs">
+                                            <button className="text-saffron" onClick={() => { clearImage(); open(item); setStatus('Opened a saved kolam.'); }}>Open</button>
+                                            <button className="text-red-400" onClick={() => remove(item.id)}>Delete</button>
                                         </div>
                                     </div>
-                                    {workspace.summary && <p className="text-xs text-gray-400">{workspace.summary.message}</p>}
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </section>
