@@ -12,6 +12,9 @@ import { tracedDots, tracedSize } from '../utils/traced';
 import { SectionHeading } from './ui/SectionHeading';
 import { BRAND } from '../lib/brand';
 import { navigate } from '../lib/router';
+import { presetSvg } from '../data/designs';
+import { readingGuide } from '../data/reading';
+import { withArticle, type Tradition } from '../data/traditions';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -33,11 +36,18 @@ interface Drag {
 type Meta = Pick<AnalysisResponse, 'confidence' | 'symmetry' | 'radial' | 'palette'>;
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
-// The studio and the drawing guide are on their own page.
-const openStudio = (part: 'generator' | 'walkthrough') => navigate(`/studio#${part}`);
-
-const KolamAnalyzer: React.FC = () => {
+/**
+ * Reads a design from a photo. On an art form's own reader (/alpana/read-a-photo) the sample is that
+ * art form's design, and the result opens in that art form's studio; the page shows the heading.
+ */
+const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const k = useKolam();
+    // The result opens in the art form's own studio, kept as read (?from=photo), or in the full studio.
+    const openStudio = (part: 'generator' | 'walkthrough') =>
+        navigate(tradition ? `/${tradition.slug}?from=photo#${part}` : `/studio#${part}`);
+    // Only dot-grid art forms (kolam, muggulu) are read as a grid; the rest are traced.
+    const grid = !tradition || tradition.modes.includes('kolam');
+    const subject = tradition ? withArticle(tradition.name) : 'a kolam, rangoli or alpana';
     const { dots, setDots, scan, setScan, traced, setTraced, saved, save, remove, open, currentFile } = k;
 
     const [file, setFile] = useState<File | null>(null);
@@ -45,12 +55,12 @@ const KolamAnalyzer: React.FC = () => {
     const [meta, setMeta] = useState<Meta | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [status, setStatus] = useState('Take or upload a photo of a kolam, rangoli or alpana, or try the sample.');
+    const [status, setStatus] = useState(`Take or upload a photo of ${subject}, or try the sample.`);
     const [history, setHistory] = useState<Point[][]>([]);
     const [future, setFuture] = useState<Point[][]>([]);
     const [edited, setEdited] = useState(false);
     const [zoomIndex, setZoomIndex] = useState(0);
-    const [preset, setPreset] = useState<AnalysisPreset>('balanced');
+    const [preset, setPreset] = useState<AnalysisPreset>(tradition ? readingGuide(tradition).preset : 'balanced');
     const [deskew, setDeskew] = useState(true);
     const [showRecreation, setShowRecreation] = useState(true);
     const [surface, setSurface] = useState({ w: 0, h: 0 });
@@ -175,7 +185,7 @@ const KolamAnalyzer: React.FC = () => {
         setError(null);
         setStatus(manualDots ? 'Recreating from your dots…' : 'Reading the design…');
         try {
-            const data = await analyzeKolam(source, { preset, deskew, dots: manualDots, signal: controller.signal });
+            const data = await analyzeKolam(source, { preset, deskew, dots: manualDots, grid, signal: controller.signal });
             if (data.image) setImageUrl(data.image);
             setDots(data.dots);
             if (data.design) {
@@ -235,8 +245,10 @@ const KolamAnalyzer: React.FC = () => {
     };
 
     const loadSample = async () => {
-        const svg = designToSvg(makeSingleLine(diamondDesign(5)), { background: '#ffffff', stroke: '#1f1f1f', dot: '#1f1f1f' });
-        void loadImage(new File([await svgToPng(svg)], 'sample-kolam.png', { type: 'image/png' }));
+        const svg = tradition
+            ? presetSvg(tradition.designs[0].spec)
+            : designToSvg(makeSingleLine(diamondDesign(5)), { background: '#ffffff', stroke: '#1f1f1f', dot: '#1f1f1f' });
+        void loadImage(new File([await svgToPng(svg)], `sample-${tradition?.slug ?? 'kolam'}.png`, { type: 'image/png' }));
     };
 
     const clearImage = () => {
@@ -380,11 +392,15 @@ const KolamAnalyzer: React.FC = () => {
     // ------------------------------------------------------------ view
 
     return (
-        <section className="py-20 px-4 container mx-auto">
-            <SectionHeading title="Read a Design" className="mb-4" />
-            <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
-                Photograph a kolam, rangoli, alpana or muggulu. {BRAND} finds the dots, the symmetry and the colours, and recreates the design so you can draw it again.
-            </p>
+        <section className={`${tradition ? 'py-12' : 'py-20'} px-4 container mx-auto`}>
+            {!tradition && (
+                <>
+                    <SectionHeading title="Read a Design" className="mb-4" />
+                    <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
+                        Photograph a kolam, rangoli, alpana or muggulu. {BRAND} finds the dots, the symmetry and the colours, and recreates the design so you can draw it again.
+                    </p>
+                </>
+            )}
 
             <div className="max-w-6xl mx-auto space-y-8">
                 <Card>

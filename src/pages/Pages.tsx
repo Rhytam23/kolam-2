@@ -1,5 +1,4 @@
 import React from 'react';
-import KolamAnalyzer from '../components/KolamAnalyzer';
 import KolamGenerator from '../components/KolamGenerator';
 import DrawGuide from '../components/DrawGuide';
 import Research from '../components/Research';
@@ -10,13 +9,6 @@ import KolamDivider from '../components/landing/KolamDivider';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { Link } from '../lib/router';
-
-/** /read: read a design from a photo. */
-export const ReadPage: React.FC = () => (
-    <div data-paper className="paper-bg pt-16">
-        <div id="analyzer" className="scroll-mt-16"><ErrorBoundary name="photo reader"><KolamAnalyzer /></ErrorBoundary></div>
-    </div>
-);
 
 /** /studio: every style, with the guide and practice below. */
 export const StudioPage: React.FC = () => (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ROUTES, TRADITIONS } from './traditions';
+import { READ_A_PHOTO, ROUTES, TRADITIONS, readerPath, withArticle } from './traditions';
 import { buildDesign } from './designs';
 import { DEFAULT_THEME, contrast, type Theme } from '../lib/theme';
 import { PALETTES } from '../lib/colours';
@@ -69,5 +69,16 @@ describe('traditions', () => {
     const paths = ROUTES.map(r => r.path);
     expect(new Set(paths).size).toBe(paths.length);
     for (const t of TRADITIONS) expect(paths).toContain(`/${t.slug}`);
+  });
+
+  it('each have their own photo reader, and one page explains them all', () => {
+    const paths = ROUTES.map(r => r.path);
+    expect(paths).toContain(READ_A_PHOTO);
+    for (const t of TRADITIONS) {
+      expect(paths).toContain(readerPath(t.slug));
+      expect(ROUTES.find(r => r.path === readerPath(t.slug))!.title).toContain(t.name.toLowerCase());
+    }
+    expect(withArticle('Alpana')).toBe('an alpana');
+    expect(withArticle('Kolam')).toBe('a kolam');
   });
 });

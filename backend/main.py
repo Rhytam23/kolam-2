@@ -90,7 +90,9 @@ async def analyze_kolam(
     preset: str = Form('balanced'),
     deskew: bool = Form(True),
     dots: str | None = Form(None),
+    grid: bool = Form(True),
 ):
+    """Reads a design from a photo. grid=false skips the dot-grid search, for art forms drawn without dots."""
     check_rate_limit(request.client.host if request.client else 'unknown')
     if preset not in PRESET_CONFIGS:
         raise HTTPException(status_code=422, detail=f'Unknown preset. Use one of: {", ".join(PRESET_CONFIGS)}')
@@ -116,6 +118,8 @@ async def analyze_kolam(
         # Kolams are drawn dark-on-light (paper) or light-on-dark (rice flour on a floor).
         if manual_dots is not None:
             found, dark_ink = manual_dots, ink_is_dark(gray, manual_dots)
+        elif not grid:
+            found, dark_ink = [], True
         else:
             readings = []
             for dark in (True, False):
@@ -123,7 +127,7 @@ async def analyze_kolam(
                 fit = infer_lattice(candidate, width, height)
                 readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
             _, dark_ink, found = max(readings, key=lambda r: r[0])
-        lattice = infer_lattice(found, width, height)
+        lattice = infer_lattice(found, width, height) if found else None
         if lattice is None:
             # No dot grid to go by: the drawing is the thinner of the two tones.
             dark_ink = bool(stroke_mask(gray, True).mean() <= stroke_mask(gray, False).mean())
@@ -198,7 +202,7 @@ def page_html(template: str, title: str, description: str) -> str:
 
 
 def add_page_routes(static_dir) -> None:
-    """Answer every page of the app (/, /kolam, /read, ...) with index.html; see routes.json from the build."""
+    """Answer every page of the app (/, /kolam, /kolam/read-a-photo, ...) with index.html; see routes.json from the build."""
     routes_file, index_file = static_dir / 'routes.json', static_dir / 'index.html'
     if not (routes_file.is_file() and index_file.is_file()):
         return

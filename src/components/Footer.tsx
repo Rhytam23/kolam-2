@@ -3,7 +3,7 @@ import Diya from './landing/Diya';
 import KolamDivider from './landing/KolamDivider';
 import InstallApp from './InstallApp';
 import { Link } from '../lib/router';
-import { TRADITIONS } from '../data/traditions';
+import { READ_A_PHOTO, TRADITIONS } from '../data/traditions';
 import { BRAND } from '../lib/brand';
 
 const REPO = 'https://github.com/Rhytam23/kolam-2';
@@ -20,7 +20,7 @@ const Footer: React.FC = () => (
             </ul>
             <p className="font-semibold text-brass-light mt-5 mb-3">Tools</p>
             <ul className="flex flex-wrap gap-x-5 gap-y-2">
-                {[['/', 'Home'], ['/read', 'Read a photo'], ['/studio', 'Design Studio'], ['/about', 'About and research']].map(([to, label]) => (
+                {[['/', 'Home'], [READ_A_PHOTO, 'Read a photo'], ['/studio', 'Design Studio'], ['/about', 'About and research']].map(([to, label]) => (
                     <li key={to}><Link to={to} className="text-rice underline decoration-brass/60 underline-offset-4 hover:text-brass-light">{label}</Link></li>
                 ))}
             </ul>

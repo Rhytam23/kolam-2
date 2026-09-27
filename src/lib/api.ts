@@ -12,15 +12,18 @@ export interface AnalyzeOptions {
   deskew: boolean;
   /** Use these (corrected) dots instead of detecting them again. */
   dots?: Point[];
+  /** false: the design has no dot grid (alpana, pookalam, mandana…), so do not look for one. */
+  grid?: boolean;
   signal?: AbortSignal;
 }
 
-export async function analyzeKolam(file: File, { preset, deskew, dots, signal }: AnalyzeOptions): Promise<AnalysisResponse> {
+export async function analyzeKolam(file: File, { preset, deskew, dots, grid, signal }: AnalyzeOptions): Promise<AnalysisResponse> {
   const form = new FormData();
   form.append('file', file);
   form.append('preset', preset);
   form.append('deskew', String(deskew));
   if (dots) form.append('dots', JSON.stringify(dots));
+  if (grid === false) form.append('grid', 'false');
 
   let response: Response;
   try {
