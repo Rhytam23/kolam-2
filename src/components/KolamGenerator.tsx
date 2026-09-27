@@ -10,6 +10,7 @@ import { RADIAL_STYLES, makeRadial, radialToSvg, type RadialStyle } from '../uti
 import { PALETTES, type PaletteName } from '../lib/colours';
 import { artworkColours, artworkSvg, kolamDotColour } from '../lib/artwork';
 import { downloadBlob, downloadKolamFile, svgToPng } from '../lib/kolamFile';
+import { SectionHeading } from './ui/SectionHeading';
 
 const Toggle: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
     <button
@@ -106,7 +107,7 @@ const KolamGenerator: React.FC = () => {
     return (
         <section className="py-20 px-4">
             <div className="container mx-auto">
-                <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Design Studio</h2>
+                <SectionHeading title="Design Studio" className="mb-4" />
                 <p className="text-center text-muted mb-8 max-w-2xl mx-auto">
                     Make your own floor design, or a similar one to a photo you analysed. Then follow the step-by-step guide below to draw it on your doorstep.
                 </p>

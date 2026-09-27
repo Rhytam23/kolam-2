@@ -13,11 +13,16 @@ export default {
         turmeric: '#E1AD01',
         leaf: '#2E7D32',
         kumkum: '#C62839',
+        floor: '#5A2416',     // deep red-oxide floor of the landing
+        'floor-2': '#72301C',
+        brass: '#C9973A',     // lamp brass, for accents on the dark floor
+        'brass-light': '#E8C271',
+        rice: '#F7F3EA',      // rice flour
       },
       fontFamily: {
         heading: ['"Tiro Tamil"', 'Georgia', 'serif'],
         sans: ['"Hind Madurai"', 'system-ui', 'sans-serif'],
-        script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', 'serif'],
+        script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', '"Tiro Kannada"', 'serif'],
       },
       animation: {
         'fade-in-down': 'fade-in-down 0.5s ease-out forwards',

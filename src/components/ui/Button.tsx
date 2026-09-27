@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary';
+    variant?: 'primary' | 'secondary' | 'brass' | 'outline-light';
     size?: 'md' | 'sm';
 }
 
@@ -11,6 +11,9 @@ export const Button: React.FC<ButtonProps> = ({ children, className = '', varian
     const variants = {
         primary: 'bg-kaavi text-paper hover:bg-kumkum shadow-sm',
         secondary: 'border-2 border-kaavi text-kaavi bg-white/60 hover:bg-kaavi/10',
+        // For the dark floor of the landing.
+        brass: 'bg-gradient-to-b from-brass-light to-brass text-floor hover:from-[#F3D48C] hover:to-brass-light shadow-md focus-visible:ring-brass-light focus-visible:ring-offset-floor',
+        'outline-light': 'border-2 border-rice/70 text-rice hover:bg-rice/10 focus-visible:ring-brass-light focus-visible:ring-offset-floor',
     };
     return (
         <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props}>

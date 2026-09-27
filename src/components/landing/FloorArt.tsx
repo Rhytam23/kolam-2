@@ -30,9 +30,16 @@ export const FloorArtDefs: React.FC = () => (
     </svg>
 );
 
-/** A square of red-oxide floor with the double kaavi border drawn around a doorstep kolam. */
-export const FloorTile: React.FC<{ children: React.ReactNode; className?: string; label: string }> = ({ children, className = '', label }) => (
-    <figure className={`relative rounded-2xl p-2 bg-white/70 kolam-border shadow-sm ${className}`}>
+const FRAMES = {
+    // On cream paper: the double kaavi border drawn around a doorstep kolam.
+    paper: 'rounded-2xl p-2 bg-white/70 kolam-border shadow-sm',
+    // On the dark floor: a thin brass frame, like a plaque in an exhibition.
+    plaque: 'rounded-2xl p-1.5 bg-gradient-to-br from-brass-light/70 via-brass/40 to-brass-light/60 shadow-[0_18px_40px_-18px_rgba(0,0,0,0.7)]',
+};
+
+/** A square of red-oxide floor, framed for cream paper or for the dark landing floor. */
+export const FloorTile: React.FC<{ children: React.ReactNode; className?: string; label: string; frame?: keyof typeof FRAMES }> = ({ children, className = '', label, frame = 'paper' }) => (
+    <figure className={`relative ${FRAMES[frame]} ${className}`}>
         <div className="relative overflow-hidden rounded-xl aspect-square" style={{ backgroundColor: RED_FLOOR }} role="img" aria-label={label}>
             <svg className="absolute inset-0 w-full h-full" aria-hidden><rect width="100%" height="100%" filter="url(#grain)" /></svg>
             {children}
@@ -45,20 +52,53 @@ export const FloorTile: React.FC<{ children: React.ReactNode; className?: string
 const UNIT = 40;
 const PAD = 1;
 
+/** How far each step has got, from 0 to 1, when a drawing follows the scroll instead of a stage. */
+export interface DrawProgress {
+    dots: number;
+    lines: number;
+    colour: number;
+}
+
+const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
+const shownStyle = (visible: boolean): React.CSSProperties => ({ opacity: visible ? 1 : 0, transition: 'opacity 0.25s' });
+
 interface KolamFrameProps {
     design: Design;
     /** 'dots' = only the pulli; 'line' = rice-flour line; 'colour' = each line in its own colour. */
-    stage: 'dots' | 'line' | 'colour';
+    stage?: 'dots' | 'line' | 'colour';
     colours?: readonly string[];
     animate?: boolean;
+    /** Follow this progress instead of `stage` (used by the scroll-driven hero). */
+    progress?: DrawProgress;
+    showDots?: boolean;
 }
 
-export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage, colours = [], animate = false }) => {
+export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage = 'line', colours = [], animate = false, progress, showDots = true }) => {
     const w = (design.cols - 1 + 2 * PAD) * UNIT;
     const h = (design.rows - 1 + 2 * PAD) * UNIT;
     const dots = designDots(design);
-    const paths = stage === 'dots' ? [] : loopPaths(design, UNIT, PAD);
     const dotDelay = 0.09;
+    if (progress) {
+        const loops = loopPaths(design, UNIT, PAD);
+        const shown = Math.round(clamp01(progress.dots) * dots.length);
+        const line = { strokeWidth: UNIT * 0.085, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, pathLength: 1, strokeDasharray: 1, strokeDashoffset: 1 - clamp01(progress.lines), fill: 'none' };
+        return (
+            <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 w-full h-full">
+                <g filter="url(#rice)">
+                    {loops.map((d, i) => <path key={i} d={d} stroke={RICE} {...line} />)}
+                    {progress.colour > 0 && colours.length > 0 && (
+                        <g opacity={clamp01(progress.colour)}>
+                            {loops.map((d, i) => <path key={i} d={d} stroke={colours[i % colours.length]} {...line} />)}
+                        </g>
+                    )}
+                    {showDots && dots.map((p, i) => (
+                        <circle key={`${p.x},${p.y}`} cx={(PAD + p.x) * UNIT} cy={(PAD + p.y) * UNIT} r={UNIT * 0.09} fill={RICE} style={shownStyle(i < shown)} />
+                    ))}
+                </g>
+            </svg>
+        );
+    }
+    const paths = stage === 'dots' ? [] : loopPaths(design, UNIT, PAD);
     return (
         <svg viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 w-full h-full">
             <g filter="url(#rice)">
@@ -76,7 +116,7 @@ export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage, colours =
                         style={animate ? { animationDelay: `${dots.length * dotDelay + 0.4}s`, animationDuration: '4.5s' } : undefined}
                     />
                 ))}
-                {dots.map((p, i) => (
+                {showDots && dots.map((p, i) => (
                     <circle
                         key={`${p.x},${p.y}`}
                         cx={(PAD + p.x) * UNIT}
@@ -97,18 +137,44 @@ export const KolamFrame: React.FC<KolamFrameProps> = ({ design, stage, colours =
 interface RangoliFrameProps {
     design: RadialDesign;
     /** 'dots' = guide dots; 'join' = outlines joined through the dots; 'colour' = filled. */
-    stage: 'dots' | 'join' | 'colour';
+    stage?: 'dots' | 'join' | 'colour';
     /** For 'join': how many rings (from the centre) are drawn; the last one is highlighted. */
     ringsDrawn?: number;
     animate?: boolean;
     showDots?: boolean;
     showLines?: boolean;
+    /** Follow this progress instead of `stage`; rings are joined one after another, from the centre. */
+    progress?: DrawProgress;
 }
 
-export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage, ringsDrawn, animate = false, showDots = true, showLines = true }) => {
+export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'colour', ringsDrawn, animate = false, showDots = true, showLines = true, progress }) => {
     const rings = [...design.rings].reverse();
-    const shown = stage === 'dots' ? 0 : ringsDrawn ?? rings.length;
     const dots = radialGuideDots(design);
+    if (progress) {
+        const shownDots = Math.round(clamp01(progress.dots) * dots.length);
+        return (
+            <svg viewBox="-1.15 -1.15 2.3 2.3" className="absolute inset-0 w-full h-full">
+                {progress.colour > 0 && (
+                    <g opacity={clamp01(progress.colour)}>
+                        {design.rings.map((r, i) => <path key={i} d={ringPath(r)} fill={ringStyle(design, r).fill} stroke="none" />)}
+                        <circle r={0.09} fill={design.centre} />
+                    </g>
+                )}
+                <g filter="url(#rice)">
+                    {rings.map((r, i) => {
+                        const drawn = clamp01(progress.lines * rings.length - i);
+                        return drawn > 0 && (
+                            <path key={i} d={ringPath(r)} fill="none" stroke={RICE} strokeWidth={0.016} strokeLinejoin="round" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - drawn} />
+                        );
+                    })}
+                    {dots.map((p, i) => (
+                        <circle key={i} cx={p.x} cy={p.y} r={p.ring < 0 ? 0.03 : 0.022} fill={RICE} style={shownStyle(i < shownDots)} />
+                    ))}
+                </g>
+            </svg>
+        );
+    }
+    const shown = stage === 'dots' ? 0 : ringsDrawn ?? rings.length;
     const dotDelay = 1.6 / dots.length;
     const joinStart = animate ? 2 : 0;
     const ringTime = 1.2;

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Card } from './ui/Card';
+import { SectionHeading } from './ui/SectionHeading';
 
 const references = [
     {
@@ -26,7 +27,7 @@ const references = [
 
 const Research: React.FC = () => (
     <section className="py-20 px-4 container mx-auto">
-        <h2 className="font-heading text-4xl md:text-5xl text-center mb-12 gradient-text">Research & References</h2>
+        <SectionHeading title="Research & References" className="mb-12" />
         <div className="max-w-4xl mx-auto space-y-6">
             {references.map(item => (
                 <Card key={item.title}>

@@ -8,6 +8,7 @@ import { DOT_RADIUS, guideDotColour, radialGuideDots, ringPath, ringStyle, type 
 import { layerTransform, tracedBackground, tracedDots, tracedSize } from '../utils/traced';
 import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
+import { SectionHeading } from './ui/SectionHeading';
 
 interface Step {
     title: string;
@@ -235,7 +236,7 @@ const DrawGuide: React.FC = () => {
     return (
         <section className="py-20 px-4">
             <div className="container mx-auto max-w-5xl">
-                <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Draw It Yourself</h2>
+                <SectionHeading title="Draw It Yourself" className="mb-4" />
                 <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
                     Step by step instructions for the design in the studio above: dots or guide circles first, then each line or ring, then colour.
                 </p>

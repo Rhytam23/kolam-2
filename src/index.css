@@ -4,13 +4,31 @@
 
 body {
   @apply bg-paper text-ink font-sans;
-  /* A faint pulli (dot) grid, like the dots laid out before drawing a kolam. */
-  background-image: radial-gradient(rgba(166, 58, 30, 0.12) 1.2px, transparent 1.3px);
-  background-size: 28px 28px;
 }
 
 .font-heading {
   font-family: 'Tiro Tamil', Georgia, serif;
+}
+
+/* Cream paper with a faint pulli (dot) grid, like the dots laid out before drawing a kolam. */
+.paper-bg {
+  background-color: #FFF8EE;
+  background-image: radial-gradient(rgba(166, 58, 30, 0.12) 1.2px, transparent 1.3px);
+  background-size: 28px 28px;
+}
+
+/* A red-oxide floor: warm light in the middle, darker at the edges, with a fine speckle. */
+.floor-bg {
+  background-color: #5A2416;
+  background-image:
+    radial-gradient(ellipse at 50% 30%, rgba(142, 59, 36, 0.55), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+
+/* Pulli dots in rice flour, for the floor. */
+.floor-dots {
+  background-image: radial-gradient(rgba(247, 243, 234, 0.13) 1.4px, transparent 1.5px);
+  background-size: 34px 34px;
 }
 
 .gradient-text {
@@ -20,9 +38,39 @@ body {
   background-clip: text;
 }
 
+.brass-text {
+  background: linear-gradient(180deg, #F3D48C, #C9973A 70%, #A87A2A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* A thin brass line with a small diamond in the middle, under headings. */
+.brass-rule {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #C9973A;
+}
+.brass-rule::before,
+.brass-rule::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, currentColor);
+}
+.brass-rule::after {
+  background: linear-gradient(90deg, currentColor, transparent);
+}
+
 /* The double red border drawn around a doorstep kolam. */
 .kolam-border {
   border: 3px double rgba(166, 58, 30, 0.55);
+}
+
+/* Rice flour catches the light on a dark floor. */
+.glow {
+  filter: drop-shadow(0 0 6px rgba(255, 236, 200, 0.28));
 }
 
 /* Draws a path with pathLength="1" from start to end (hidden until any animation-delay passes). */
@@ -35,16 +83,51 @@ body {
   animation: fade-in 0.8s ease-out both;
 }
 
+/* Sections rise into view once, as they are scrolled to. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.9s ease-out, transform 0.9s ease-out;
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+.sway {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: sway 5s ease-in-out infinite alternate;
+}
+
+.flicker {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flicker 1.6s ease-in-out infinite alternate;
+}
+
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .kolam-draw, .fade-in { animation: none; }
-}
-
 @keyframes kolam-draw {
   from { stroke-dashoffset: 1; }
   to { stroke-dashoffset: 0; }
+}
+
+@keyframes sway {
+  from { transform: rotate(-2.5deg); }
+  to { transform: rotate(2.5deg); }
+}
+
+@keyframes flicker {
+  0% { transform: scale(1, 1); opacity: 0.95; }
+  40% { transform: scale(0.92, 1.06); opacity: 1; }
+  100% { transform: scale(1.04, 0.95); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kolam-draw, .fade-in, .sway, .flicker { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
 }

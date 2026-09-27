@@ -9,6 +9,7 @@ import { ACCEPTED_TYPES, MAX_UPLOAD_MB, analyzeKolam, shrinkImage } from '../lib
 import { downloadBlob, parseKolamFile, svgToPng, downloadKolamFile } from '../lib/kolamFile';
 import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, rowPattern, snapToLattice } from '../utils/kolamLogic';
 import { tracedDots, tracedSize } from '../utils/traced';
+import { SectionHeading } from './ui/SectionHeading';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -377,7 +378,7 @@ const KolamAnalyzer: React.FC = () => {
 
     return (
         <section className="py-20 px-4 container mx-auto">
-            <h2 className="font-heading text-4xl md:text-5xl text-center mb-4 gradient-text">Read a Design</h2>
+            <SectionHeading title="Read a Design" className="mb-4" />
             <p className="text-center text-muted mb-12 max-w-2xl mx-auto">
                 Photograph a kolam, rangoli, alpana or muggulu. SOLVIX finds the dots, the symmetry and the colours, and recreates the design so you can draw it again.
             </p>

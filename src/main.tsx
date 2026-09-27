@@ -11,6 +11,7 @@ import '@fontsource/tiro-tamil/400.css';
 import '@fontsource/tiro-telugu/400.css';
 import '@fontsource/tiro-devanagari-hindi/400.css';
 import '@fontsource/tiro-bangla/400.css';
+import '@fontsource/tiro-kannada/400.css';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
