@@ -26,22 +26,22 @@ const App: React.FC = () => (
                     {/* The landing: a dark red-oxide floor, like a threshold at dawn. */}
                     <div id="home"><Hero onStart={() => scrollTo('analyzer')} onGenerate={() => scrollTo('generator')} /></div>
                     <div className="floor-bg">
-                        <KolamDivider tone="rice" className="pt-4" />
+                        <KolamDivider tone="rice" spacing={40} className="pt-4" />
                         <div id="process" className="scroll-mt-16"><Process /></div>
-                        <KolamDivider tone="rice" dots={15} />
+                        <KolamDivider tone="rice" spacing={40} />
                         <div id="about" className="scroll-mt-16"><About /></div>
-                        <KolamDivider tone="rice" className="pb-10" />
+                        <KolamDivider tone="rice" spacing={40} className="pb-10" />
                     </div>
                     {/* The tools, on cream paper so they stay easy to read and use. */}
                     <div id="tools" className="paper-bg">
                         <div id="analyzer" className="scroll-mt-16"><KolamAnalyzer /></div>
-                        <KolamDivider dots={11} />
+                        <KolamDivider />
                         <div id="generator" className="scroll-mt-16"><KolamGenerator /></div>
-                        <KolamDivider dots={11} />
+                        <KolamDivider />
                         <div id="walkthrough" className="scroll-mt-16"><DrawGuide /></div>
-                        <KolamDivider dots={11} />
+                        <KolamDivider />
                         <div id="research" className="scroll-mt-16"><Research /></div>
-                        <KolamDivider dots={11} />
+                        <KolamDivider />
                         <div id="contact" className="scroll-mt-16"><Contact /></div>
                     </div>
                 </main>

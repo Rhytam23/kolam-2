@@ -6,7 +6,7 @@ const REPO = 'https://github.com/Rhytam23/kolam-2';
 
 const Footer: React.FC = () => (
     <footer className="floor-bg text-rice pt-10 pb-8 px-4">
-        <KolamDivider tone="rice" dots={15} className="mb-10" />
+        <KolamDivider tone="rice" spacing={40} className="mb-10" />
         <div className="container mx-auto grid gap-8 md:grid-cols-3 text-sm">
             <div>
                 <p className="font-heading text-2xl brass-text">SOLVIX Kolam AI</p>
