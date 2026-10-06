@@ -60,6 +60,17 @@ export interface ColourLayer {
   path: string;
 }
 
+export interface PhotoQuality {
+  /** 0 (poor) to 1 (good), before and after repair. */
+  score: number;
+  scoreAfter: number;
+  problems: string[];
+  /** Plain-words list of what was repaired. */
+  fixes: string[];
+  /** Advice for a better photo, when the repaired one is still not good. */
+  tips: string[];
+}
+
 export interface AnalysisResponse {
   width: number;
   height: number;
@@ -74,6 +85,10 @@ export interface AnalysisResponse {
   radial: RadialSymmetry | null;
   palette: PaletteEntry[];
   layers: ColourLayer[];
+  /** A cleaner copy of `layers`: wobbles smoothed, petals of a turning pattern made to match. Free-hand designs only. */
+  tidied?: ColourLayer[];
+  /** How good the photo was and what was repaired before it was read. */
+  quality?: PhotoQuality;
   /** Present when perspective correction changed the image: the corrected image the dots refer to. */
   image?: string;
 }

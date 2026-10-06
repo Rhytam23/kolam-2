@@ -4,7 +4,8 @@ import { Card } from './ui/Card';
 import { Label } from './ui/Label';
 import DesignPrinciples from './DesignPrinciples';
 import { useKolam } from './KolamContext';
-import { ANALYSIS_PRESETS, type AnalysisPreset, type AnalysisResponse, type Point } from '../types/kolam';
+import { ANALYSIS_PRESETS, type AnalysisPreset, type AnalysisResponse, type PhotoQuality, type Point } from '../types/kolam';
+import type { TracedArt } from '../utils/traced';
 import { ACCEPTED_TYPES, MAX_UPLOAD_MB, analyzeKolam, shrinkImage } from '../lib/api';
 import { downloadBlob, parseKolamFile, svgToPng, downloadKolamFile } from '../lib/kolamFile';
 import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, rowPattern, snapToLattice } from '../utils/kolamLogic';
@@ -53,6 +54,14 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const [file, setFile] = useState<File | null>(null);
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [meta, setMeta] = useState<Meta | null>(null);
+    // The photo as sent, the repaired copy the server read (when it repaired it), and what was done.
+    const [originalUrl, setOriginalUrl] = useState<string | null>(null);
+    const [repairedUrl, setRepairedUrl] = useState<string | null>(null);
+    const [showOriginal, setShowOriginal] = useState(false);
+    const [quality, setQuality] = useState<PhotoQuality | null>(null);
+    // A free-hand design is traced exactly as drawn, or tidied (wobbles smoothed, petals matched).
+    const [tracedSets, setTracedSets] = useState<{ exact: TracedArt; tidied: TracedArt | null } | null>(null);
+    const [variant, setVariant] = useState<'exact' | 'tidied'>('exact');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [status, setStatus] = useState(`Take or upload a photo of ${subject}, or try the sample.`);
@@ -185,7 +194,13 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
         setError(null);
         setStatus(manualDots ? 'Recreating from your dots…' : 'Reading the design…');
         try {
-            const data = await analyzeKolam(source, { preset, deskew, dots: manualDots, grid, signal: controller.signal });
+            const data = await analyzeKolam(source, {
+                preset, deskew, dots: manualDots, grid, signal: controller.signal,
+                onBusy: (seconds, attempt) => setStatus(`Many people are reading photos right now. Trying again in ${seconds} seconds (${attempt}/3)…`),
+            });
+            setQuality(data.quality ?? null);
+            setRepairedUrl(data.image ?? null);
+            setShowOriginal(false);
             if (data.image) setImageUrl(data.image);
             setDots(data.dots);
             if (data.design) {
@@ -193,7 +208,12 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                 setScan({ design: data.design, lattice: data.lattice });
             } else {
                 setScan(null);
-                setTraced(data.layers.length ? { layers: data.layers, palette: data.palette, width: data.width, height: data.height } : null);
+                const base = { palette: data.palette, width: data.width, height: data.height };
+                const exact = data.layers.length ? { layers: data.layers, ...base } : null;
+                const tidied = data.tidied?.length ? { layers: data.tidied, ...base } : null;
+                setTracedSets(exact ? { exact, tidied } : null);
+                setVariant('exact');
+                setTraced(exact);
             }
             setMeta({ confidence: data.confidence, symmetry: data.symmetry, radial: data.radial, palette: data.palette });
             setReplay(r => r + 1);
@@ -229,6 +249,11 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
         if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
         objectUrlRef.current = URL.createObjectURL(picked);
         setImageUrl(objectUrlRef.current);
+        setOriginalUrl(objectUrlRef.current);
+        setRepairedUrl(null);
+        setShowOriginal(false);
+        setQuality(null);
+        setTracedSets(null);
         setFile(upload);
         setDots([]);
         setScan(null);
@@ -254,6 +279,10 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const clearImage = () => {
         abortRef.current?.abort();
         setImageUrl(null);
+        setOriginalUrl(null);
+        setRepairedUrl(null);
+        setQuality(null);
+        setTracedSets(null);
         setFile(null);
         setMeta(null);
         setTraced(null);
@@ -303,6 +332,15 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
         }
         openStudio('generator');
     };
+
+    const chooseVariant = (next: 'exact' | 'tidied') => {
+        if (!tracedSets) return;
+        setVariant(next);
+        setTraced(next === 'tidied' && tracedSets.tidied ? tracedSets.tidied : tracedSets.exact);
+        setReplay(r => r + 1);
+    };
+
+    const shownImage = showOriginal && originalUrl ? originalUrl : imageUrl;
 
     // ------------------------------------------------------------ dot editing
 
@@ -452,6 +490,16 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         {loading && <p className="text-kaavi animate-pulse">Reading the design…</p>}
                         {error && <p className="text-kumkum text-sm bg-kumkum/10 px-4 py-2 rounded">{error}</p>}
                         <p className="text-sm text-muted">{status}</p>
+                        {quality && (quality.fixes.length > 0 || quality.tips.length > 0) && (
+                            <div className="text-sm rounded-xl border border-kaavi/20 bg-paper px-4 py-3 space-y-1" data-testid="photo-quality">
+                                {quality.fixes.length > 0 && (
+                                    <p className="text-ink">
+                                        <strong>Photo repaired</strong> ({Math.round(quality.score * 100)}% to {Math.round(quality.scoreAfter * 100)}%): {quality.fixes.join(', ').toLowerCase()}.
+                                    </p>
+                                )}
+                                {quality.tips.map(tip => <p key={tip} className="text-muted">Tip: {tip}</p>)}
+                            </div>
+                        )}
                     </div>
                 </Card>
 
@@ -466,6 +514,26 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                     <Button variant="secondary" size="sm" onClick={() => changeDots([], 'Cleared all dots.')} disabled={!dots.length}>Clear dots</Button>
                                     <Button variant="secondary" size="sm" onClick={() => setZoomIndex(z => (z + 1) % ZOOM_LEVELS.length)}>Zoom {zoom}×</Button>
                                     <Button variant="secondary" size="sm" onClick={() => setReplay(r => r + 1)} disabled={!scan && !traced}>Replay drawing</Button>
+                                    {tracedSets?.tidied && (
+                                        <div className="inline-flex rounded-full border border-kaavi/30 overflow-hidden text-sm" role="group" aria-label="Which version of the design to show">
+                                            {(['exact', 'tidied'] as const).map(v => (
+                                                <button
+                                                    key={v}
+                                                    type="button"
+                                                    aria-pressed={variant === v}
+                                                    onClick={() => chooseVariant(v)}
+                                                    className={`px-3 py-1 ${variant === v ? 'bg-kaavi text-white' : 'text-kaavi hover:bg-kaavi/10'}`}
+                                                >
+                                                    {v === 'exact' ? 'As drawn' : 'Tidied'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {repairedUrl && originalUrl && (
+                                        <Button variant="secondary" size="sm" onClick={() => setShowOriginal(v => !v)} aria-pressed={showOriginal}>
+                                            {showOriginal ? 'Showing your photo' : 'Showing repaired photo'}
+                                        </Button>
+                                    )}
                                     <label className="flex items-center gap-2 text-sm text-ink ml-auto">
                                         <input type="checkbox" checked={showRecreation} onChange={e => setShowRecreation(e.target.checked)} className="accent-kaavi" />
                                         Show recreation
@@ -473,8 +541,8 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                 </div>
                                 <div className="w-full overflow-auto max-h-[75vh] rounded-xl bg-sand/60 border border-kaavi/10">
                                     <div ref={surfaceRef} className="relative" style={{ width: `${zoom * 100}%` }}>
-                                        {imageUrl
-                                            ? <img ref={imageRef} src={imageUrl} alt="Your design" className="block w-full h-auto select-none pointer-events-none" draggable={false} />
+                                        {shownImage
+                                            ? <img ref={imageRef} src={shownImage} alt="Your design" className="block w-full h-auto select-none pointer-events-none" draggable={false} />
                                             : <div className="w-full aspect-square" />}
                                         <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox={`0 0 ${surface.w || 1} ${surface.h || 1}`} aria-hidden>
                                             {recreation()}

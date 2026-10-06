@@ -19,34 +19,76 @@ export const layerTransform = (t: TracedArt) => {
   return `scale(${w} ${h})`;
 };
 
+export interface Anchor { x: number; y: number; corner: boolean }
+
+/** The anchor points of every closed outline in a traced path (M x y, then L x y or C c1 c2 end, then Z). */
+export const pathAnchors = (path: string): Anchor[][] => {
+  type Pt = { x: number; y: number };
+  const loops: Anchor[][] = [];
+  for (const m of path.matchAll(/M([^MZ]*)Z?/g)) {
+    const body = m[0].replace(/[MZ]/g, '');
+    const parts = body.split(/(?=[LC])/);
+    const first = parts[0].trim().split(/\s+/).map(Number);
+    const start: Pt = { x: first[0], y: first[1] };
+    // For each anchor: the direction the curve arrives with and leaves with.
+    const anchors: Array<{ p: Pt; arrive?: Pt; leave?: Pt }> = [{ p: start }];
+    for (const part of parts.slice(1)) {
+      const cmd = part[0];
+      const nums = part.slice(1).trim().split(/\s+/).filter(Boolean).map(Number);
+      const step = cmd === 'C' ? 6 : 2;
+      for (let i = 0; i + step <= nums.length; i += step) {
+        const prev = anchors[anchors.length - 1];
+        const end = { x: nums[i + step - 2], y: nums[i + step - 1] };
+        const c1 = cmd === 'C' ? { x: nums[i], y: nums[i + 1] } : end;
+        const c2 = cmd === 'C' ? { x: nums[i + 2], y: nums[i + 3] } : prev.p;
+        // A handle sitting on its own anchor has no direction; fall back to the chord.
+        const dir = (to: Pt, from: Pt, alt: Pt) => (Math.hypot(to.x - from.x, to.y - from.y) > 1e-9 ? { x: to.x - from.x, y: to.y - from.y } : alt);
+        const chord = { x: end.x - prev.p.x, y: end.y - prev.p.y };
+        prev.leave = dir(c1, prev.p, chord);
+        anchors.push({ p: end, arrive: dir(end, c2, chord) });
+      }
+    }
+    // A closed curve ends where it began: merge the last anchor into the first.
+    const last = anchors[anchors.length - 1];
+    if (anchors.length > 1 && last.p.x === start.x && last.p.y === start.y) {
+      anchors[0].arrive = last.arrive;
+      anchors.pop();
+    }
+    loops.push(anchors.map(a => {
+      let corner = false;
+      if (a.arrive && a.leave) {
+        const a1 = Math.atan2(a.arrive.y, a.arrive.x), a2 = Math.atan2(a.leave.y, a.leave.x);
+        corner = Math.abs(Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1))) > 0.6; // sharper than about 35 degrees
+      }
+      return { x: a.p.x, y: a.p.y, corner };
+    }));
+  }
+  return loops;
+};
+
 /**
- * Guide dots spaced evenly along every traced outline, in TRACE units: the dots a person puts down
- * first when copying a free-hand design, before joining them into lines.
+ * Guide dots for copying a free-hand design, in TRACE units. They sit on the design's real structure:
+ * every sharp corner is a dot, and curves get one only often enough to follow them, so a person puts
+ * down a few meaningful marks and joins them with curves instead of marking an arbitrary even grid.
  */
-export const tracedDots = (t: TracedArt, maxDots = 360): Array<{ x: number; y: number }> => {
+export const tracedDots = (t: TracedArt, maxDots = 220): Array<{ x: number; y: number }> => {
   const { w, h } = tracedSize(t);
-  const polygons = t.layers.flatMap(layer => layer.path.split('M').filter(Boolean).map(part => {
-    const nums = part.replace(/[LZ]/g, ' ').trim().split(/\s+/).map(Number);
-    const pts: Array<{ x: number; y: number }> = [];
-    for (let i = 0; i + 1 < nums.length; i += 2) pts.push({ x: nums[i] * w, y: nums[i + 1] * h });
-    return pts;
-  }));
-  const perimeter = (pts: Array<{ x: number; y: number }>) =>
+  const loops = t.layers.flatMap(layer => pathAnchors(layer.path)).map(loop => loop.map(a => ({ ...a, x: a.x * w, y: a.y * h })));
+  const perimeter = (pts: Anchor[]) =>
     pts.reduce((sum, p, i) => sum + Math.hypot(pts[(i + 1) % pts.length].x - p.x, pts[(i + 1) % pts.length].y - p.y), 0);
-  const total = polygons.reduce((sum, p) => sum + perimeter(p), 0);
+  const total = loops.reduce((sum, l) => sum + perimeter(l), 0);
   const spacing = Math.max(w * 0.03, total / maxDots);
 
   const dots: Array<{ x: number; y: number }> = [];
-  for (const pts of polygons) {
-    if (pts.length < 3 || perimeter(pts) < spacing) continue;
-    let carry = 0;
-    pts.forEach((a, i) => {
-      const b = pts[(i + 1) % pts.length];
-      const len = Math.hypot(b.x - a.x, b.y - a.y);
-      for (let d = carry; d < len; d += spacing) dots.push({ x: a.x + ((b.x - a.x) * d) / len, y: a.y + ((b.y - a.y) * d) / len });
-      carry = (carry - len) % spacing;
-      if (carry < 0) carry += spacing;
-    });
+  for (const loop of loops) {
+    if (loop.length < 3 || perimeter(loop) < spacing) continue;
+    let last: Anchor | null = null;
+    for (const a of loop) {
+      if (last && !a.corner && Math.hypot(a.x - last.x, a.y - last.y) < spacing) continue;
+      if (last && a.corner && Math.hypot(a.x - last.x, a.y - last.y) < spacing * 0.35) continue;
+      dots.push({ x: a.x, y: a.y });
+      last = a;
+    }
   }
   return dots;
 };
