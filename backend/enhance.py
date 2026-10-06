@@ -100,7 +100,7 @@ def flatten_light(img: np.ndarray) -> np.ndarray:
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     lightness = lab[..., 0].astype(np.float32)
     plane = np.maximum(_light_plane(lab[..., 0]), 20.0)
-    lab[..., 0] = np.clip(lightness / plane * float(plane.mean()), 0, 255).astype(np.uint8)
+    lab[..., 0] = np.clip(lightness / plane * float(plane.max()), 0, 255).astype(np.uint8)  # lift shadows up to the brightest side
     return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
 

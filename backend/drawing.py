@@ -43,6 +43,17 @@ def _hex(bgr: np.ndarray) -> str:
     return f'#{r:02x}{g:02x}{b:02x}'
 
 
+def _core_colour(image: np.ndarray, mask: np.ndarray, fallback: np.ndarray, ground: np.ndarray) -> np.ndarray:
+    """The true colour of a drawn layer. Thin strokes blur into the floor, so the cluster centre (and even
+    the middle of the stroke) looks washed out; the pixels furthest from the floor colour keep the real colour."""
+    pixels = image[mask.astype(bool)]
+    if len(pixels) < 5:
+        return fallback
+    away = np.linalg.norm(pixels.astype(np.float32) - ground, axis=1)
+    strongest = pixels[away >= np.percentile(away, 80)]
+    return np.median(strongest, axis=0)
+
+
 def colour_layers(image_bgr: np.ndarray) -> tuple[list[dict], list[dict]]:
     """Main colours (with the share of the picture each covers) and a traced, filled layer per colour."""
     palette, masks = colour_masks(image_bgr)
@@ -95,6 +106,7 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
                     return True
         return False
 
+    ground = centres[max(border_share, key=border_share.get)] if border_share else centres[0]
     palette, layers = [], []
     for c in sorted(counts, key=counts.get, reverse=True):
         share = counts[c] / total
@@ -102,9 +114,12 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
             continue
         background = border_share.get(c, 0) >= 0.3
         colour = _hex(centres[c])
-        palette.append({'hex': colour, 'share': round(share, 3), 'background': background})
+        mask = None
         if not background:
             mask = cv2.morphologyEx((labels == c).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
+            colour = _hex(_core_colour(small, mask, centres[c], ground))
+        palette.append({'hex': colour, 'share': round(share, 3), 'background': background})
+        if mask is not None:
             layers.append((colour, mask))
     if palette and not any(p['background'] for p in palette):
         palette[0]['background'] = True
