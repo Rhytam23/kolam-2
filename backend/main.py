@@ -1,25 +1,34 @@
 from __future__ import annotations
 
+import asyncio
 import base64
+import hashlib
 import html
+import io
 import json
+import logging
 import mimetypes
 import re
 import time
-from collections import deque
+from collections import OrderedDict, deque
+from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import numpy as np
 from fastapi import APIRouter, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
 
 import config
 from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
 from drawing import colour_layers, radial_symmetry
 from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
+
+log = logging.getLogger('chittara')
 
 # So phones recognise the app manifest when the site is installed to the home screen.
 mimetypes.add_type('application/manifest+json', '.webmanifest')
@@ -57,7 +66,58 @@ def check_rate_limit(visitor: str) -> None:
         raise HTTPException(status_code=429, detail='Too many photos in a short time. Please wait a minute and try again.')
     times.append(now)
 
+def client_ip(request: Request) -> str:
+    """The visitor's address. Behind a hosting proxy it is the last X-Forwarded-For entry (the one the
+    proxy added); earlier entries are written by the visitor and cannot be trusted."""
+    if config.TRUST_PROXY:
+        forwarded = request.headers.get('x-forwarded-for', '')
+        parts = [p.strip() for p in forwarded.split(',') if p.strip()]
+        if parts:
+            return parts[-1]
+    return request.client.host if request.client else 'unknown'
+
+
+# Photo reading is CPU-bound: a small pool does the work off the event loop, so pages and the health
+# check keep answering while photos are read.
+_executor = ThreadPoolExecutor(max_workers=max(1, config.MAX_CONCURRENT), thread_name_prefix='analyze')
+_slots: asyncio.Semaphore | None = None
+_waiting = 0
+_cache: OrderedDict[str, dict] = OrderedDict()
+_stats = {'analyzed': 0, 'cached': 0, 'busy': 0, 'failed': 0, 'seconds': 0.0}
+
+
+def _busy(detail: str = 'Many people are reading photos right now. Please try again in a few seconds.') -> JSONResponse:
+    _stats['busy'] += 1
+    return JSONResponse({'detail': detail}, status_code=503, headers={'Retry-After': '10'})
+
+
+def cache_get(key: str) -> dict | None:
+    hit = _cache.get(key)
+    if hit is not None:
+        _cache.move_to_end(key)
+    return hit
+
+
+def cache_put(key: str, value: dict) -> None:
+    _cache[key] = value
+    _cache.move_to_end(key)
+    while len(_cache) > config.CACHE_ENTRIES:
+        _cache.popitem(last=False)
+
+
+def check_pixels(contents: bytes) -> None:
+    """Refuses pictures that would need huge memory, by reading only the size from the file header."""
+    try:
+        with Image.open(io.BytesIO(contents)) as probe:
+            width, height = probe.size
+    except Exception:
+        raise HTTPException(status_code=400, detail='Could not read the image')
+    if width * height > config.MAX_PIXELS:
+        raise HTTPException(status_code=413, detail='That picture is very large. Please use a smaller photo.')
+
+
 app = FastAPI(title='Chittara API')
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
@@ -69,7 +129,8 @@ api = APIRouter(prefix='/api')
 
 @api.get('/health')
 async def health():
-    return {'status': 'ok', 'maxUploadBytes': MAX_UPLOAD_BYTES, 'allowedTypes': ALLOWED_TYPES}
+    return {'status': 'ok', 'maxUploadBytes': MAX_UPLOAD_BYTES, 'allowedTypes': ALLOWED_TYPES,
+            'waiting': _waiting, 'stats': {**_stats, 'seconds': round(_stats['seconds'], 1)}}
 
 
 def parse_dots(raw: str) -> list[dict]:
@@ -83,60 +144,42 @@ def parse_dots(raw: str) -> list[dict]:
     return dots
 
 
-@api.post('/analyze')
-async def analyze_kolam(
-    request: Request,
-    file: UploadFile = File(...),
-    preset: str = Form('balanced'),
-    deskew: bool = Form(True),
-    dots: str | None = Form(None),
-    grid: bool = Form(True),
-):
-    """Reads a design from a photo. grid=false skips the dot-grid search, for art forms drawn without dots."""
-    check_rate_limit(request.client.host if request.client else 'unknown')
-    if preset not in PRESET_CONFIGS:
-        raise HTTPException(status_code=422, detail=f'Unknown preset. Use one of: {", ".join(PRESET_CONFIGS)}')
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=415, detail='Upload a PNG, JPEG or WebP image')
-
-    contents = await file.read(MAX_UPLOAD_BYTES + 1)
-    if len(contents) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail=f'Image is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB')
-    manual_dots = parse_dots(dots) if dots is not None else None
-
+def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[dict] | None, grid: bool) -> dict:
+    """Reads one photo. Blocking and CPU-heavy: always call it from the worker pool."""
     img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail='Could not read the image')
+    longest = max(img.shape[:2])
+    if longest > config.MAX_SIDE:
+        factor = config.MAX_SIDE / longest
+        img = cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
 
-    try:
-        corrected = False
-        if deskew:
-            img, corrected = deskew_if_needed(img)
-        height, width = img.shape[:2]
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    corrected = False
+    if deskew:
+        img, corrected = deskew_if_needed(img)
+    height, width = img.shape[:2]
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Kolams are drawn dark-on-light (paper) or light-on-dark (rice flour on a floor).
-        if manual_dots is not None:
-            found, dark_ink = manual_dots, ink_is_dark(gray, manual_dots)
-        elif not grid:
-            found, dark_ink = [], True
-        else:
-            readings = []
-            for dark in (True, False):
-                candidate = detect_dots(gray, width, height, preset, dark)
-                fit = infer_lattice(candidate, width, height)
-                readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
-            _, dark_ink, found = max(readings, key=lambda r: r[0])
-        lattice = infer_lattice(found, width, height) if found else None
-        if lattice is None:
-            # No dot grid to go by: the drawing is the thinner of the two tones.
-            dark_ink = bool(stroke_mask(gray, True).mean() <= stroke_mask(gray, False).mean())
-        ink = stroke_mask(gray, dark_ink)
-        design, clarity = infer_design(lattice, ink) if lattice else (None, 0.0)
-        radial = radial_symmetry(ink)
-        palette, layers = colour_layers(img)
-    except Exception:
-        raise HTTPException(status_code=500, detail='Analysis pipeline failed')
+    # Kolams are drawn dark-on-light (paper) or light-on-dark (rice flour on a floor).
+    if manual_dots is not None:
+        found, dark_ink = manual_dots, ink_is_dark(gray, manual_dots)
+    elif not grid:
+        found, dark_ink = [], True
+    else:
+        readings = []
+        for dark in (True, False):
+            candidate = detect_dots(gray, width, height, preset, dark)
+            fit = infer_lattice(candidate, width, height)
+            readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
+        _, dark_ink, found = max(readings, key=lambda r: r[0])
+    lattice = infer_lattice(found, width, height) if found else None
+    if lattice is None:
+        # No dot grid to go by: the drawing is the thinner of the two tones.
+        dark_ink = bool(stroke_mask(gray, True).mean() <= stroke_mask(gray, False).mean())
+    ink = stroke_mask(gray, dark_ink)
+    design, clarity = infer_design(lattice, ink) if lattice else (None, 0.0)
+    radial = radial_symmetry(ink)
+    palette, layers = colour_layers(img)
 
     if lattice:
         confidence = round(lattice['fit'] * (0.5 + 0.5 * clarity), 2)
@@ -169,6 +212,70 @@ async def analyze_kolam(
         ok, jpeg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
         if ok:
             response['image'] = 'data:image/jpeg;base64,' + base64.b64encode(jpeg.tobytes()).decode()
+    return response
+
+
+@api.post('/analyze')
+async def analyze_kolam(
+    request: Request,
+    file: UploadFile = File(...),
+    preset: str = Form('balanced'),
+    deskew: bool = Form(True),
+    dots: str | None = Form(None),
+    grid: bool = Form(True),
+):
+    """Reads a design from a photo. grid=false skips the dot-grid search, for art forms drawn without dots."""
+    global _slots, _waiting
+    check_rate_limit(client_ip(request))
+    if preset not in PRESET_CONFIGS:
+        raise HTTPException(status_code=422, detail=f'Unknown preset. Use one of: {", ".join(PRESET_CONFIGS)}')
+    if file.content_type not in ALLOWED_TYPES:
+        raise HTTPException(status_code=415, detail='Upload a PNG, JPEG or WebP image')
+
+    contents = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f'Image is larger than {MAX_UPLOAD_BYTES // (1024 * 1024)} MB')
+    manual_dots = parse_dots(dots) if dots is not None else None
+    check_pixels(contents)
+
+    key = hashlib.sha256(contents + json.dumps([preset, deskew, manual_dots, grid]).encode()).hexdigest()
+    hit = cache_get(key)
+    if hit is not None:
+        _stats['cached'] += 1
+        return hit
+
+    if _slots is None:
+        _slots = asyncio.Semaphore(max(1, config.MAX_CONCURRENT))
+    if _waiting >= config.MAX_WAITING:
+        return _busy()
+    _waiting += 1
+    try:
+        await asyncio.wait_for(_slots.acquire(), timeout=config.QUEUE_WAIT_SECONDS)
+    except asyncio.TimeoutError:
+        return _busy()
+    finally:
+        _waiting -= 1
+
+    started = time.monotonic()
+    try:
+        loop = asyncio.get_running_loop()
+        work = loop.run_in_executor(_executor, run_analysis, contents, preset, deskew, manual_dots, grid)
+        response = await asyncio.wait_for(work, timeout=config.ANALYSIS_TIMEOUT_SECONDS)
+    except HTTPException:
+        raise
+    except asyncio.TimeoutError:
+        _stats['failed'] += 1
+        log.warning('analysis timed out after %.0fs', config.ANALYSIS_TIMEOUT_SECONDS)
+        return _busy('That photo took too long to read. Try a smaller or clearer picture.')
+    except Exception:
+        _stats['failed'] += 1
+        log.exception('analysis pipeline failed')
+        raise HTTPException(status_code=500, detail='Analysis pipeline failed')
+    finally:
+        _slots.release()
+    _stats['analyzed'] += 1
+    _stats['seconds'] += time.monotonic() - started
+    cache_put(key, response)
     return response
 
 

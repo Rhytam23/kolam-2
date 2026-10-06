@@ -22,5 +22,5 @@ RUN useradd --create-home kolam
 USER kolam
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://127.0.0.1:{os.environ[\"PORT\"]}/api/health')"
-# Trust the hosting proxy's X-Forwarded-For, so the per-visitor photo limit sees real visitors.
-CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*'"]
+# The app reads the visitor from the proxy's last X-Forwarded-For entry itself (TRUST_PROXY=1).
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT}"]

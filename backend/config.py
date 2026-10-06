@@ -16,6 +16,18 @@ MAX_DOTS = 600
 # Photos one visitor can have read per minute, so a free server stays usable for everyone.
 RATE_LIMIT_PER_MINUTE = int(os.getenv('RATE_LIMIT_PER_MINUTE', '20'))
 
+# Photo reading is CPU-heavy, so a small server protects itself: huge pictures are refused, and only a
+# few photos are read at once while the rest wait briefly in line (or are asked to retry).
+MAX_PIXELS = int(os.getenv('MAX_PIXELS', str(40_000_000)))   # width x height accepted from an upload
+MAX_SIDE = int(os.getenv('MAX_SIDE', '1600'))                 # longer side photos are reduced to before reading
+MAX_CONCURRENT = int(os.getenv('MAX_CONCURRENT', '2'))        # photos read at the same moment
+MAX_WAITING = int(os.getenv('MAX_WAITING', '12'))             # photos allowed to wait for a free slot
+QUEUE_WAIT_SECONDS = float(os.getenv('QUEUE_WAIT_SECONDS', '25'))
+ANALYSIS_TIMEOUT_SECONDS = float(os.getenv('ANALYSIS_TIMEOUT_SECONDS', '60'))
+CACHE_ENTRIES = int(os.getenv('CACHE_ENTRIES', '48'))         # recent readings kept, so repeats are instant
+# Set to 1 when a hosting proxy (Render, nginx...) sits in front: the visitor is the last X-Forwarded-For entry.
+TRUST_PROXY = os.getenv('TRUST_PROXY', '1') == '1'
+
 # The built frontend (npm run build). When present it is served at "/", so one process runs the whole app.
 STATIC_DIR = Path(os.getenv('STATIC_DIR', Path(__file__).resolve().parent.parent / 'dist'))
 PORT = int(os.getenv('PORT', '8000'))

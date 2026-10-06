@@ -12,4 +12,5 @@ def reset_rate_limit():
     """Each test starts with a clean per-minute photo count."""
     import main
     main._recent.clear()
+    main._cache.clear()
     yield
