@@ -19,7 +19,7 @@ export const layerTransform = (t: TracedArt) => {
   return `scale(${w} ${h})`;
 };
 
-export interface Anchor { x: number; y: number; corner: boolean }
+export interface Anchor { x: number; y: number; corner: boolean; /** the line from here to the next anchor is straight */ straight: boolean }
 
 /** The anchor points of every closed outline in a traced path (M x y, then L x y or C c1 c2 end, then Z). */
 export const pathAnchors = (path: string): Anchor[][] => {
@@ -31,7 +31,7 @@ export const pathAnchors = (path: string): Anchor[][] => {
     const first = parts[0].trim().split(/\s+/).map(Number);
     const start: Pt = { x: first[0], y: first[1] };
     // For each anchor: the direction the curve arrives with and leaves with.
-    const anchors: Array<{ p: Pt; arrive?: Pt; leave?: Pt }> = [{ p: start }];
+    const anchors: Array<{ p: Pt; arrive?: Pt; leave?: Pt; straight?: boolean }> = [{ p: start }];
     for (const part of parts.slice(1)) {
       const cmd = part[0];
       const nums = part.slice(1).trim().split(/\s+/).filter(Boolean).map(Number);
@@ -45,6 +45,10 @@ export const pathAnchors = (path: string): Anchor[][] => {
         const dir = (to: Pt, from: Pt, alt: Pt) => (Math.hypot(to.x - from.x, to.y - from.y) > 1e-9 ? { x: to.x - from.x, y: to.y - from.y } : alt);
         const chord = { x: end.x - prev.p.x, y: end.y - prev.p.y };
         prev.leave = dir(c1, prev.p, chord);
+        // Handles lying along the chord make a straight line, however it was written.
+        const len = Math.hypot(chord.x, chord.y) || 1;
+        const off = (q: Pt) => Math.abs((q.x - prev.p.x) * chord.y - (q.y - prev.p.y) * chord.x) / len;
+        prev.straight = cmd === 'L' || (off(c1) < 1e-4 && off(c2) < 1e-4);
         anchors.push({ p: end, arrive: dir(end, c2, chord) });
       }
     }
@@ -54,13 +58,15 @@ export const pathAnchors = (path: string): Anchor[][] => {
       anchors[0].arrive = last.arrive;
       anchors.pop();
     }
+    // Z closes a loop with a straight line back to the start.
+    if (anchors.length > 1 && anchors[anchors.length - 1].straight === undefined) anchors[anchors.length - 1].straight = true;
     loops.push(anchors.map(a => {
       let corner = false;
       if (a.arrive && a.leave) {
         const a1 = Math.atan2(a.arrive.y, a.arrive.x), a2 = Math.atan2(a.leave.y, a.leave.x);
         corner = Math.abs(Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1))) > 0.6; // sharper than about 35 degrees
       }
-      return { x: a.p.x, y: a.p.y, corner };
+      return { x: a.p.x, y: a.p.y, corner, straight: !!a.straight };
     }));
   }
   return loops;
@@ -83,12 +89,21 @@ export const tracedDots = (t: TracedArt, maxDots = 220): Array<{ x: number; y: n
   for (const loop of loops) {
     if (loop.length < 3 || perimeter(loop) < spacing) continue;
     let last: Anchor | null = null;
-    for (const a of loop) {
-      if (last && !a.corner && Math.hypot(a.x - last.x, a.y - last.y) < spacing) continue;
-      if (last && a.corner && Math.hypot(a.x - last.x, a.y - last.y) < spacing * 0.35) continue;
+    const along = (from: Anchor, to: Anchor) => {
+      // Long straight runs get evenly spaced dots too, so a ruler-straight line can be laid by eye.
+      const gap = Math.hypot(to.x - from.x, to.y - from.y);
+      for (let d = spacing; d < gap - spacing * 0.5; d += spacing) {
+        dots.push({ x: from.x + ((to.x - from.x) * d) / gap, y: from.y + ((to.y - from.y) * d) / gap });
+      }
+    };
+    loop.forEach((a, i) => {
+      if (last && !a.corner && Math.hypot(a.x - last.x, a.y - last.y) < spacing) return;
+      if (last && a.corner && Math.hypot(a.x - last.x, a.y - last.y) < spacing * 0.35) return;
+      if (last && loop[i - 1]?.straight && last === loop[i - 1]) along(last, a);
       dots.push({ x: a.x, y: a.y });
       last = a;
-    }
+    });
+    if (last && loop[loop.length - 1].straight && last === loop[loop.length - 1]) along(last, loop[0]);
   }
   return dots;
 };

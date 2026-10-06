@@ -24,10 +24,12 @@ describe('traced guide points', () => {
     expect(pathAnchors('M0.1 0.1L0.5 0.1L0.5 0.5Z')[0]).toHaveLength(3);
   });
 
-  it('puts a dot on every corner of a shape', () => {
+  it('puts a dot on every corner of a shape, and spaces dots along its long straight sides', () => {
     const dots = tracedDots(art(SQUARE));
-    expect(dots).toHaveLength(4);
     expect(dots).toContainEqual({ x: 100, y: 100 });
+    expect(dots).toContainEqual({ x: 500, y: 500 });
+    expect(dots.length).toBeGreaterThan(8);
+    expect(dots.length).toBeLessThan(60);
   });
 
   it('keeps a smooth curve to a handful of dots', () => {

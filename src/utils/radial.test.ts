@@ -66,7 +66,7 @@ describe('grounds', () => {
 });
 
 describe('traced guide dots', () => {
-  it('spaces dots evenly along each outline', async () => {
+  it('spaces dots evenly along each straight outline', async () => {
     const { tracedDots } = await import('./traced');
     // A 0.4 × 0.4 square in a square picture: perimeter 1.6 of the width.
     const art = { layers: [{ color: '#C62839', path: 'M0.3 0.3L0.7 0.3L0.7 0.7L0.3 0.7Z' }], palette: [], width: 100, height: 100 };
