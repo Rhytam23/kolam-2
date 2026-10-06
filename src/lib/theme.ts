@@ -1,3 +1,5 @@
+import { DEFAULT_HEADING_FONT } from './fonts';
+
 /** A page's colours, named after their role. Text is always drawn on `floor` (dark sections) or `paper` (light sections). */
 export interface Theme {
   /** The ground of the dark sections, and the text colour of buttons on `brassLight`. */
@@ -32,9 +34,10 @@ const VARS: Record<keyof Theme, string> = {
 
 const channels = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(' ');
 
-/** Colours the whole page (header and footer included) with a theme. */
-export const applyTheme = (theme: Theme) => {
+/** Colours the whole page (header and footer included) with a theme, and sets its headings in `font` (a CSS font family). */
+export const applyTheme = (theme: Theme, font = DEFAULT_HEADING_FONT) => {
   const root = document.documentElement.style;
+  root.setProperty('--font-heading', font);
   (Object.keys(VARS) as Array<keyof Theme>).forEach(key => root.setProperty(VARS[key], channels(theme[key])));
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.floor);
 };

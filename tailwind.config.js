@@ -20,7 +20,7 @@ export default {
         rice: 'rgb(var(--rice) / <alpha-value>)',      // rice flour
       },
       fontFamily: {
-        heading: ['"Tiro Tamil"', 'Georgia', 'serif'],
+        heading: ['var(--font-heading)', '"Tiro Tamil"', 'Georgia', 'serif'],
         sans: ['"Hind Madurai"', 'system-ui', 'sans-serif'],
         script: ['"Tiro Tamil"', '"Tiro Telugu"', '"Tiro Devanagari Hindi"', '"Tiro Bangla"', '"Tiro Kannada"', '"Noto Serif Malayalam"', '"Noto Serif Oriya"', 'serif'],
       },

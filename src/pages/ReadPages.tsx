@@ -10,6 +10,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { READ_A_PHOTO, TRADITIONS, readerPath, withArticle, type Tradition } from '../data/traditions';
 import { readingGuide } from '../data/reading';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
+import { headingFont } from '../lib/fonts';
 import { Link } from '../lib/router';
 
 const STEPS = [
@@ -70,7 +71,7 @@ export const ReadGuidePage: React.FC = () => (
 /** /alpana/read-a-photo: the reader itself, in the art form's colours. */
 export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => {
     useEffect(() => {
-        applyTheme(t.theme);
+        applyTheme(t.theme, headingFont(t.script.lang));
         return () => applyTheme(DEFAULT_THEME);
     }, [t]);
     const guide = readingGuide(t);

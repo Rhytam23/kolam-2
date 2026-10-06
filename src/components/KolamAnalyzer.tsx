@@ -16,6 +16,7 @@ import { navigate } from '../lib/router';
 import { presetSvg } from '../data/designs';
 import { readingGuide } from '../data/reading';
 import { withArticle, type Tradition } from '../data/traditions';
+import { useI18n } from '../lib/i18n';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -43,6 +44,7 @@ const clamp = (v: number) => Math.min(1, Math.max(0, v));
  */
 const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const k = useKolam();
+    const { t } = useI18n();
     // The result opens in the art form's own studio, kept as read (?from=photo), or in the full studio.
     const openStudio = (part: 'generator' | 'walkthrough') =>
         navigate(tradition ? `/${tradition.slug}?from=photo#${part}` : `/studio#${part}`);
@@ -452,11 +454,11 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         }}
                     >
                         <div className="space-y-3">
-                            <Label htmlFor="kolam-upload" className="text-base">Your photo</Label>
+                            <Label htmlFor="kolam-upload" className="text-base">{t('reader.yourPhoto')}</Label>
                             <div className="flex flex-wrap gap-2">
-                                <Button size="sm" onClick={() => cameraInputRef.current?.click()} disabled={loading}>Take a photo</Button>
+                                <Button size="sm" onClick={() => cameraInputRef.current?.click()} disabled={loading}>{t('reader.takePhoto')}</Button>
                                 <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={onPick} className="hidden" />
-                                <Button size="sm" variant="secondary" onClick={loadSample} disabled={loading}>Try a sample</Button>
+                                <Button size="sm" variant="secondary" onClick={loadSample} disabled={loading}>{t('reader.sample')}</Button>
                             </div>
                             <input
                                 id="kolam-upload"
@@ -470,7 +472,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         </div>
                         <div className="space-y-3">
                             <div>
-                                <Label htmlFor="preset">Kind of photo</Label>
+                                <Label htmlFor="preset">{t('reader.kindOfPhoto')}</Label>
                                 <select
                                     id="preset"
                                     value={preset}
@@ -482,19 +484,19 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                             </div>
                             <label className="flex items-center gap-2 text-sm text-ink">
                                 <input type="checkbox" checked={deskew} onChange={e => setDeskew(e.target.checked)} className="accent-kaavi" />
-                                Straighten a photo taken at an angle
+                                {t('reader.straighten')}
                             </label>
                         </div>
                     </div>
                     <div className="mt-4 space-y-2" aria-live="polite">
-                        {loading && <p className="text-kaavi animate-pulse">Reading the design…</p>}
+                        {loading && <p className="text-kaavi animate-pulse">{t('reader.reading')}</p>}
                         {error && <p className="text-kumkum text-sm bg-kumkum/10 px-4 py-2 rounded">{error}</p>}
                         <p className="text-sm text-muted">{status}</p>
                         {quality && (quality.fixes.length > 0 || quality.tips.length > 0) && (
                             <div className="text-sm rounded-xl border border-kaavi/20 bg-paper px-4 py-3 space-y-1" data-testid="photo-quality">
                                 {quality.fixes.length > 0 && (
                                     <p className="text-ink">
-                                        <strong>Photo repaired</strong> ({Math.round(quality.score * 100)}% to {Math.round(quality.scoreAfter * 100)}%): {quality.fixes.join(', ').toLowerCase()}.
+                                        <strong>{t('reader.repaired')}</strong> ({Math.round(quality.score * 100)}% to {Math.round(quality.scoreAfter * 100)}%): {quality.fixes.join(', ').toLowerCase()}.
                                     </p>
                                 )}
                                 {quality.tips.map(tip => <p key={tip} className="text-muted">Tip: {tip}</p>)}
@@ -508,12 +510,12 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         {hasSurface ? (
                             <>
                                 <div className="flex flex-wrap gap-2 mb-4">
-                                    <Button variant="secondary" size="sm" onClick={undo} disabled={!history.length}>Undo</Button>
-                                    <Button variant="secondary" size="sm" onClick={redo} disabled={!future.length}>Redo</Button>
+                                    <Button variant="secondary" size="sm" onClick={undo} disabled={!history.length}>{t('reader.undo')}</Button>
+                                    <Button variant="secondary" size="sm" onClick={redo} disabled={!future.length}>{t('reader.redo')}</Button>
                                     <Button variant="secondary" size="sm" onClick={() => scan?.lattice && changeDots(snapToLattice(scan.lattice, dots), 'Snapped the dots onto the grid.')} disabled={!scan?.lattice || !dots.length}>Snap to grid</Button>
                                     <Button variant="secondary" size="sm" onClick={() => changeDots([], 'Cleared all dots.')} disabled={!dots.length}>Clear dots</Button>
                                     <Button variant="secondary" size="sm" onClick={() => setZoomIndex(z => (z + 1) % ZOOM_LEVELS.length)}>Zoom {zoom}×</Button>
-                                    <Button variant="secondary" size="sm" onClick={() => setReplay(r => r + 1)} disabled={!scan && !traced}>Replay drawing</Button>
+                                    <Button variant="secondary" size="sm" onClick={() => setReplay(r => r + 1)} disabled={!scan && !traced}>{t('reader.replay')}</Button>
                                     {tracedSets?.tidied && (
                                         <div className="inline-flex rounded-full border border-kaavi/30 overflow-hidden text-sm" role="group" aria-label="Which version of the design to show">
                                             {(['exact', 'tidied'] as const).map(v => (
@@ -524,7 +526,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                                     onClick={() => chooseVariant(v)}
                                                     className={`px-3 py-1 ${variant === v ? 'bg-kaavi text-white' : 'text-kaavi hover:bg-kaavi/10'}`}
                                                 >
-                                                    {v === 'exact' ? 'As drawn' : 'Tidied'}
+                                                    {v === 'exact' ? t('reader.asDrawn') : t('reader.tidied')}
                                                 </button>
                                             ))}
                                         </div>
@@ -562,9 +564,9 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-4">
                                     <Button size="sm" onClick={() => file && runAnalysis(file, dots)} disabled={!file || !edited || loading || dots.length < 4}>
-                                        Recreate from my dots
+                                        {t('reader.recreate')}
                                     </Button>
-                                    <Button variant="secondary" size="sm" onClick={exportOverlay} disabled={!imageUrl}>Save overlay as PNG</Button>
+                                    <Button variant="secondary" size="sm" onClick={exportOverlay} disabled={!imageUrl}>{t('reader.savePng')}</Button>
                                 </div>
                             </>
                         ) : (

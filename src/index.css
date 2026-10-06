@@ -21,7 +21,8 @@ body {
 }
 
 .font-heading {
-  font-family: 'Tiro Tamil', Georgia, serif;
+  /* Each art form's page sets --font-heading to the serif of its own script (see lib/fonts.ts). */
+  font-family: var(--font-heading, 'Tiro Tamil'), 'Tiro Tamil', Georgia, serif;
 }
 
 /* Cream paper with a faint pulli (dot) grid, like the dots laid out before drawing a kolam. */

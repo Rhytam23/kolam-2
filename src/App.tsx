@@ -9,6 +9,7 @@ import { AboutPage, NotFoundPage, StudioPage } from './pages/Pages';
 import { ReadGuidePage, TraditionReadPage } from './pages/ReadPages';
 import { READ_A_PHOTO, ROUTES, traditionBySlug } from './data/traditions';
 import { usePath } from './lib/router';
+import { I18nProvider } from './lib/i18n';
 
 const page = (path: string) => {
     if (path === '/') return <Landing />;
@@ -34,6 +35,7 @@ const App: React.FC = () => {
     }, [path]);
 
     return (
+        <I18nProvider>
         <KolamProvider>
             <div className="min-h-screen overflow-x-clip">
                 <FloorArtDefs />
@@ -43,6 +45,7 @@ const App: React.FC = () => {
                 <Footer />
             </div>
         </KolamProvider>
+        </I18nProvider>
     );
 };
 

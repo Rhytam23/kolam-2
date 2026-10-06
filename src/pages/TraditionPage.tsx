@@ -14,6 +14,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { applyPreset, presetBackground } from '../data/designs';
 import { readerPath, traditionBySlug, type Tradition } from '../data/traditions';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
+import { headingFont } from '../lib/fonts';
 import { Link, currentSearch, navigate } from '../lib/router';
 import { useTimeline } from '../hooks/motion';
 
@@ -55,7 +56,7 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
     const k = useKolam();
 
     useEffect(() => {
-        applyTheme(t.theme);
+        applyTheme(t.theme, headingFont(t.script.lang));
         return () => applyTheme(DEFAULT_THEME);
     }, [t]);
 

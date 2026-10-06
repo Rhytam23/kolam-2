@@ -2,18 +2,31 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BRAND } from '../lib/brand';
 import { Link } from '../lib/router';
 import { READ_A_PHOTO, TRADITIONS, readerPath, traditionBySlug } from '../data/traditions';
+import { LANGUAGES, isLang, useI18n, type LabelKey } from '../lib/i18n';
 
 /** On an art form's pages "Read a photo" opens that art form's reader; elsewhere, the page that explains it. */
-const pagesFor = (path: string) => {
+const pagesFor = (path: string): Array<{ label: LabelKey; to: string }> => {
     const tradition = traditionBySlug(path.split('/')[1]);
     return [
-        { label: 'Read a photo', to: tradition ? readerPath(tradition.slug) : READ_A_PHOTO },
-        { label: 'Studio', to: '/studio' },
-        { label: 'About', to: '/about' },
+        { label: 'nav.read', to: tradition ? readerPath(tradition.slug) : READ_A_PHOTO },
+        { label: 'nav.studio', to: '/studio' },
+        { label: 'nav.about', to: '/about' },
     ];
 };
 
+const LanguagePicker: React.FC<{ lang: string; setLang: (l: (typeof LANGUAGES)[number]['code']) => void; label: string; dark: boolean }> = ({ lang, setLang, label, dark }) => (
+    <select
+        aria-label={label}
+        value={lang}
+        onChange={e => isLang(e.target.value) && setLang(e.target.value)}
+        className={`rounded-full border px-3 py-1 text-sm bg-transparent ${dark ? 'border-brass/50 text-rice' : 'border-kaavi/30 text-ink'}`}
+    >
+        {LANGUAGES.map(l => <option key={l.code} value={l.code} className="text-ink">{l.name}</option>)}
+    </select>
+);
+
 const Header: React.FC<{ path: string }> = ({ path }) => {
+    const { lang, setLang, t } = useI18n();
     // 'top': clear, over the page's first section; 'floor': over a dark section; 'paper': over the tools.
     const [look, setLook] = useState<'top' | 'floor' | 'paper'>('top');
     const [menuOpen, setMenuOpen] = useState(false);
@@ -66,7 +79,7 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
                             aria-haspopup="true"
                             onClick={() => setFormsOpen(o => !o)}
                         >
-                            Art forms ▾
+                            {t('nav.artForms')} ▾
                         </button>
                         {formsOpen && (
                             <div className="absolute right-0 mt-3 w-[34rem] rounded-2xl bg-paper shadow-xl ring-1 ring-kaavi/15 p-3 grid grid-cols-2 gap-1">
@@ -83,24 +96,26 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
                         )}
                     </div>
                     {PAGES.map(p => (
-                        <Link key={p.to} to={p.to} {...current(p.to)} className={`${linkClass} transition-colors font-medium`}>{p.label}</Link>
+                        <Link key={p.to} to={p.to} {...current(p.to)} className={`${linkClass} transition-colors font-medium`}>{t(p.label)}</Link>
                     ))}
+                    <LanguagePicker lang={lang} setLang={setLang} label={t('nav.language')} dark={dark} />
                 </div>
-                <button className={`lg:hidden ${dark ? 'text-rice' : 'text-ink'}`} onClick={() => setMenuOpen(o => !o)} aria-label="Toggle menu" aria-expanded={menuOpen}>
+                <button className={`lg:hidden ${dark ? 'text-rice' : 'text-ink'}`} onClick={() => setMenuOpen(o => !o)} aria-label={t('nav.menu')} aria-expanded={menuOpen}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
                 </button>
             </nav>
             {menuOpen && (
                 <div className={`lg:hidden max-h-[80vh] overflow-y-auto px-6 pb-6 pt-2 border-t ${dark ? 'border-brass/25' : 'border-kaavi/10'}`}>
-                    <p className={`text-xs uppercase tracking-widest mb-2 ${dark ? 'text-brass-light' : 'text-muted'}`}>Art forms</p>
+                    <p className={`text-xs uppercase tracking-widest mb-2 ${dark ? 'text-brass-light' : 'text-muted'}`}>{t('nav.artForms')}</p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
                         {TRADITIONS.map(t => (
                             <Link key={t.slug} to={`/${t.slug}`} {...current(`/${t.slug}`)} className={`block ${linkClass}`}>{t.name}</Link>
                         ))}
                     </div>
                     <div className={`space-y-3 border-t pt-3 ${dark ? 'border-brass/25' : 'border-kaavi/10'}`}>
-                        <Link to="/" className={`block ${linkClass}`}>Home</Link>
-                        {PAGES.map(p => <Link key={p.to} to={p.to} {...current(p.to)} className={`block ${linkClass}`}>{p.label}</Link>)}
+                        <Link to="/" className={`block ${linkClass}`}>{t('nav.home')}</Link>
+                        {PAGES.map(p => <Link key={p.to} to={p.to} {...current(p.to)} className={`block ${linkClass}`}>{t(p.label)}</Link>)}
+                        <LanguagePicker lang={lang} setLang={setLang} label={t('nav.language')} dark={dark} />
                     </div>
                 </div>
             )}
