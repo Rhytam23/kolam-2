@@ -5,7 +5,7 @@ import ColourGuide from './ColourGuide';
 import { useKolam } from './KolamContext';
 import { SYMMETRY_LABELS, designDots, loopPaths, rowPattern, type SymmetryName } from '../utils/kolamLogic';
 import { DOT_RADIUS, centreRadius, guideDotColour, radialGuideDots, ringPath, ringStyle, type Motif } from '../utils/radial';
-import { layerTransform, tracedBackground, tracedDots, tracedSize } from '../utils/traced';
+import { layerTransform, tracedBackground, tracedDots, tracedSize, tracedStrokes } from '../utils/traced';
 import { geometricPoint, shapePath } from '../utils/geometric';
 import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
@@ -172,6 +172,29 @@ const DrawGuide: React.FC = () => {
             const filled = (to: number) => (
                 <g transform={layerTransform(traced)}>{layers.slice(0, to).map((l, i) => <path key={i} d={l.path} fill={l.color} fillRule="evenodd" />)}</g>
             );
+            // The outlines in the order they are drawn: from the middle outwards, numbered at their start.
+            const strokes = tracedStrokes(traced);
+            const order = strokes
+                .map((st, i) => ({ st, i, d: Math.hypot(st.dots[0].x - w / 2, st.dots[0].y - h / 2) }))
+                .sort((a, b) => a.st.layer - b.st.layer || a.d - b.d);
+            const numbered = order.slice(0, 40);
+            const sequence = (
+                <g fill="none" stroke={HIGHLIGHT} strokeWidth={w * 0.004} strokeLinecap="round" strokeLinejoin="round">
+                    {order.slice(0, 60).map(({ st }, n) => (
+                        <path key={`${step}-${n}`} d={st.pieces.join('')} pathLength={1} className="kolam-draw" style={{ animationDelay: `${Math.min(n * 0.12, 3)}s` }} />
+                    ))}
+                </g>
+            );
+            const numbers = (
+                <g fontSize={w * 0.022} fontWeight={700} textAnchor="middle">
+                    {numbered.map(({ st }, n) => (
+                        <g key={n}>
+                            <circle cx={st.dots[0].x} cy={st.dots[0].y} r={w * 0.014} fill="#fff" stroke={HIGHLIGHT} strokeWidth={w * 0.002} />
+                            <text x={st.dots[0].x} y={st.dots[0].y + w * 0.008} fill={HIGHLIGHT}>{n + 1}</text>
+                        </g>
+                    ))}
+                </g>
+            );
             return {
                 viewBox: `0 0 ${w} ${h}`,
                 list: [
@@ -188,10 +211,10 @@ const DrawGuide: React.FC = () => {
                         picture: <>{bg}{dotsLayer}</>,
                     },
                     {
-                        title: '3. Join the dots',
-                        text: 'Join neighbouring dots with a thin line to bring out each shape. Follow the photo for curves between the dots.',
-                        tip: 'Draw the outline with a thin stream of powder or rice paste; colour comes after.',
-                        picture: <>{bg}{outlines(0, HIGHLIGHT)}{dotsLayer}</>,
+                        title: `3. Draw the ${strokes.length} outline${strokes.length === 1 ? '' : 's'}, centre first`,
+                        text: `Draw the outlines one after another, from the middle outwards. The numbers show the order${strokes.length > numbered.length ? ` (the first ${numbered.length} are numbered)` : ''}: start each line at its number, follow the curve through the dots and come back to where you started. Going either way round is fine.`,
+                        tip: 'Draw with a thin, even line: a fingertip dipped in rice paste, or a pinch of powder. Straight runs between dots are straight; curves bend gently between them. Colour comes after.',
+                        picture: <>{bg}{outlines(0, dotColour)}{sequence}{dotsLayer}{numbers}</>,
                     },
                     ...layers.map((layer, i) => {
                         const c = nearestTraditional(layer.color);
