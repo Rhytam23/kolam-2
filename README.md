@@ -35,6 +35,10 @@ without dots (alpana, most rangoli) are read by their turning symmetry and colou
 
 No sample photo at hand? Press **Try a sample** in the analyzer.
 
+## How photos are read
+
+Poor photos are repaired first (uneven light, flat contrast, grain, softness, tiny size) and the response says what was done. Free-hand designs are traced as smooth curves in their real colours, with a tidied copy to switch to; dot designs are read as a dot grid. Very poor photos still give lower confidence plus tips for retaking. See [docs/architecture.md](docs/architecture.md) for the steps and limits, including how the server protects itself when many people read photos at once.
+
 ## Privacy and hosting
 
 See [`public/privacy.html`](public/privacy.html) (served at `/privacy.html`) and [`public/terms.html`](public/terms.html).
