@@ -108,6 +108,83 @@ export const tracedDots = (t: TracedArt, maxDots = 220): Array<{ x: number; y: n
   return dots;
 };
 
+export interface TracedStroke {
+  /** Guide dots on this outline, in drawing order; the first is repeated at the end (the outline closes). */
+  dots: Array<{ x: number; y: number }>;
+  /** pieces[i] is the true curve (or straight line) from dots[i] to dots[i + 1], in TRACE units. */
+  pieces: string[];
+  /** The whole outline, in TRACE units. */
+  path: string;
+  /** The index of the colour layer this outline belongs to. */
+  layer: number;
+}
+
+/**
+ * The outlines of a traced design as strokes to draw: each outline is walked from the anchor nearest
+ * the centre of the picture, with guide dots only where the line needs them (corners, and often
+ * enough along curves and long straight runs), and the real curve between each pair of dots.
+ */
+export const tracedStrokes = (t: TracedArt, maxDots = 220): TracedStroke[] => {
+  const { w, h } = tracedSize(t);
+  const loops: Array<{ layer: number; anchors: Anchor[]; segs: string[] }> = [];
+  t.layers.forEach((layer, li) => {
+    for (const m of layer.path.matchAll(/M([^MZ]*)Z?/g)) {
+      const anchors = pathAnchors(m[0])[0];
+      if (!anchors || anchors.length < 3) continue;
+      // One drawing command per anchor-to-next-anchor piece, scaled to TRACE units.
+      const body = m[0].replace(/[MZ]/g, '');
+      const parts = body.split(/(?=[LC])/);
+      const nums = (str: string) => str.replace(/[LC]/g, ' ').trim().split(/\s+/).filter(Boolean).map(Number);
+      const first = nums(parts[0]);
+      let at = { x: first[0] * w, y: first[1] * h };
+      const segs: string[] = [];
+      for (const part of parts.slice(1)) {
+        const n = nums(part);
+        const step = part[0] === 'C' ? 6 : 2;
+        for (let i = 0; i + step <= n.length; i += step) {
+          const pts = Array.from({ length: step / 2 }, (_, k) => ({ x: n[i + 2 * k] * w, y: n[i + 2 * k + 1] * h }));
+          segs.push(`M${at.x.toFixed(1)} ${at.y.toFixed(1)}${part[0]}${pts.map(p => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')}`);
+          at = pts[pts.length - 1];
+        }
+      }
+      // The closing line back to the start, when the outline was not already closed by a curve.
+      if (segs.length < anchors.length) segs.push(`M${at.x.toFixed(1)} ${at.y.toFixed(1)}L${(first[0] * w).toFixed(1)} ${(first[1] * h).toFixed(1)}`);
+      loops.push({ layer: li, anchors: anchors.map(a => ({ ...a, x: a.x * w, y: a.y * h })), segs });
+    }
+  });
+  const perimeter = (pts: Anchor[]) =>
+    pts.reduce((sum, p, i) => sum + Math.hypot(pts[(i + 1) % pts.length].x - p.x, pts[(i + 1) % pts.length].y - p.y), 0);
+  const total = loops.reduce((sum, l) => sum + perimeter(l.anchors), 0);
+  const spacing = Math.max(w * 0.03, total / maxDots);
+
+  const strokes: TracedStroke[] = [];
+  for (const { layer, anchors, segs } of loops) {
+    if (perimeter(anchors) < spacing) continue;
+    // Start at the anchor nearest the middle of the picture, so drawing works outwards from the centre.
+    const start = anchors.reduce((best, a, i) => (Math.hypot(a.x - w / 2, a.y - h / 2) < Math.hypot(anchors[best].x - w / 2, anchors[best].y - h / 2) ? i : best), 0);
+    const n = anchors.length;
+    const order = Array.from({ length: n }, (_, i) => (start + i) % n);
+    // Keep an anchor as a guide dot when it is a corner, or far enough from the last kept dot.
+    const kept: number[] = [order[0]];
+    for (const i of order.slice(1)) {
+      const last = anchors[kept[kept.length - 1]];
+      const gap = Math.hypot(anchors[i].x - last.x, anchors[i].y - last.y);
+      if (gap >= spacing || (anchors[i].corner && gap >= spacing * 0.35)) kept.push(i);
+    }
+    if (kept.length < 3) continue;
+    const dots = kept.map(i => ({ x: anchors[i].x, y: anchors[i].y }));
+    const pieces = kept.map((from, k) => {
+      const to = kept[(k + 1) % kept.length];
+      const run: string[] = [];
+      for (let i = from; i !== to; i = (i + 1) % n) run.push(segs[i]);
+      // Join the pieces of one run into a single path: keep the first M, and drop the later ones.
+      return run.map((seg, j) => (j === 0 ? seg : seg.replace(/^M[^LC]*/, ''))).join('');
+    });
+    strokes.push({ dots: [...dots, dots[0]], pieces, path: segs.map((seg, j) => (j === 0 ? seg : seg.replace(/^M[^LC]*/, ''))).join('') + 'Z', layer });
+  }
+  return strokes;
+};
+
 export const tracedToSvg = (t: TracedArt, { dots = false, dotColour = '#3B2416' } = {}) => {
   const { w, h } = tracedSize(t);
   const layers = t.layers

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, startPractice, tapDot, currentGroup, type PracticePlan, type PracticeState } from './practice';
+import { expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, tracedPlan, startPractice, tapDot, currentGroup, type PracticePlan, type PracticeState } from './practice';
 import { diamondDesign, makeSingleLine, squareDesign } from './kolamLogic';
 import { makeRadial } from './radial';
 import { makeGeometric, GEOMETRIC_PATTERNS, type GeometricPattern } from './geometric';
@@ -82,5 +82,32 @@ describe('practice', () => {
             }
             expect(isFinished(playThrough(plan).state)).toBe(true);
         }
+    });
+});
+
+describe('practice with a design read from a photo', () => {
+    // Two outlines in two colours: a square, and a circle made of four curves.
+    const K = 0.5523 * 0.1;
+    const square = 'M0.1 0.1L0.4 0.1L0.4 0.4L0.1 0.4Z';
+    const circle = `M0.8 0.7C0.8 ${0.7 + K} ${0.7 + K} 0.8 0.7 0.8C${0.7 - K} 0.8 0.6 ${0.7 + K} 0.6 0.7C0.6 ${0.7 - K} ${0.7 - K} 0.6 0.7 0.6C${0.7 + K} 0.6 0.8 ${0.7 - K} 0.8 0.7Z`;
+    const art = { layers: [{ color: '#ffffff', path: square }, { color: '#C62839', path: circle }], palette: [], width: 1000, height: 1000 };
+
+    it('makes one stroke per outline, grouped by colour layer', () => {
+        const plan = tracedPlan(art);
+        expect(plan.kind).toBe('traced');
+        expect(plan.strokes).toHaveLength(2);
+        expect(plan.groups).toHaveLength(2);
+        expect(plan.strokes.map(s => s.group)).toEqual([0, 1]);
+    });
+
+    it('draws the real curve between guide dots', () => {
+        const plan = tracedPlan(art);
+        expect(plan.strokes[1].pieces.some(piece => piece.includes('C'))).toBe(true);
+        plan.strokes.forEach(s => expect(s.pieces).toHaveLength(s.dots.length - 1));
+    });
+
+    it('can be drawn from start to finish by tapping the dots in order', () => {
+        const { state } = playThrough(tracedPlan(art));
+        expect(isFinished(state)).toBe(true);
     });
 });

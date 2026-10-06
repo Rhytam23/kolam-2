@@ -2,6 +2,7 @@ import type { Design, Point } from '../types/kolam';
 import { designDots, loopBends } from './kolamLogic';
 import { radialGuideDots, ringStrokes, type RadialDesign } from './radial';
 import { geometricPoint, outlineDots, type GeometricDesign } from './geometric';
+import { tracedSize, tracedStrokes, type TracedArt } from './traced';
 
 /*
  * Practice: the visitor draws a design by tapping its dots in order. A design is a list of strokes
@@ -25,7 +26,7 @@ export interface Stroke {
 }
 
 export interface PracticePlan {
-    kind: 'kolam' | 'radial' | 'geometric';
+    kind: 'kolam' | 'radial' | 'geometric' | 'traced';
     /** Ring the dot where the next line starts, when its start is not obvious. */
     showStart: boolean;
     viewBox: string;
@@ -139,6 +140,36 @@ export const geometricPlan = (design: GeometricDesign): PracticePlan => {
         groups: design.groups,
         anyOrder: true,
         shapes: design.groups.map(() => 'shapes'),
+    };
+};
+
+/** A design traced from a photo: each outline is drawn dot to dot, following the real curve between dots. */
+export const tracedPlan = (art: TracedArt): PracticePlan => {
+    const { w, h } = tracedSize(art);
+    const outlines = tracedStrokes(art);
+    const dots: Point[] = [];
+    const strokes: Stroke[] = outlines.map(o => {
+        const base = dots.length;
+        dots.push(...o.dots.slice(0, -1));
+        const ids = o.dots.map((_, i) => (i === o.dots.length - 1 ? base : base + i));
+        return { dots: ids, pieces: o.pieces, closed: true, group: o.layer };
+    });
+    const used = [...new Set(strokes.map(s => s.group))].sort((a, b) => a - b);
+    const renumber = new Map(used.map((g, i) => [g, i]));
+    strokes.forEach(s => { s.group = renumber.get(s.group)!; });
+    return {
+        kind: 'traced',
+        showStart: true,
+        viewBox: `0 0 ${w} ${h}`,
+        dots,
+        dotColours: dots.map(() => undefined),
+        dotSizes: dots.map(() => undefined),
+        dotRadius: w * 0.007,
+        lineWidth: w * 0.005,
+        strokes,
+        groups: used.map((_, i) => `outline set ${i + 1}`),
+        anyOrder: true,
+        shapes: used.map(() => 'shapes'),
     };
 };
 

@@ -5,7 +5,8 @@ import { useKolam } from './KolamContext';
 import { loopPaths } from '../utils/kolamLogic';
 import { guideDotColour, ringPath, ringStyle } from '../utils/radial';
 import { kolamDotColour } from '../lib/artwork';
-import { KOLAM_UNIT, currentGroup, expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, startPractice, tapDot, type PracticePlan } from '../utils/practice';
+import { KOLAM_UNIT, currentGroup, expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, startPractice, tapDot, tracedPlan, type PracticePlan } from '../utils/practice';
+import { layerTransform, tracedBackground } from '../utils/traced';
 import { shapePath } from '../utils/geometric';
 
 const HINT = '#C62839';
@@ -13,6 +14,7 @@ const SINGULAR: Record<string, string> = { petals: 'petal', leaves: 'leaf', curl
 
 const instructions = (plan: PracticePlan, group: number) => {
     const shape = plan.shapes[group];
+    if (plan.kind === 'traced') return 'Tap the dot where the ringed line starts, then each dot along the outline in order, back to the start. The line follows the real curve between dots. Either way round is fine.';
     if (plan.kind === 'geometric') return `Now draw ${plan.groups[group]}. Lines run straight from dot to dot: tap a ringed corner to start, then every dot the line passes through, back to the corner.`;
     if (plan.kind === 'kolam') return 'The line never touches a dot: it bends round one dot, then the next. Start at the ringed dot and tap each dot in the order the line goes round it.';
     if (shape === 'curls') return 'Tap each dot to wind a curl round it: start at the pointed tip and curl in round the dot. Go round the ring one dot after another.';
@@ -25,8 +27,8 @@ const instructions = (plan: PracticePlan, group: number) => {
 const Practice: React.FC = () => {
     const k = useKolam();
     const plan = useMemo(
-        () => (k.mode === 'kolam' ? kolamPlan(k.design) : k.mode === 'radial' ? radialPlan(k.radial) : k.mode === 'geometric' ? geometricPlan(k.geometric) : null),
-        [k.mode, k.design, k.radial, k.geometric],
+        () => (k.mode === 'kolam' ? kolamPlan(k.design) : k.mode === 'radial' ? radialPlan(k.radial) : k.mode === 'geometric' ? geometricPlan(k.geometric) : k.mode === 'traced' && k.traced ? tracedPlan(k.traced) : null),
+        [k.mode, k.design, k.radial, k.geometric, k.traced],
     );
     const [state, setState] = useState(() => (plan ? startPractice(plan) : null));
     const [misses, setMisses] = useState(0);
@@ -51,12 +53,13 @@ const Practice: React.FC = () => {
     }, [flash]);
 
     if (!plan || !state) {
-        return <Card><p className="text-ink">Practice works with dot kolams and rangoli designs from the studio. Choose one above, then come back here.</p></Card>;
+        return <Card><p className="text-ink">Practice works with the designs from the studio and with designs read from your photos. Choose one above, then come back here.</p></Card>;
     }
 
-    const background = plan.kind === 'kolam' ? k.kolamColours.background : plan.kind === 'geometric' ? k.geometric.background : k.radial.background;
+    const background = plan.kind === 'traced' && k.traced ? tracedBackground(k.traced)
+        : plan.kind === 'kolam' ? k.kolamColours.background : plan.kind === 'geometric' ? k.geometric.background : k.radial.background;
     const line = plan.kind === 'kolam' ? k.kolamColours.colors[0] : plan.kind === 'geometric' ? k.geometric.line : guideDotColour(background);
-    const dotColour = plan.kind === 'radial' ? line : kolamDotColour(background);
+    const dotColour = plan.kind === 'radial' || plan.kind === 'traced' ? line : kolamDotColour(background);
     const finished = isFinished(state);
     const group = currentGroup(plan, state);
     const expected = finished ? [] : expectedDots(plan, state);
@@ -66,7 +69,9 @@ const Practice: React.FC = () => {
     const inGroup = plan.strokes.filter(s => s.group === group);
     const groupDone = inGroup.filter(s => state.done[plan.strokes.indexOf(s)]).length;
 
-    const ghostPaths = plan.kind === 'kolam'
+    const ghostPaths = plan.kind === 'traced'
+        ? plan.strokes.map(st => st.pieces.join(''))
+        : plan.kind === 'kolam'
         ? loopPaths(k.design, KOLAM_UNIT, 1)
         : plan.kind === 'geometric'
         ? k.geometric.shapes.map(shape => shapePath(k.geometric, shape, KOLAM_UNIT))
@@ -110,7 +115,9 @@ const Practice: React.FC = () => {
     };
 
     const colourFinal = finished && (
-        plan.kind === 'geometric'
+        plan.kind === 'traced' && k.traced
+            ? <g transform={layerTransform(k.traced)}>{k.traced.layers.map((l, i) => <path key={i} d={l.path} fill={l.color} fillRule="evenodd" className="fade-in" />)}</g>
+            : plan.kind === 'geometric'
             ? k.geometric.shapes.map((shape, i) => <path key={i} d={shapePath(k.geometric, shape, KOLAM_UNIT)} fill={shape.fill ?? 'none'} stroke={line} strokeWidth={plan.lineWidth} strokeLinejoin="round" className="fade-in" />)
             : plan.kind === 'kolam'
             ? loopPaths(k.design, KOLAM_UNIT, 1).map((d, i) => <path key={i} d={d} fill="none" stroke={k.kolamColours.colors[i % k.kolamColours.colors.length]} strokeWidth={plan.lineWidth} strokeLinecap="round" />)
@@ -151,7 +158,7 @@ const Practice: React.FC = () => {
                 <p className="text-sm min-h-[1.25rem] text-center text-ink" aria-live="polite">{message}</p>
                 <div className="flex flex-wrap justify-center gap-3">
                     {!finished && <Button variant="secondary" size="sm" onClick={() => setHint(true)}>Show me where</Button>}
-                    {!finished && <Button variant="secondary" size="sm" onClick={() => { setState(finishGroup(plan, state)); setMessage(`${plan.groups[group][0].toUpperCase()}${plan.groups[group].slice(1)} drawn for you.`); }}>Finish this {plan.kind === 'kolam' ? 'line' : plan.kind === 'geometric' ? 'part' : 'ring'} for me</Button>}
+                    {!finished && <Button variant="secondary" size="sm" onClick={() => { setState(finishGroup(plan, state)); setMessage(`${plan.groups[group][0].toUpperCase()}${plan.groups[group].slice(1)} drawn for you.`); }}>Finish this {plan.kind === 'kolam' ? 'line' : plan.kind === 'geometric' ? 'part' : plan.kind === 'traced' ? 'colour' : 'ring'} for me</Button>}
                     <Button size="sm" onClick={restart}>Start again</Button>
                 </div>
                 <label className="flex items-center justify-center gap-2 text-sm text-ink">
@@ -163,7 +170,7 @@ const Practice: React.FC = () => {
             <div className="order-first md:order-none">
                 <Card className="space-y-3">
                     <p className="text-xs uppercase tracking-widest text-muted">
-                        {finished ? 'Finished' : plan.kind === 'geometric' ? `Part ${group + 1} of ${plan.groups.length}` : `Drawing ${plan.groups[group]} of ${plan.groups.length}`}
+                        {finished ? 'Finished' : plan.kind === 'geometric' ? `Part ${group + 1} of ${plan.groups.length}` : plan.kind === 'traced' ? `Colour ${group + 1} of ${plan.groups.length}` : `Drawing ${plan.groups[group]} of ${plan.groups.length}`}
                     </p>
                     <h3 className="font-heading text-2xl text-kaavi">{finished ? 'You drew it!' : 'Draw it yourself'}</h3>
                     <p className="text-ink leading-relaxed">{finished ? 'Every line is in place, in the order it is drawn by hand. Try it on paper or on the floor next, or pick another design in the studio.' : instructions(plan, group)}</p>
