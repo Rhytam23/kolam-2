@@ -25,7 +25,9 @@ from PIL import Image
 import config
 from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
-from drawing import colour_layers, radial_symmetry
+from drawing import colour_masks, radial_symmetry, tidy_layers
+from enhance import assess, repair, retake_tips
+from vectorize import trace_mask
 from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
 
 log = logging.getLogger('chittara')
@@ -157,21 +159,49 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
     corrected = False
     if deskew:
         img, corrected = deskew_if_needed(img)
-    height, width = img.shape[:2]
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Kolams are drawn dark-on-light (paper) or light-on-dark (rice flour on a floor).
-    if manual_dots is not None:
-        found, dark_ink = manual_dots, ink_is_dark(gray, manual_dots)
-    elif not grid:
-        found, dark_ink = [], True
-    else:
+    # Poor photos are repaired first. For dot designs both versions are read and the better reading wins.
+    quality = assess(img)
+    fixes: list[str] = []
+    repaired = img
+    if quality['problems']:
+        repaired, fixes = repair(img, quality, config.MAX_SIDE)
+
+    def read_dots(picture: np.ndarray):
+        """Best dot reading of a picture over both ink polarities: (score, dark_ink, dots)."""
+        gray_ = cv2.cvtColor(picture, cv2.COLOR_BGR2GRAY)
+        h_, w_ = gray_.shape
         readings = []
         for dark in (True, False):
-            candidate = detect_dots(gray, width, height, preset, dark)
-            fit = infer_lattice(candidate, width, height)
+            candidate = detect_dots(gray_, w_, h_, preset, dark)
+            fit = infer_lattice(candidate, w_, h_)
             readings.append(((fit['fit'] if fit else 0.01) * len(candidate), dark, candidate))
-        _, dark_ink, found = max(readings, key=lambda r: r[0])
+        return max(readings, key=lambda r: r[0])
+
+    found, dark_ink = [], True
+    if manual_dots is not None:
+        found = manual_dots
+        if fixes:
+            img = repaired
+        dark_ink = ink_is_dark(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), manual_dots)
+    elif grid:
+        best = read_dots(img)
+        if fixes:
+            retry = read_dots(repaired)
+            if retry[0] > best[0] * 1.05:
+                best, img = retry, repaired
+            else:
+                fixes = []  # the repair did not help this reading, so the original is kept
+        _, dark_ink, found = best
+    elif fixes:
+        # Free-hand designs have no reading to compare, so keep the repair only if the photo measures better.
+        if assess(repaired)['score'] > quality['score']:
+            img = repaired
+        else:
+            fixes = []
+
+    height, width = img.shape[:2]
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     lattice = infer_lattice(found, width, height) if found else None
     if lattice is None:
         # No dot grid to go by: the drawing is the thinner of the two tones.
@@ -179,7 +209,10 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
     ink = stroke_mask(gray, dark_ink)
     design, clarity = infer_design(lattice, ink) if lattice else (None, 0.0)
     radial = radial_symmetry(ink)
-    palette, layers = colour_layers(img)
+    palette, masks = colour_masks(img)
+    layers = [{'color': colour, 'path': path} for colour, mask in masks if (path := trace_mask(mask))]
+    tidied = tidy_layers(masks, radial, ink) if lattice is None and masks else []
+    after = assess(img) if fixes else quality
 
     if lattice:
         confidence = round(lattice['fit'] * (0.5 + 0.5 * clarity), 2)
@@ -207,8 +240,13 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
         'radial': radial,
         'palette': palette,
         'layers': layers,
+        'tidied': tidied,
+        'quality': {
+            'score': quality['score'], 'problems': quality['problems'], 'fixes': fixes,
+            'scoreAfter': after['score'], 'tips': retake_tips(after['problems']),
+        },
     }
-    if corrected:
+    if corrected or fixes:
         ok, jpeg = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
         if ok:
             response['image'] = 'data:image/jpeg;base64,' + base64.b64encode(jpeg.tobytes()).decode()

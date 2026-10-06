@@ -6,9 +6,11 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-WORK_SIDE = 360          # images are reduced to this size for colour work
-MAX_COLOURS = 6
-MAX_PATH_POINTS = 2500   # per colour layer; keeps the response small
+from vectorize import trace_mask as trace
+
+WORK_SIDE = 640          # images are reduced to this size for colour work
+MAX_COLOURS = 8
+FIT_SAMPLE = 60_000      # pixels the colours are learned from; every pixel is then given its nearest colour
 
 
 def radial_symmetry(mask: np.ndarray) -> dict | None:
@@ -41,28 +43,15 @@ def _hex(bgr: np.ndarray) -> str:
     return f'#{r:02x}{g:02x}{b:02x}'
 
 
-def trace(mask: np.ndarray) -> str:
-    """Outline a binary mask as an SVG path in 0–1 coordinates (draw with fill-rule="evenodd")."""
-    h, w = mask.shape
-    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
-    contours = [c for c in contours if cv2.contourArea(c) >= 12]
-    epsilon = 0.8
-    while True:
-        simplified = [cv2.approxPolyDP(c, epsilon, True) for c in contours]
-        if sum(len(c) for c in simplified) <= MAX_PATH_POINTS or epsilon > 8:
-            break
-        epsilon *= 1.6
-    parts = []
-    for c in simplified:
-        if len(c) < 3:
-            continue
-        pts = c[:, 0, :].astype(np.float64) / [w, h]
-        parts.append('M' + 'L'.join(f'{x:.4f} {y:.4f}' for x, y in pts) + 'Z')
-    return ''.join(parts)
-
-
 def colour_layers(image_bgr: np.ndarray) -> tuple[list[dict], list[dict]]:
     """Main colours (with the share of the picture each covers) and a traced, filled layer per colour."""
+    palette, masks = colour_masks(image_bgr)
+    layers = [{'color': colour, 'path': path} for colour, mask in masks if (path := trace(mask))]
+    return palette, layers
+
+
+def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.ndarray]]]:
+    """Main colours and one binary mask per drawn (non-ground) colour, big areas first."""
     h, w = image_bgr.shape[:2]
     scale = WORK_SIDE / max(h, w)
     small = cv2.resize(image_bgr, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
@@ -71,9 +60,16 @@ def colour_layers(image_bgr: np.ndarray) -> tuple[list[dict], list[dict]]:
 
     cv2.setRNGSeed(7)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
-    k = min(MAX_COLOURS, len(pixels))
-    _, labels, centres = cv2.kmeans(pixels, k, None, criteria, 2, cv2.KMEANS_PP_CENTERS)
-    labels = labels.ravel()
+    # Learn the colours from a sample (fast), then give every pixel its nearest colour (exact).
+    sample = pixels if len(pixels) <= FIT_SAMPLE else pixels[np.random.default_rng(7).choice(len(pixels), FIT_SAMPLE, replace=False)]
+    k = min(MAX_COLOURS, len(sample))
+    _, _, centres = cv2.kmeans(sample, k, None, criteria, 2, cv2.KMEANS_PP_CENTERS)
+    nearest = np.full(len(pixels), np.inf, dtype=np.float32)
+    labels = np.zeros(len(pixels), dtype=np.int32)
+    for i, centre in enumerate(centres):  # one colour at a time keeps memory small
+        distance = ((pixels - centre) ** 2).sum(axis=1)
+        closer = distance < nearest
+        labels[closer], nearest[closer] = i, distance[closer]
 
     # Merge near-identical colours (lighting gradients split one colour into two clusters).
     for a in range(k):
@@ -109,12 +105,10 @@ def colour_layers(image_bgr: np.ndarray) -> tuple[list[dict], list[dict]]:
         palette.append({'hex': colour, 'share': round(share, 3), 'background': background})
         if not background:
             mask = cv2.morphologyEx((labels == c).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-            path = trace(mask)
-            if path:
-                layers.append({'color': colour, 'path': path})
+            layers.append((colour, mask))
     if palette and not any(p['background'] for p in palette):
         palette[0]['background'] = True
-        layers = [layer for layer in layers if layer['color'] != palette[0]['hex']]
+        layers = [layer for layer in layers if layer[0] != palette[0]['hex']]
     # Uneven light can split the floor into several shades; report it as one ground colour.
     grounds = [p for p in palette if p['background']]
     if grounds:
@@ -122,3 +116,31 @@ def colour_layers(image_bgr: np.ndarray) -> tuple[list[dict], list[dict]]:
         palette = [grounds[0]] + [p for p in palette if not p['background']]
     # Draw big areas first so thin lines end up on top.
     return palette, layers[::-1]
+
+
+def _rotated(mask: np.ndarray, centre: tuple[float, float], degrees: float) -> np.ndarray:
+    matrix = cv2.getRotationMatrix2D(centre, degrees, 1.0)
+    return cv2.warpAffine(mask.astype(np.float32), matrix, (mask.shape[1], mask.shape[0]), flags=cv2.INTER_LINEAR)
+
+
+def tidy_layers(masks: list[tuple[str, np.ndarray]], radial: dict | None, ink: np.ndarray | None = None) -> list[dict]:
+    """A cleaner copy of the traced design: wobbles smoothed away and, when the design is a turning
+    pattern (a mandala-like alpana or rangoli), every petal made to match the others by majority vote."""
+    order = radial['order'] if radial and not radial.get('circular') and radial['order'] >= 3 and radial['score'] >= 0.85 else 0
+    centre = None
+    if order and ink is not None:
+        ys, xs = np.nonzero(ink)
+        if len(xs) > 50:
+            # The mask used for the symmetry reading was drawn at the picture's size, so scale to the colour masks.
+            sy, sx = masks[0][1].shape[0] / ink.shape[0], masks[0][1].shape[1] / ink.shape[1]
+            centre = (float(xs.mean()) * sx, float(ys.mean()) * sy)
+    layers = []
+    for colour, mask in masks:
+        work = mask.astype(np.float32)
+        if order and centre:
+            votes = sum(_rotated(work, centre, 360.0 * i / order) for i in range(order)) / order
+            work = (votes >= 0.5).astype(np.float32)
+        path = trace(work > 0.5, min_area=20, smooth=1.6)
+        if path:
+            layers.append({'color': colour, 'path': path})
+    return layers
