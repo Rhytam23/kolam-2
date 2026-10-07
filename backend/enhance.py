@@ -55,10 +55,35 @@ def _light_plane(gray: np.ndarray) -> np.ndarray:
     return (coef[0] + coef[1] * xx / max(w - 1, 1) + coef[2] * yy / max(h - 1, 1)).astype(np.float32)
 
 
+def is_clean_graphic(img: np.ndarray) -> bool:
+    """True for a digital or scanned drawing: flat colour areas with no sensor grain (a photo of a floor has grain
+    even where the floor looks flat). Such a picture must not be 'repaired': smoothing and light-flattening only
+    blur its thin lines."""
+    gray = _gray(img)
+    h, w = gray.shape
+    scale = 800 / max(h, w)
+    std = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA) if scale < 1 else gray
+    blurred = cv2.GaussianBlur(std, (0, 0), 1.0)
+    edges = cv2.dilate(cv2.Canny(std, 40, 120), np.ones((5, 5), np.uint8)) > 0
+    flat = ~edges
+    if flat.mean() < 0.25:
+        return False
+    grain = float(np.std((std.astype(np.float32) - blurred.astype(np.float32))[flat]))
+    return grain < 1.6
+
+
 def assess(img: np.ndarray) -> dict:
     """Measures what is wrong with a photo. problems lists the issues worth repairing; score is 0 (poor) to 1 (good)."""
     gray = _gray(img)
     h, w = gray.shape
+    if is_clean_graphic(img):
+        # Only a shadow or gradient over the whole sheet can be fixed without harming thin lines; the
+        # limit is higher because large areas of ink move the fitted lighting plane.
+        plane = _light_plane(gray)
+        uneven = float((plane.max() - plane.min()) / max(float(plane.mean()), 1.0))
+        problems = ['uneven light'] if uneven > 2 * UNEVEN_LIMIT else []
+        return {'score': 0.8 if problems else 1.0, 'problems': problems,
+                'metrics': {'cleanGraphic': True, 'unevenLight': round(uneven, 3)}}
     # Judge sharpness and noise on a standard size so large photos are not unfairly marked soft.
     scale = 800 / max(h, w)
     std = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA) if scale < 1 else gray

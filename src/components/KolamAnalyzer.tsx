@@ -74,6 +74,8 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const [preset, setPreset] = useState<AnalysisPreset>(tradition ? readingGuide(tradition).preset : 'balanced');
     const [deskew, setDeskew] = useState(true);
     const [showRecreation, setShowRecreation] = useState(true);
+    // How solid the traced copy is drawn over the photo, so the two can be compared.
+    const [overlay, setOverlay] = useState(0.85);
     const [surface, setSurface] = useState({ w: 0, h: 0 });
     const [replay, setReplay] = useState(0);
 
@@ -177,7 +179,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                     <g transform={`scale(${W} ${H})`} fill="none" stroke="#F08A00" strokeWidth={2} className="fade-in" style={{ animationDelay: '1s' }}>
                         {traced.layers.map((l, i) => <path key={i} d={l.path} vectorEffect="non-scaling-stroke" />)}
                     </g>
-                    <g transform={`scale(${W} ${H})`} opacity={0.85} className="fade-in" style={{ animationDelay: '2.2s' }}>
+                    <g transform={`scale(${W} ${H})`} opacity={overlay} className="fade-in" style={{ animationDelay: '2.2s' }}>
                         {traced.layers.map((l, i) => <path key={i} d={l.path} fill={l.color} fillRule="evenodd" />)}
                     </g>
                 </g>
@@ -492,12 +494,15 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         {loading && <p className="text-kaavi animate-pulse">{t('reader.reading')}</p>}
                         {error && <p className="text-kumkum text-sm bg-kumkum/10 px-4 py-2 rounded">{error}</p>}
                         <p className="text-sm text-muted">{status}</p>
-                        {quality && (quality.fixes.length > 0 || quality.tips.length > 0) && (
+                        {quality && (quality.fixes.length > 0 || quality.tips.length > 0 || quality.fidelity != null) && (
                             <div className="text-sm rounded-xl border border-kaavi/20 bg-paper px-4 py-3 space-y-1" data-testid="photo-quality">
                                 {quality.fixes.length > 0 && (
                                     <p className="text-ink">
                                         <strong>{t('reader.repaired')}</strong> ({Math.round(quality.score * 100)}% to {Math.round(quality.scoreAfter * 100)}%): {quality.fixes.join(', ').toLowerCase()}.
                                     </p>
+                                )}
+                                {quality.fidelity != null && (
+                                    <p className="text-ink">{t('reader.matches')}: <strong>{Math.round(quality.fidelity * 100)}%</strong></p>
                                 )}
                                 {quality.tips.map(tip => <p key={tip} className="text-muted">Tip: {tip}</p>)}
                             </div>
@@ -535,6 +540,12 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                         <Button variant="secondary" size="sm" onClick={() => setShowOriginal(v => !v)} aria-pressed={showOriginal}>
                                             {showOriginal ? 'Showing your photo' : 'Showing repaired photo'}
                                         </Button>
+                                    )}
+                                    {traced && (
+                                        <label className="flex items-center gap-2 text-sm text-ink">
+                                            {t('reader.compare')}
+                                            <input type="range" min={0} max={1} step={0.05} value={overlay} onChange={e => setOverlay(Number(e.target.value))} className="accent-kaavi w-24" aria-label={t('reader.compare')} />
+                                        </label>
                                     )}
                                     <label className="flex items-center gap-2 text-sm text-ink ml-auto">
                                         <input type="checkbox" checked={showRecreation} onChange={e => setShowRecreation(e.target.checked)} className="accent-kaavi" />

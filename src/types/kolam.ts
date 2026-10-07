@@ -69,6 +69,8 @@ export interface PhotoQuality {
   fixes: string[];
   /** Advice for a better photo, when the repaired one is still not good. */
   tips: string[];
+  /** How closely the traced layers match the picture, 0 to 1 (null when nothing was traced). */
+  fidelity?: number | null;
 }
 
 export interface AnalysisResponse {

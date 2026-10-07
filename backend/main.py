@@ -25,7 +25,7 @@ from PIL import Image
 import config
 from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
-from drawing import colour_masks, radial_symmetry, tidy_layers
+from drawing import colour_masks, radial_symmetry, tidy_layers, trace_fidelity
 from enhance import assess, repair, retake_tips
 from vectorize import trace_mask
 from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
@@ -213,6 +213,7 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
     layers = [{'color': colour, 'path': path} for colour, mask in masks if (path := trace_mask(mask))]
     tidied = tidy_layers(masks, radial, ink) if lattice is None and masks else []
     after = assess(img) if fixes else quality
+    fidelity = trace_fidelity(img, masks, palette) if masks else None
 
     if lattice:
         confidence = round(lattice['fit'] * (0.5 + 0.5 * clarity), 2)
@@ -243,7 +244,7 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
         'tidied': tidied,
         'quality': {
             'score': quality['score'], 'problems': quality['problems'], 'fixes': fixes,
-            'scoreAfter': after['score'], 'tips': retake_tips(after['problems']),
+            'scoreAfter': after['score'], 'tips': retake_tips(after['problems']), 'fidelity': fidelity,
         },
     }
     if corrected or fixes:

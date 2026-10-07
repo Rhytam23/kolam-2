@@ -6,10 +6,14 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
+from enhance import is_clean_graphic
 from vectorize import trace_mask as trace
 
-WORK_SIDE = 640          # images are reduced to this size for colour work
+WORK_SIDE = 900          # images are reduced to this size for colour work
 MAX_COLOURS = 8
+SMOOTH = 0.0            # blur (in source pixels) applied to clean drawings before deciding colours
+INK_BIAS = 0.38         # how far from the ground to the ink a pixel must be to count as ink
+HIGH_SIDE = 1500         # the long side colours are decided at, after enlarging, so edges land between pixels
 FIT_SAMPLE = 60_000      # pixels the colours are learned from; every pixel is then given its nearest colour
 
 
@@ -62,11 +66,18 @@ def colour_layers(image_bgr: np.ndarray) -> tuple[list[dict], list[dict]]:
 
 
 def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.ndarray]]]:
-    """Main colours and one binary mask per drawn (non-ground) colour, big areas first."""
+    """Main colours and one binary mask per drawn (non-ground) colour, big areas first.
+
+    The real colours are found first. Every pixel then goes to the nearest real colour, so the
+    anti-aliased pixels along thin lines are never lost, and the picture is enlarged (cubic) before
+    that decision so the edges fall between pixels, as they do in the original drawing.
+    """
     h, w = image_bgr.shape[:2]
-    scale = WORK_SIDE / max(h, w)
-    small = cv2.resize(image_bgr, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
-    small = cv2.bilateralFilter(small, 7, 40, 7)
+    graphic = is_clean_graphic(image_bgr)
+    scale = min(1.0, WORK_SIDE / max(h, w))
+    small = image_bgr if scale == 1.0 else cv2.resize(image_bgr, (max(1, round(w * scale)), max(1, round(h * scale))), interpolation=cv2.INTER_AREA)
+    if not graphic:
+        small = cv2.bilateralFilter(small, 7, 40, 7)   # photos carry noise; clean drawings must keep their thin lines
     pixels = small.reshape(-1, 3).astype(np.float32)
 
     cv2.setRNGSeed(7)
@@ -75,12 +86,7 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
     sample = pixels if len(pixels) <= FIT_SAMPLE else pixels[np.random.default_rng(7).choice(len(pixels), FIT_SAMPLE, replace=False)]
     k = min(MAX_COLOURS, len(sample))
     _, _, centres = cv2.kmeans(sample, k, None, criteria, 2, cv2.KMEANS_PP_CENTERS)
-    nearest = np.full(len(pixels), np.inf, dtype=np.float32)
-    labels = np.zeros(len(pixels), dtype=np.int32)
-    for i, centre in enumerate(centres):  # one colour at a time keeps memory small
-        distance = ((pixels - centre) ** 2).sum(axis=1)
-        closer = distance < nearest
-        labels[closer], nearest[closer] = i, distance[closer]
+    labels = _nearest(pixels, centres)
 
     # Merge near-identical colours (lighting gradients split one colour into two clusters).
     for a in range(k):
@@ -90,10 +96,9 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
                 centres[b] = centres[a]
     labels = labels.reshape(small.shape[:2])
 
-    border = np.concatenate([labels[0], labels[-1], labels[:, 0], labels[:, -1]])
-    border_share = {int(c): float(np.mean(border == c)) for c in np.unique(border)}
     counts = {int(c): int(np.sum(labels == c)) for c in np.unique(labels)}
     total = labels.size
+    min_share = 0.0015 if graphic else 0.004
 
     def is_blend(c: int) -> bool:
         """Anti-aliased edges form clusters lying between two bigger colours; they are not real colours."""
@@ -106,18 +111,35 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
                     return True
         return False
 
-    ground = centres[max(border_share, key=border_share.get)] if border_share else centres[0]
+    real = [c for c in sorted(counts, key=counts.get, reverse=True) if counts[c] / total >= min_share and not is_blend(c)]
+    if not real:
+        real = [max(counts, key=counts.get)]
+    real_centres = centres[real].astype(np.float32)
+
+    # Enlarge before deciding, so a stroke one pixel wide still has a width of several pixels.
+    factor = int(np.clip(round(HIGH_SIDE / max(small.shape[:2])), 1, 4))
+    big = small if factor == 1 else cv2.resize(small, None, fx=factor, fy=factor, interpolation=cv2.INTER_CUBIC)
+    if graphic and SMOOTH > 0:
+        # Scan and compression speckle would make ragged edges; a light blur at the enlarged size removes it.
+        big = cv2.GaussianBlur(big, (0, 0), SMOOTH * factor)
+    hi = _decide(big, real_centres, graphic)
+
+    border = np.concatenate([hi[0], hi[-1], hi[:, 0], hi[:, -1]])
+    border_share = {int(c): float(np.mean(border == c)) for c in np.unique(border)}
+    ground = real_centres[max(border_share, key=border_share.get)]
     palette, layers = [], []
-    for c in sorted(counts, key=counts.get, reverse=True):
-        share = counts[c] / total
-        if share < 0.004 or is_blend(c):
+    for index in np.argsort([-int(np.sum(hi == i)) for i in range(len(real))]):
+        share = float(np.mean(hi == index))
+        if share == 0:
             continue
-        background = border_share.get(c, 0) >= 0.3
-        colour = _hex(centres[c])
+        background = border_share.get(int(index), 0) >= 0.3
+        colour = _hex(real_centres[index])
         mask = None
         if not background:
-            mask = cv2.morphologyEx((labels == c).astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-            colour = _hex(_core_colour(small, mask, centres[c], ground))
+            mask = (hi == index).astype(np.uint8)
+            if not graphic:
+                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((2 * factor, 2 * factor), np.uint8))
+                colour = _hex(_core_colour(big, mask, real_centres[index], ground))
         palette.append({'hex': colour, 'share': round(share, 3), 'background': background})
         if mask is not None:
             layers.append((colour, mask))
@@ -131,6 +153,33 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
         palette = [grounds[0]] + [p for p in palette if not p['background']]
     # Draw big areas first so thin lines end up on top.
     return palette, layers[::-1]
+
+
+def _decide(big: np.ndarray, centres: np.ndarray, graphic: bool) -> np.ndarray:
+    """The colour of every pixel of the enlarged picture. With two colours, a pixel counts as the second (the
+    drawn one) once it is INK_BIAS of the way from the ground to it: thin lines are lighter than their true
+    colour after anti-aliasing, so halfway would lose them."""
+    flat = big.reshape(-1, 3).astype(np.float32)
+    if graphic and len(centres) == 2:
+        # Which of the two is the ground is not known yet: the one most pixels are nearest to.
+        votes = _nearest(flat[::7], centres)
+        ground = int(np.argmax(np.bincount(votes, minlength=2)))
+        a, b = centres[ground], centres[1 - ground]
+        axis = b - a
+        t = ((flat - a) @ axis) / max(float(axis @ axis), 1e-6)
+        return np.where(t > INK_BIAS, 1 - ground, ground).astype(np.int32).reshape(big.shape[:2])
+    return _nearest(flat, centres).reshape(big.shape[:2])
+
+
+def _nearest(pixels: np.ndarray, centres: np.ndarray) -> np.ndarray:
+    """Index of the nearest colour for every pixel, one colour at a time to keep memory small."""
+    best = np.full(len(pixels), np.inf, dtype=np.float32)
+    labels = np.zeros(len(pixels), dtype=np.int32)
+    for i, centre in enumerate(centres):
+        distance = ((pixels - centre) ** 2).sum(axis=1)
+        closer = distance < best
+        labels[closer], best[closer] = i, distance[closer]
+    return labels
 
 
 def _rotated(mask: np.ndarray, centre: tuple[float, float], degrees: float) -> np.ndarray:
@@ -159,3 +208,26 @@ def tidy_layers(masks: list[tuple[str, np.ndarray]], radial: dict | None, ink: n
         if path:
             layers.append({'color': colour, 'path': path})
     return layers
+
+
+def trace_fidelity(image_bgr: np.ndarray, masks: list[tuple[str, np.ndarray]], palette: list[dict]) -> float | None:
+    """How closely the drawn colours match the picture, 0 to 1: the share of the picture's pixels whose colour
+    decision (ground or one of the drawn colours) the traced layers reproduce, scored on the layers' own grid."""
+    if not masks:
+        return None
+    h, w = masks[0][1].shape
+    small = cv2.resize(image_bgr, (w, h), interpolation=cv2.INTER_AREA)
+    ground = next((p for p in palette if p['background']), None)
+    colours = [m[0] for m in masks]
+    hexes = ([ground['hex']] if ground else []) + colours
+    centres = np.array([[int(hx[5:7], 16), int(hx[3:5], 16), int(hx[1:3], 16)] for hx in hexes], np.float32)
+    truth = _nearest(small.reshape(-1, 3).astype(np.float32), centres).reshape(h, w)
+    predicted = np.zeros((h, w), np.int32)            # 0 = ground when there is one
+    offset = 1 if ground else 0
+    for i, (_, mask) in enumerate(masks):
+        predicted[mask.astype(bool)] = i + offset
+    # Edge pixels are blended and ambiguous in the source; judge only pixels at least 2 px away from any edge.
+    edge = cv2.dilate(cv2.Canny(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), 40, 120), np.ones((5, 5), np.uint8)) > 0
+    # Thin features are all edge, so they would never be judged: count them too, at a lower weight.
+    weight = np.where(edge, 0.35, 1.0)
+    return round(float((weight * (truth == predicted)).sum() / weight.sum()), 3)

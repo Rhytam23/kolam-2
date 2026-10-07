@@ -37,6 +37,8 @@ const EN = {
   'reader.asDrawn': 'As drawn',
   'reader.tidied': 'Tidied',
   'reader.repaired': 'Photo repaired',
+  'reader.matches': 'Matches your picture',
+  'reader.compare': 'Compare with photo',
 } as const;
 
 export type LabelKey = keyof typeof EN;
@@ -49,7 +51,7 @@ const TRANSLATIONS: Record<Exclude<LangCode, 'en'>, Partial<Record<LabelKey, str
     'reader.yourPhoto': 'আপনার ছবি', 'reader.takePhoto': 'ছবি তুলুন', 'reader.sample': 'নমুনা দেখুন', 'reader.kindOfPhoto': 'ছবির ধরন',
     'reader.straighten': 'তির্যকভাবে তোলা ছবি সোজা করুন', 'reader.reading': 'নকশা পড়া হচ্ছে…', 'reader.undo': 'পূর্বাবস্থায়', 'reader.redo': 'আবার করুন',
     'reader.replay': 'আঁকা আবার দেখুন', 'reader.savePng': 'ছবিসহ নকশা PNG হিসেবে সংরক্ষণ', 'reader.recreate': 'আমার বিন্দু থেকে আবার তৈরি করুন',
-    'reader.asDrawn': 'হুবহু', 'reader.tidied': 'পরিপাটি', 'reader.repaired': 'ছবি ঠিক করা হয়েছে',
+    'reader.asDrawn': 'হুবহু', 'reader.tidied': 'পরিপাটি', 'reader.repaired': 'ছবি ঠিক করা হয়েছে', 'reader.matches': 'আপনার ছবির সঙ্গে মিল', 'reader.compare': 'ছবির সঙ্গে তুলনা',
   },
   ta: {
     'nav.artForms': 'கலை வடிவங்கள்', 'nav.read': 'புகைப்படத்தைப் படி', 'nav.studio': 'ஸ்டுடியோ', 'nav.about': 'பற்றி', 'nav.home': 'முகப்பு',
@@ -57,7 +59,7 @@ const TRANSLATIONS: Record<Exclude<LangCode, 'en'>, Partial<Record<LabelKey, str
     'reader.yourPhoto': 'உங்கள் புகைப்படம்', 'reader.takePhoto': 'புகைப்படம் எடுக்கவும்', 'reader.sample': 'மாதிரியைப் பார்க்கவும்', 'reader.kindOfPhoto': 'புகைப்பட வகை',
     'reader.straighten': 'சாய்வாக எடுத்த புகைப்படத்தை நேராக்கு', 'reader.reading': 'வடிவமைப்பைப் படிக்கிறது…', 'reader.undo': 'செயல்தவிர்', 'reader.redo': 'மீண்டும் செய்',
     'reader.replay': 'வரைவதை மீண்டும் காண்க', 'reader.savePng': 'மேலடுக்கை PNG ஆகச் சேமி', 'reader.recreate': 'என் புள்ளிகளிலிருந்து மீண்டும் உருவாக்கு',
-    'reader.asDrawn': 'அப்படியே', 'reader.tidied': 'நேர்த்தி செய்தது', 'reader.repaired': 'புகைப்படம் சரிசெய்யப்பட்டது',
+    'reader.asDrawn': 'அப்படியே', 'reader.tidied': 'நேர்த்தி செய்தது', 'reader.repaired': 'புகைப்படம் சரிசெய்யப்பட்டது', 'reader.matches': 'உங்கள் படத்துடன் ஒற்றுமை', 'reader.compare': 'புகைப்படத்துடன் ஒப்பிடு',
   },
   te: {
     'nav.artForms': 'కళా రూపాలు', 'nav.read': 'ఫోటో చదవండి', 'nav.studio': 'స్టూడియో', 'nav.about': 'గురించి', 'nav.home': 'హోమ్',
@@ -65,7 +67,7 @@ const TRANSLATIONS: Record<Exclude<LangCode, 'en'>, Partial<Record<LabelKey, str
     'reader.yourPhoto': 'మీ ఫోటో', 'reader.takePhoto': 'ఫోటో తీయండి', 'reader.sample': 'నమూనా చూడండి', 'reader.kindOfPhoto': 'ఫోటో రకం',
     'reader.straighten': 'వంకరగా తీసిన ఫోటోను సరిచేయండి', 'reader.reading': 'డిజైన్‌ను చదువుతోంది…', 'reader.undo': 'రద్దు చేయి', 'reader.redo': 'మళ్ళీ చేయి',
     'reader.replay': 'గీయడం మళ్ళీ చూడండి', 'reader.savePng': 'ఓవర్‌లేను PNGగా సేవ్ చేయండి', 'reader.recreate': 'నా చుక్కల నుండి మళ్ళీ రూపొందించు',
-    'reader.asDrawn': 'యథాతథంగా', 'reader.tidied': 'చక్కదిద్దినది', 'reader.repaired': 'ఫోటో సరిచేయబడింది',
+    'reader.asDrawn': 'యథాతథంగా', 'reader.tidied': 'చక్కదిద్దినది', 'reader.repaired': 'ఫోటో సరిచేయబడింది', 'reader.matches': 'మీ చిత్రంతో సరిపోలిక', 'reader.compare': 'ఫోటోతో పోల్చండి',
   },
   hi: {
     'nav.artForms': 'कला रूप', 'nav.read': 'फ़ोटो पढ़ें', 'nav.studio': 'स्टूडियो', 'nav.about': 'परिचय', 'nav.home': 'होम',
@@ -73,7 +75,7 @@ const TRANSLATIONS: Record<Exclude<LangCode, 'en'>, Partial<Record<LabelKey, str
     'reader.yourPhoto': 'आपकी फ़ोटो', 'reader.takePhoto': 'फ़ोटो खींचें', 'reader.sample': 'नमूना आज़माएँ', 'reader.kindOfPhoto': 'फ़ोटो का प्रकार',
     'reader.straighten': 'तिरछी खींची फ़ोटो को सीधा करें', 'reader.reading': 'डिज़ाइन पढ़ा जा रहा है…', 'reader.undo': 'पूर्ववत करें', 'reader.redo': 'फिर से करें',
     'reader.replay': 'चित्र फिर से देखें', 'reader.savePng': 'ओवरले को PNG में सहेजें', 'reader.recreate': 'मेरे बिंदुओं से फिर बनाएँ',
-    'reader.asDrawn': 'जैसा बना है', 'reader.tidied': 'सँवारा हुआ', 'reader.repaired': 'फ़ोटो सुधारी गई',
+    'reader.asDrawn': 'जैसा बना है', 'reader.tidied': 'सँवारा हुआ', 'reader.repaired': 'फ़ोटो सुधारी गई', 'reader.matches': 'आपकी तस्वीर से मेल', 'reader.compare': 'फ़ोटो से तुलना',
   },
 };
 

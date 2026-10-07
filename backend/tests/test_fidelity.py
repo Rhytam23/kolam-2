@@ -99,3 +99,42 @@ def test_tidy_restores_a_missing_petal():
     tidy = tidy_layers(masks, radial, ink)
     restored = sum(rasterise(layer['path'], shape)[top].sum() for layer in tidy)
     assert restored > plain * 3 and restored > 100
+
+
+def lace_mandala(size: int = 230) -> np.ndarray:
+    """White-on-red lacework with 1-2 px strokes, like a scanned printed mandala."""
+    big = np.zeros((size * 4, size * 4), np.uint8)
+    c = size * 2
+    for r in (0.9, 0.78, 0.62, 0.45, 0.3):
+        cv2.circle(big, (c, c), int(r * c), 255, 5)
+    for k in range(24):
+        a = 2 * np.pi * k / 24
+        cv2.ellipse(big, (int(c + 0.7 * c * np.cos(a)), int(c + 0.7 * c * np.sin(a))), (int(0.12 * c), int(0.04 * c)), float(np.degrees(a)), 0, 360, 255, 4)
+        cv2.circle(big, (int(c + 0.52 * c * np.cos(a + 0.13)), int(c + 0.52 * c * np.sin(a + 0.13))), 6, 255, -1)
+    cv2.circle(big, (c, c), int(0.12 * c), 255, -1)
+    ink = cv2.resize(big, (size, size), interpolation=cv2.INTER_AREA).astype(np.float32) / 255      # anti-aliased
+    ground, white = np.array((0, 0, 150), np.float32), np.array((250, 250, 250), np.float32)
+    return (ground + (white - ground) * ink[..., None]).astype(np.uint8)
+
+
+def test_thin_lace_keeps_its_coverage_and_is_not_repaired():
+    img = lace_mandala()
+    ink_share = float((cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) > 100).mean())
+    body = client.post('/api/analyze', files={'file': ('m.png', cv2.imencode('.png', img)[1].tobytes(), 'image/png')},
+                       data={'grid': 'false'}).json()
+    assert body['quality']['fixes'] == []
+    assert len(body['layers']) == 1                       # no extra layer for the in-between pixels
+    traced = rasterise(body['layers'][0]['path'], (img.shape[0] * 3, img.shape[1] * 3)).mean()
+    assert abs(traced - ink_share) < 0.04                 # before the fix, 40% of thin lace was lost
+    assert body['quality']['fidelity'] > 0.9
+
+
+def test_trace_matches_the_source_closely():
+    img = lace_mandala()
+    body = client.post('/api/analyze', files={'file': ('m.png', cv2.imencode('.png', img)[1].tobytes(), 'image/png')},
+                       data={'grid': 'false'}).json()
+    h, w = img.shape[:2]
+    mask = rasterise(body['layers'][0]['path'], (h * 3, w * 3))
+    gray = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (w * 3, h * 3), interpolation=cv2.INTER_CUBIC).astype(np.float32)
+    original = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    assert iou(mask, gray > (original.min() + original.max()) / 2) > 0.8   # 1-2 px strokes: one pixel of offset costs a lot of IoU

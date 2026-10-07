@@ -4,7 +4,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-MAX_PATH_POINTS = 3000     # anchor points per colour layer; keeps the response small
+MAX_PATH_POINTS = 40000    # anchor points per colour layer; keeps the response small
 CORNER_DEGREES = 62.0      # a turn sharper than this stays a corner
 
 
@@ -21,17 +21,30 @@ def bezier_loop(pts: np.ndarray, scale: np.ndarray) -> str:
     n = len(pts)
     corner = _corners(pts)
     tangent = (np.roll(pts, -1, axis=0) - np.roll(pts, 1, axis=0)) / 2.0
-    out = [f'M{pts[0, 0] * scale[0]:.4f} {pts[0, 1] * scale[1]:.4f}']
+    out = [f'M{pts[0, 0] * scale[0]:.5f} {pts[0, 1] * scale[1]:.5f}']
     for i in range(n):
         j = (i + 1) % n
         chord = pts[j] - pts[i]
         c1 = pts[i] + (chord if corner[i] else tangent[i]) / 3.0
         c2 = pts[j] - (chord if corner[j] else tangent[j]) / 3.0
-        out.append('C' + ' '.join(f'{v:.4f}' for v in (*(c1 * scale), *(c2 * scale), *(pts[j] * scale))))
+        out.append('C' + ' '.join(f'{v:.5f}' for v in (*(c1 * scale), *(c2 * scale), *(pts[j] * scale))))
     return ''.join(out) + 'Z'
 
 
-def trace_mask(mask: np.ndarray, min_area: float = 12.0, smooth: float = 0.0) -> str:
+def _smooth_contour(contour: np.ndarray, sigma: float) -> np.ndarray:
+    """Rounds off the staircase of a pixel contour by averaging each point with its neighbours along the loop."""
+    pts = contour[:, 0, :].astype(np.float64)
+    radius = int(np.ceil(sigma * 3))
+    if sigma <= 0 or len(pts) < 2 * radius + 3:
+        return contour
+    kernel = np.exp(-0.5 * (np.arange(-radius, radius + 1) / sigma) ** 2)
+    kernel /= kernel.sum()
+    padded = np.concatenate([pts[-radius:], pts, pts[:radius]])
+    out = np.stack([np.convolve(padded[:, k], kernel, mode='valid') for k in range(2)], axis=1)
+    return out[:, None, :].astype(np.float32)
+
+
+def trace_mask(mask: np.ndarray, min_area: float = 4.0, smooth: float = 0.0, edge_sigma: float = 1.6) -> str:
     """Outline a binary mask as a smooth SVG path in 0-1 coordinates (draw with fill-rule="evenodd").
 
     smooth > 0 blurs the mask first, giving rounder, tidier shapes (used for the 'tidied' version).
@@ -42,10 +55,11 @@ def trace_mask(mask: np.ndarray, min_area: float = 12.0, smooth: float = 0.0) ->
         work = (cv2.GaussianBlur(work.astype(np.float32), (0, 0), smooth) > 0.5).astype(np.uint8)
     contours, _ = cv2.findContours(work, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     contours = [c for c in contours if cv2.contourArea(c) >= min_area and len(c) >= 6]
+    contours = [_smooth_contour(c, edge_sigma) for c in contours]
     # Curves need far fewer anchors than straight polygons: simplify gently, more if the budget demands.
-    epsilon = 0.9 + smooth * 0.4
+    epsilon = 0.7 + smooth * 0.4
     while True:
-        simplified = [cv2.approxPolyDP(c, epsilon, True)[:, 0, :].astype(np.float64) for c in contours]
+        simplified = [cv2.approxPolyDP(c.astype(np.float32), epsilon, True)[:, 0, :].astype(np.float64) for c in contours]
         if sum(len(c) for c in simplified) <= MAX_PATH_POINTS or epsilon > 10:
             break
         epsilon *= 1.4
