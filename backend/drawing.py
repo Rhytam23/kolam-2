@@ -13,6 +13,7 @@ WORK_SIDE = 900          # images are reduced to this size for colour work
 MAX_COLOURS = 8
 SMOOTH = 0.0            # blur (in source pixels) applied to clean drawings before deciding colours
 INK_BIAS = 0.38         # how far from the ground to the ink a pixel must be to count as ink
+GROUND_SHADE = 70       # a photo colour this close to the ground colour is a shade of the ground (shadow), not a drawing
 HIGH_SIDE = 1500         # the long side colours are decided at, after enlarging, so edges land between pixels
 FIT_SAMPLE = 60_000      # pixels the colours are learned from; every pixel is then given its nearest colour
 
@@ -133,6 +134,9 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
         if share == 0:
             continue
         background = border_share.get(int(index), 0) >= 0.3
+        # In a photo, uneven light splits the floor into darker and lighter shades of one colour: not a design.
+        if not graphic and np.linalg.norm(real_centres[index] - ground) < GROUND_SHADE:
+            background = True
         colour = _hex(real_centres[index])
         mask = None
         if not background:
