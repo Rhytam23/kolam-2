@@ -11,7 +11,7 @@ Chittara has **no database**, no accounts and no server-side files. Nothing a vi
 | Counters shown by `/api/health` | In-memory | Until restart |
 | Saved designs (up to 10 kolams) | The visitor's browser `localStorage` | Until they delete them or clear site data |
 | Interface language | Browser `localStorage` (`chittara_lang`) | Same |
-| App pages and fonts for offline use | Browser cache (service worker `chittara-v3`) | Until the cache version changes |
+| App pages and fonts for offline use | Browser cache (service worker `chittara-v4`) | Until the cache version changes |
 
 ## What this means
 - Restarting or redeploying clears the cache, rate-limit table and counters; nothing is lost that matters.

@@ -10,6 +10,8 @@ import { ReadGuidePage, TraditionReadPage } from './pages/ReadPages';
 import { READ_A_PHOTO, ROUTES, traditionBySlug } from './data/traditions';
 import { usePath } from './lib/router';
 import { I18nProvider } from './lib/i18n';
+import { CultureProvider } from './components/culture/CultureContext';
+import { kitFor } from './lib/culture';
 
 const page = (path: string) => {
     if (path === '/') return <Landing />;
@@ -34,8 +36,11 @@ const App: React.FC = () => {
         document.querySelector('meta[name="description"]')?.setAttribute('content', route?.description ?? '');
     }, [path]);
 
+    const kit = kitFor(traditionBySlug(path.split('/')[1])?.slug);
+
     return (
         <I18nProvider>
+        <CultureProvider kit={kit}>
         <KolamProvider>
             <div className="min-h-screen overflow-x-clip">
                 <FloorArtDefs />
@@ -45,6 +50,7 @@ const App: React.FC = () => {
                 <Footer />
             </div>
         </KolamProvider>
+        </CultureProvider>
         </I18nProvider>
     );
 };

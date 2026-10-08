@@ -7,14 +7,18 @@ import TraditionGallery from '../components/TraditionGallery';
 import { KindsOfKolam } from '../components/About';
 import { useKolam, type GuideView } from '../components/KolamContext';
 import { DesignFrame, FloorTile } from '../components/landing/FloorArt';
-import KolamDivider from '../components/landing/KolamDivider';
-import Diya from '../components/landing/Diya';
+import CultureDivider from '../components/culture/CultureDivider';
+import { Ornament } from '../components/culture/Ornaments';
+import Doorway from '../components/culture/Doorway';
+import Greeting from '../components/culture/Greeting';
+import { useCulture } from '../components/culture/CultureContext';
 import Reveal from '../components/landing/Reveal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { applyPreset, presetBackground } from '../data/designs';
 import { readerPath, traditionBySlug, type Tradition } from '../data/traditions';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
 import { headingFont } from '../lib/fonts';
+import { culturePatterns, kitFor } from '../lib/culture';
 import { Link, currentSearch, navigate } from '../lib/router';
 import { useTimeline } from '../hooks/motion';
 
@@ -54,9 +58,10 @@ const Fact: React.FC<{ title: string; children: React.ReactNode; delay?: number 
 /** One page for one art form, in its own colours. */
 const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => {
     const k = useKolam();
+    const kit = useCulture();
 
     useEffect(() => {
-        applyTheme(t.theme, headingFont(t.script.lang));
+        applyTheme(t.theme, headingFont(t.script.lang), culturePatterns(kitFor(t.slug), t.theme));
         return () => applyTheme(DEFAULT_THEME);
     }, [t]);
 
@@ -88,15 +93,17 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
         <>
             <section className="relative floor-bg text-rice">
                 <div className="absolute inset-0 floor-dots pointer-events-none" aria-hidden />
-                <div className="relative container mx-auto px-4 pt-28 pb-16 grid lg:grid-cols-2 gap-12 items-center">
+                <Doorway className="absolute top-16 inset-x-0 z-10 pointer-events-none" />
+                <div className={`relative container mx-auto px-4 ${kit.doorway === 'toran' ? 'pt-44' : 'pt-36'} pb-16 grid lg:grid-cols-2 gap-12 items-center`}>
                     <div className="text-center lg:text-left">
+                        <Greeting className="mb-3" />
                         <p className="text-sm uppercase tracking-widest text-brass-light">{t.region}</p>
                         <p lang={t.script.lang} className="mt-3 font-script text-5xl md:text-6xl text-brass-light leading-tight">{t.script.word}</p>
                         <h1 className="font-heading text-5xl md:text-6xl text-rice mt-1">{t.name}</h1>
-                        <div className="brass-rule max-w-sm mx-auto lg:mx-0 my-6" aria-hidden><Diya className="h-9 w-9 shrink-0" /></div>
+                        <div className="brass-rule max-w-sm mx-auto lg:mx-0 my-6" aria-hidden><Ornament id={kit.ornament} className="h-9 w-9 shrink-0" /></div>
                         <p className="text-lg text-rice/90 max-w-xl mx-auto lg:mx-0">{t.about[0]}</p>
                         <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3 justify-center lg:justify-start">
-                            <Button variant="brass" onClick={() => openGuide('steps')}>Learn to draw it</Button>
+                            <Button variant="brass" onClick={() => openGuide('steps')}>Learn to {kit.verb} it</Button>
                             <Button variant="outline-light" onClick={() => openGuide('practice')}>Practise it</Button>
                             <Button variant="outline-light" onClick={() => navigate(`/${t.slug}#generator`)}>Make your own</Button>
                             <Button variant="outline-light" onClick={() => navigate(readerPath(t.slug))}>Read a photo</Button>
@@ -107,7 +114,7 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
             </section>
 
             <div className="floor-bg">
-                <KolamDivider tone="rice" spacing={40} />
+                <CultureDivider tone="rice" spacing={40} />
                 <section className="py-16 px-4 text-rice">
                     <div className="container mx-auto max-w-6xl">
                         <SectionHeading dark title={`About ${t.name.toLowerCase()}`} className="mb-10" />
@@ -128,17 +135,17 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
                     </div>
                 </section>
                 {t.slug === 'kolam' && <div className="pb-16"><KindsOfKolam /></div>}
-                <KolamDivider tone="rice" spacing={40} className="pb-10" />
+                <CultureDivider tone="rice" spacing={40} className="pb-10" />
             </div>
 
             <div data-paper className="paper-bg">
                 <div id="generator" className="scroll-mt-16"><ErrorBoundary name="design studio"><KolamGenerator scope={scope} /></ErrorBoundary></div>
-                <KolamDivider />
+                <CultureDivider />
                 <div id="walkthrough" className="scroll-mt-16"><ErrorBoundary name="drawing guide"><DrawGuide /></ErrorBoundary></div>
             </div>
 
             <section className="floor-bg py-20 px-4">
-                <KolamDivider tone="rice" spacing={40} className="mb-12" />
+                <CultureDivider tone="rice" spacing={40} className="mb-12" />
                 <div className="container mx-auto max-w-6xl">
                     <SectionHeading dark title="More art forms of India" className="mb-10" />
                     <TraditionGallery except={t.slug} />

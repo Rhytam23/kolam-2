@@ -28,8 +28,9 @@ body {
 /* Cream paper with a faint pulli (dot) grid, like the dots laid out before drawing a kolam. */
 .paper-bg {
   background-color: rgb(var(--paper));
-  background-image: radial-gradient(rgb(var(--kaavi) / 0.12) 1.2px, transparent 1.3px);
-  background-size: 28px 28px;
+  /* Each art form sets --paper-pattern and --paper-size (see lib/culture.ts); pulli dots otherwise. */
+  background-image: var(--paper-pattern, radial-gradient(rgb(var(--kaavi) / 0.12) 1.2px, transparent 1.3px));
+  background-size: var(--paper-size, 28px 28px);
 }
 
 /* A red-oxide floor: warm light in the middle, darker at the edges, with a fine speckle. */
@@ -42,8 +43,8 @@ body {
 
 /* Pulli dots in rice flour, for the floor. */
 .floor-dots {
-  background-image: radial-gradient(rgb(var(--rice) / 0.13) 1.4px, transparent 1.5px);
-  background-size: 34px 34px;
+  background-image: var(--ground-pattern, radial-gradient(rgb(var(--rice) / 0.13) 1.4px, transparent 1.5px));
+  background-size: var(--ground-size, 34px 34px);
 }
 
 .gradient-text {
@@ -115,6 +116,10 @@ body {
   animation: sway 5s ease-in-out infinite alternate;
 }
 
+.step-in {
+  animation: step-in 0.9s ease-out both;
+}
+
 .flicker {
   transform-box: fill-box;
   transform-origin: 50% 100%;
@@ -131,6 +136,11 @@ body {
   to { stroke-dashoffset: 0; }
 }
 
+@keyframes step-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
 @keyframes sway {
   from { transform: rotate(-2.5deg); }
   to { transform: rotate(2.5deg); }
@@ -142,7 +152,10 @@ body {
   100% { transform: scale(1.04, 0.95); opacity: 0.9; }
 }
 
+/* Motifs repeated in a border pattern stay still: animations inside <pattern> do not run everywhere. */
+pattern .step-in, pattern .flicker { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .kolam-draw, .fade-in, .sway, .flicker { animation: none; }
+  .kolam-draw, .fade-in, .sway, .flicker, .step-in { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
 }

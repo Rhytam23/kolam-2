@@ -2,15 +2,17 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags have been cut; entries are grouped by when the work landed on `main`.
 
-## 2026-10-06 to 2026-10-08
+## 2026-10-06 to 2026-10-09
 
 ### Added
+- A cultural kit for each of the eleven art forms: greeting in its own script, a motif on every heading rule, its own border band between sections, a doorway decoration (toran, flower garland or leaves), its own background pattern, its own verb (draw, paint, lay) and, where the app has the language, a one-time offer to switch the interface to it.
 - Photo repair before reading: quality score for blur, flat contrast, uneven light, grain, glare and size; only the needed fixes are applied; the reader shows what was fixed, a before/after toggle and retake tips.
 - Smooth cubic Bézier tracing of free-hand designs, with a "Tidied" copy (wobbles smoothed, petals of turning patterns restored by majority vote).
 - "Matches your picture" score and a "Compare with photo" slider.
 - Guide dots on corners and curve anchors, numbered outlines drawn from the centre outwards, and Practice mode for designs read from photos.
 - Interface languages: English, Bengali, Tamil, Telugu, Hindi (navigation and photo reader).
 - Heading typeface per art form's own script.
+- Footer and 404 page greet in the languages of the art forms; the service worker cache moved to `chittara-v4`.
 - Documentation set under `docs/`, `CHANGELOG.md`, and the full list of settings in `.env.example`.
 
 ### Changed

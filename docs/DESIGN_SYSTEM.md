@@ -37,5 +37,22 @@ Skip link to `#main`; ARIA labels on icon buttons and tab-like toggles; `aria-li
 ## Languages
 Labels live in `src/lib/i18n.tsx` (English is the source; a missing label falls back to English). Cover navigation and the photo reader only.
 
+## Cultural kits
+Every art form has a kit in `src/lib/culture.ts` (type `CultureKit`) that the shared components read through `CultureProvider` (`src/components/culture/CultureContext.tsx`, set from the page address in `App.tsx`). Pages of no one art form (home, studio, about) use `HOME_KIT`, and their dividers walk through every art form's band.
+
+| Field | Shows up as |
+|---|---|
+| `greeting` | The greeting in the art form's own script: header (wide screens), hero, and a row of all greetings in the footer and 404 page |
+| `ornament` | The motif on every heading rule (`SectionHeading`), hero, footer, and beside each art form's name in the menu and on its card |
+| `band` | The border band between sections (`CultureDivider`); kolam uses the pulli-loop band |
+| `doorway` | What hangs at the top of the page: toran, flower garland, leaves, or nothing (`Doorway.tsx`) |
+| `ground`, `paper` | Faint repeating pattern on dark and on light sections (CSS variables `--ground-pattern`, `--paper-pattern`, set by `applyTheme`) |
+| `verb` | "Learn to draw / paint / lay it" and the "Paint it: materials" line in the reader |
+| `suggestedLang` | A one-time offer to switch the interface to the art form's language, when the app has it (Tamil, Telugu, Bengali, Hindi) |
+
+Motifs (`src/components/culture/Ornaments.tsx`): diya, lotus, shankha (conch), lamp (nilavilakku), peacock, footprints of Lakshmi, fish, paddy, gobbemma, chowk, diamond, rosette. Each is taken from the motifs, materials and occasions already written on that art form's page (`src/data/traditions.ts`); no new claims are made, and sacred symbols such as the swastika are deliberately not used as decoration. The greetings and motifs should be reviewed by people of each tradition.
+
+Rules: all ornaments are `aria-hidden`; greetings carry a `lang`; animations inside border patterns are switched off (`pattern .flicker, pattern .step-in`) and every animation respects `prefers-reduced-motion`; a transform-based animation must sit on an inner group, never on the group that carries `transform=`.
+
 ## Adding an art form
-Add an entry to `TRADITIONS` with a `Theme`, `script` (word and `lang`), palettes, modes and designs; routes, titles and the header menu follow from it.
+Add an entry to `TRADITIONS` with a `Theme`, `script` (word and `lang`), palettes, modes and designs, and a kit in `KITS` (`src/lib/culture.ts`); routes, titles and the header menu follow from it. `src/lib/culture.test.ts` fails if a kit is missing or two art forms look the same.

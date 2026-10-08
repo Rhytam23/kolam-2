@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { SectionHeading } from './ui/SectionHeading';
-import Diya from './landing/Diya';
+import { Ornament } from './culture/Ornaments';
 import Reveal from './landing/Reveal';
 import { FloorTile, KolamFrame, RICE, RED_FLOOR } from './landing/FloorArt';
 import { diamondDesign, makeSingleLine, squareDesign } from '../utils/kolamLogic';
@@ -41,7 +41,7 @@ export const DawnQuote: React.FC = () => (
                     Every region of India has its own way of doing it, its own name for it and its own colours. At festivals the designs
                     grow larger and more colourful, and whole streets fill with them.
                 </p>
-                <Diya className="h-10 w-10 mx-auto mt-6" />
+                <Ornament id="diya" className="h-10 w-10 mx-auto mt-6" />
             </Reveal>
         </div>
     </section>

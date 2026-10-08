@@ -5,7 +5,7 @@
 |---|---|
 | Update dependencies | `npm outdated` / `npm update`; `pip list --outdated`. Then run all checks ([TESTING.md](TESTING.md)) before merging |
 | Review limits | Watch `/api/health` counters ([ANALYTICS.md](ANALYTICS.md)); adjust `MAX_CONCURRENT`, `MAX_WAITING`, `RATE_LIMIT_PER_MINUTE` ([ENVIRONMENT.md](ENVIRONMENT.md)) |
-| Release a visible change to installed apps | Bump the cache name in `public/sw.js` (`chittara-v3`) |
+| Release a visible change to installed apps | Bump the cache name in `public/sw.js` (`chittara-v4`) |
 | Refresh the sitemap | Set `SITE_URL` and rebuild; `sitemap.xml` is generated at build time |
 | Review translations | `src/lib/i18n.tsx`; ask native speakers to check Bengali, Tamil, Telugu and Hindi labels |
 | Update the privacy page | If data handling changes, edit `public/privacy.html` and its "Last updated" date |

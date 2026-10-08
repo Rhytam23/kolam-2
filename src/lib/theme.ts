@@ -35,8 +35,13 @@ const VARS: Record<keyof Theme, string> = {
 const channels = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(' ');
 
 /** Colours the whole page (header and footer included) with a theme, and sets its headings in `font` (a CSS font family). */
-export const applyTheme = (theme: Theme, font = DEFAULT_HEADING_FONT) => {
+export const applyTheme = (theme: Theme, font = DEFAULT_HEADING_FONT, patterns: Record<string, string> = {}) => {
   const root = document.documentElement.style;
+  // Patterns belong to one art form: set its own, and clear whatever the page before it left behind.
+  for (const name of ['--ground-pattern', '--ground-size', '--paper-pattern', '--paper-size']) {
+    if (patterns[name]) root.setProperty(name, patterns[name]);
+    else root.removeProperty(name);
+  }
   root.setProperty('--font-heading', font);
   (Object.keys(VARS) as Array<keyof Theme>).forEach(key => root.setProperty(VARS[key], channels(theme[key])));
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.floor);

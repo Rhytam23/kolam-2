@@ -4,6 +4,8 @@ import { TRADITIONS, type Tradition } from '../data/traditions';
 import { presetBackground } from '../data/designs';
 import { DesignFrame } from './landing/FloorArt';
 import Reveal from './landing/Reveal';
+import { Ornament } from './culture/Ornaments';
+import { kitFor } from '../lib/culture';
 
 interface CardLink {
     /** Where each card leads: the art form's page unless given. */
@@ -21,6 +23,9 @@ export const TraditionCard: React.FC<{ tradition: Tradition; delay?: number } & 
         >
             <div className="relative aspect-square" style={{ backgroundColor: presetBackground(t.designs[0].spec) }}>
                 <div className="absolute inset-[6%]"><DesignFrame spec={t.designs[0].spec} rough={false} /></div>
+                <span className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-black/10" style={{ backgroundColor: t.theme.floor }} aria-hidden>
+                    <Ornament id={kitFor(t.slug).ornament} className="h-6 w-6" color={t.theme.brassLight} />
+                </span>
             </div>
             <div className="p-4" style={{ color: t.theme.rice }}>
                 <p className="flex flex-wrap items-baseline gap-x-2">

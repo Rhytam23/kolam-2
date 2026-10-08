@@ -17,6 +17,7 @@ import { presetSvg } from '../data/designs';
 import { readingGuide } from '../data/reading';
 import { withArticle, type Tradition } from '../data/traditions';
 import { useI18n } from '../lib/i18n';
+import { useCulture } from './culture/CultureContext';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -44,7 +45,8 @@ const clamp = (v: number) => Math.min(1, Math.max(0, v));
  */
 const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const k = useKolam();
-    const { t } = useI18n();
+    const { t, lang } = useI18n();
+    const kit = useCulture();
     // The result opens in the art form's own studio, kept as read (?from=photo), or in the full studio.
     const openStudio = (part: 'generator' | 'walkthrough') =>
         navigate(tradition ? `/${tradition.slug}?from=photo#${part}` : `/studio#${part}`);
@@ -491,9 +493,14 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         </div>
                     </div>
                     <div className="mt-4 space-y-2" aria-live="polite">
-                        {loading && <p className="text-kaavi animate-pulse">{t('reader.reading')}</p>}
+                        {loading && <p className="text-kaavi animate-pulse">{lang === 'en' && tradition ? `Reading your ${tradition.name.toLowerCase()}…` : t('reader.reading')}</p>}
                         {error && <p className="text-kumkum text-sm bg-kumkum/10 px-4 py-2 rounded">{error}</p>}
                         <p className="text-sm text-muted">{status}</p>
+                        {lang === 'en' && tradition && (scan || traced) && !loading && (
+                            <p className="text-sm text-ink" data-testid="culture-next">
+                                <strong>{kit.verb[0].toUpperCase() + kit.verb.slice(1)} it:</strong> {tradition.materials}
+                            </p>
+                        )}
                         {quality && (quality.fixes.length > 0 || quality.tips.length > 0 || quality.fidelity != null) && (
                             <div className="text-sm rounded-xl border border-kaavi/20 bg-paper px-4 py-3 space-y-1" data-testid="photo-quality">
                                 {quality.fixes.length > 0 && (

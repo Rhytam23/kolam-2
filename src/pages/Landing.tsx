@@ -1,7 +1,7 @@
 import React from 'react';
 import Hero from '../components/Hero';
 import Process from '../components/landing/Process';
-import KolamDivider from '../components/landing/KolamDivider';
+import CultureDivider from '../components/culture/CultureDivider';
 import Reveal from '../components/landing/Reveal';
 import { DawnQuote } from '../components/About';
 import TraditionGallery from '../components/TraditionGallery';
@@ -21,7 +21,7 @@ const Landing: React.FC = () => (
     <>
         <ErrorBoundary name="home page"><Hero onStart={() => navigate(READ_A_PHOTO)} onGenerate={() => navigate('/studio')} /></ErrorBoundary>
         <div className="floor-bg">
-            <KolamDivider tone="rice" spacing={40} className="pt-4" />
+            <CultureDivider tone="rice" spacing={40} className="pt-4" index={1} />
             <section id="traditions" className="scroll-mt-16 py-20 px-4">
                 <div className="container mx-auto max-w-6xl">
                     <SectionHeading dark title="The floor art of India" kicker={`${TRADITIONS.length} traditions, each in its own colours`} className="mb-4" />
@@ -31,11 +31,11 @@ const Landing: React.FC = () => (
                     <TraditionGallery />
                 </div>
             </section>
-            <KolamDivider tone="rice" spacing={40} />
+            <CultureDivider tone="rice" spacing={40} index={2} />
             <div id="process" className="scroll-mt-16"><ErrorBoundary name="drawing steps"><Process /></ErrorBoundary></div>
-            <KolamDivider tone="rice" spacing={40} />
+            <CultureDivider tone="rice" spacing={40} index={3} />
             <DawnQuote />
-            <KolamDivider tone="rice" spacing={40} />
+            <CultureDivider tone="rice" spacing={40} index={4} />
             <section className="py-20 px-4 text-rice">
                 <div className="container mx-auto max-w-6xl">
                     <SectionHeading dark title="Tools for every design" className="mb-10" />

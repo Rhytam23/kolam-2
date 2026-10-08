@@ -17,7 +17,7 @@ docker run -p 8000:8000 -e MAX_CONCURRENT=2 chittara
 
 ## After a deploy
 - Check `https://<site>/api/health`.
-- Installed and returning visitors may see the old version until the service worker updates: hard-refresh once. When a change must reach everyone, bump the cache name in `public/sw.js` (`chittara-v3`).
+- Installed and returning visitors may see the old version until the service worker updates: hard-refresh once. When a change must reach everyone, bump the cache name in `public/sw.js` (`chittara-v4`).
 
 ## Capacity (free plan)
 The free plan sleeps after 15 minutes without visitors (about a minute to wake) and has one shared CPU and limited memory. It can serve many visitors, but many people reading photos at the same moment will queue (the server answers "busy, retry shortly" rather than failing). If that happens often: raise the plan, then raise `MAX_CONCURRENT` to match the CPUs. Multiple instances each keep their own cache and rate limiter ([DATABASE.md](DATABASE.md)).

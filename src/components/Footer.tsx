@@ -1,6 +1,8 @@
 import React from 'react';
-import Diya from './landing/Diya';
-import KolamDivider from './landing/KolamDivider';
+import CultureDivider from './culture/CultureDivider';
+import { Ornament } from './culture/Ornaments';
+import { useCulture } from './culture/CultureContext';
+import { KIT_LIST } from '../lib/culture';
 import InstallApp from './InstallApp';
 import { Link } from '../lib/router';
 import { READ_A_PHOTO, TRADITIONS } from '../data/traditions';
@@ -8,9 +10,11 @@ import { BRAND } from '../lib/brand';
 
 const REPO = 'https://github.com/Rhytam23/kolam-2';
 
-const Footer: React.FC = () => (
+const Footer: React.FC = () => {
+    const { ornament } = useCulture();
+    return (
     <footer className="floor-bg text-rice pt-10 pb-8 px-4">
-        <KolamDivider tone="rice" spacing={40} className="mb-10" />
+        <CultureDivider tone="rice" spacing={40} className="mb-10" index={8} />
         <nav aria-label="Art forms and pages" className="container mx-auto mb-10 text-sm">
             <p className="font-semibold text-brass-light mb-3">Art forms</p>
             <ul className="flex flex-wrap gap-x-5 gap-y-2">
@@ -54,11 +58,15 @@ const Footer: React.FC = () => (
             </div>
         </div>
         <div className="container mx-auto mt-10 pt-6 border-t border-brass/30 text-center text-rice/80 text-sm space-y-1">
-            <Diya className="h-8 w-8 mx-auto mb-2" />
+            <Ornament id={ornament} className="h-8 w-8 mx-auto mb-2" />
+            <p className="flex flex-wrap justify-center gap-x-4 gap-y-1 font-script text-lg text-brass-light" aria-label="Greetings in the languages of the art forms">
+                {Array.from(new Map(KIT_LIST.map(k => [k.greeting.word, k.greeting])).values()).map(g => <span key={g.word} lang={g.lang}>{g.word}</span>)}
+            </p>
             <p className="text-rice">Made with respect for everyone who draws a kolam each morning.</p>
             <p>&copy; {new Date().getFullYear()} {BRAND} team · An independent student project, not an official Government of India website.</p>
         </div>
     </footer>
-);
+    );
+};
 
 export default Footer;

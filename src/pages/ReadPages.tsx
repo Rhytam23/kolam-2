@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import KolamAnalyzer from '../components/KolamAnalyzer';
 import TraditionGallery from '../components/TraditionGallery';
-import KolamDivider from '../components/landing/KolamDivider';
-import Diya from '../components/landing/Diya';
+import CultureDivider from '../components/culture/CultureDivider';
+import { Ornament } from '../components/culture/Ornaments';
+import Doorway from '../components/culture/Doorway';
+import Greeting from '../components/culture/Greeting';
+import { useCulture } from '../components/culture/CultureContext';
 import Reveal from '../components/landing/Reveal';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { Button } from '../components/ui/Button';
@@ -11,6 +14,7 @@ import { READ_A_PHOTO, TRADITIONS, readerPath, withArticle, type Tradition } fro
 import { readingGuide } from '../data/reading';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
 import { headingFont } from '../lib/fonts';
+import { culturePatterns, kitFor } from '../lib/culture';
 import { Link } from '../lib/router';
 
 const STEPS = [
@@ -31,7 +35,7 @@ export const ReadGuidePage: React.FC = () => (
             <div className="relative container mx-auto max-w-3xl text-center">
                 <p className="text-sm uppercase tracking-widest text-brass-light">Read a photo</p>
                 <h1 className="font-heading text-5xl md:text-6xl mt-2">Read a design from a photo</h1>
-                <div className="brass-rule max-w-sm mx-auto my-6" aria-hidden><Diya className="h-9 w-9 shrink-0" /></div>
+                <div className="brass-rule max-w-sm mx-auto my-6" aria-hidden><Ornament id="diya" className="h-9 w-9 shrink-0" /></div>
                 <p className="text-lg text-rice/90">
                     Each art form is drawn in its own way, so each one has its own reader. Here is how it works; then choose your art form to open its reader.
                 </p>
@@ -39,7 +43,7 @@ export const ReadGuidePage: React.FC = () => (
             </div>
         </section>
 
-        <KolamDivider tone="rice" spacing={40} />
+        <CultureDivider tone="rice" spacing={40} index={3} />
         <section className="py-16 px-4">
             <div className="container mx-auto max-w-5xl">
                 <SectionHeading dark title="How it works" className="mb-10" />
@@ -58,7 +62,7 @@ export const ReadGuidePage: React.FC = () => (
             </div>
         </section>
 
-        <KolamDivider tone="rice" spacing={40} />
+        <CultureDivider tone="rice" spacing={40} index={6} />
         <section id="choose" className="scroll-mt-16 py-16 px-4">
             <div className="container mx-auto max-w-6xl">
                 <SectionHeading dark title="Choose your art form" kicker="Each opens its own reader" className="mb-10" />
@@ -70,8 +74,9 @@ export const ReadGuidePage: React.FC = () => (
 
 /** /alpana/read-a-photo: the reader itself, in the art form's colours. */
 export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => {
+    const kit = useCulture();
     useEffect(() => {
-        applyTheme(t.theme, headingFont(t.script.lang));
+        applyTheme(t.theme, headingFont(t.script.lang), culturePatterns(kitFor(t.slug), t.theme));
         return () => applyTheme(DEFAULT_THEME);
     }, [t]);
     const guide = readingGuide(t);
@@ -80,7 +85,9 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
         <>
             <section className="relative floor-bg text-rice">
                 <div className="absolute inset-0 floor-dots pointer-events-none" aria-hidden />
-                <div className="relative container mx-auto max-w-4xl px-4 pt-28 pb-12 text-center">
+                <Doorway className="absolute top-16 inset-x-0 z-10 pointer-events-none" />
+                <div className={`relative container mx-auto max-w-4xl px-4 ${kit.doorway === 'toran' ? 'pt-44' : 'pt-36'} pb-12 text-center`}>
+                    <Greeting className="mb-4" />
                     <nav aria-label="Breadcrumb" className="text-sm text-rice/85">
                         <Link to={`/${t.slug}`} className={linkClass}>{t.name}</Link>
                         <span aria-hidden> › </span>
@@ -88,7 +95,7 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
                     </nav>
                     <p lang={t.script.lang} className="mt-4 font-script text-4xl md:text-5xl text-brass-light leading-tight">{t.script.word}</p>
                     <h1 className="font-heading text-4xl md:text-5xl mt-1">Read a photo of {withArticle(t.name)}</h1>
-                    <div className="brass-rule max-w-sm mx-auto my-6" aria-hidden><Diya className="h-9 w-9 shrink-0" /></div>
+                    <div className="brass-rule max-w-sm mx-auto my-6" aria-hidden><Ornament id={kit.ornament} className="h-9 w-9 shrink-0" /></div>
                     <p className="text-lg text-rice/90">It finds {guide.finds}, so you can draw it again.</p>
                     <ul className="mt-6 grid gap-3 md:grid-cols-2 text-left">
                         {guide.tips.map(tip => (
@@ -106,7 +113,7 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
             </div>
 
             <section className="floor-bg text-rice py-16 px-4">
-                <KolamDivider tone="rice" spacing={40} className="mb-10" />
+                <CultureDivider tone="rice" spacing={40} className="mb-10" />
                 <div className="container mx-auto max-w-4xl text-center">
                     <p className="text-lg">
                         Back to <Link to={`/${t.slug}`} className={linkClass}>{t.name}</Link>, or <Link to={`/${t.slug}#walkthrough`} className={linkClass}>learn to draw its designs</Link>.

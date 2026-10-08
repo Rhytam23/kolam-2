@@ -3,6 +3,9 @@ import { BRAND } from '../lib/brand';
 import { Link } from '../lib/router';
 import { READ_A_PHOTO, TRADITIONS, readerPath, traditionBySlug } from '../data/traditions';
 import { LANGUAGES, isLang, useI18n, type LabelKey } from '../lib/i18n';
+import { Ornament } from './culture/Ornaments';
+import { useCulture } from './culture/CultureContext';
+import { kitFor } from '../lib/culture';
 
 /** On an art form's pages "Read a photo" opens that art form's reader; elsewhere, the page that explains it. */
 const pagesFor = (path: string): Array<{ label: LabelKey; to: string }> => {
@@ -27,6 +30,7 @@ const LanguagePicker: React.FC<{ lang: string; setLang: (l: (typeof LANGUAGES)[n
 
 const Header: React.FC<{ path: string }> = ({ path }) => {
     const { lang, setLang, t } = useI18n();
+    const kit = useCulture();
     // 'top': clear, over the page's first section; 'floor': over a dark section; 'paper': over the tools.
     const [look, setLook] = useState<'top' | 'floor' | 'paper'>('top');
     const [menuOpen, setMenuOpen] = useState(false);
@@ -69,7 +73,10 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
     return (
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${(menuOpen || formsOpen) && look === 'top' ? 'bg-floor/95' : bar}`}>
             <nav className="container mx-auto px-6 py-4 flex justify-between items-center" aria-label="Main">
-                <Link to="/" className={`font-heading text-3xl font-bold ${dark ? 'brass-text' : 'gradient-text'}`}>{BRAND}</Link>
+                <span className="flex items-baseline gap-3">
+                    <Link to="/" className={`font-heading text-3xl font-bold ${dark ? 'brass-text' : 'gradient-text'}`}>{BRAND}</Link>
+                    {kit.slug !== 'home' && <span lang={kit.greeting.lang} className={`hidden xl:inline font-script text-lg ${dark ? 'text-brass-light' : 'text-kaavi'}`}>{kit.greeting.word}</span>}
+                </span>
                 <div className="hidden lg:flex items-center space-x-8">
                     <div className="relative" ref={forms}>
                         <button
@@ -85,7 +92,9 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
                             <div className="absolute right-0 mt-3 w-[34rem] rounded-2xl bg-paper shadow-xl ring-1 ring-kaavi/15 p-3 grid grid-cols-2 gap-1">
                                 {TRADITIONS.map(t => (
                                     <Link key={t.slug} to={`/${t.slug}`} {...current(`/${t.slug}`)} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-kaavi/10">
-                                        <span className="h-8 w-8 shrink-0 rounded-full ring-2 ring-white shadow" style={{ background: `linear-gradient(135deg, ${t.theme.floor} 55%, ${t.theme.brass} 55%)` }} aria-hidden />
+                                        <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-white shadow" style={{ background: t.theme.floor }} aria-hidden>
+                                            <Ornament id={kitFor(t.slug).ornament} className="h-5 w-5" color={t.theme.brassLight} />
+                                        </span>
                                         <span>
                                             <span className="block font-semibold text-ink">{t.name} <span lang={t.script.lang} className="font-script font-normal text-muted">{t.script.word}</span></span>
                                             <span className="block text-xs text-muted">{t.region}</span>
