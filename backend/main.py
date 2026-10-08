@@ -332,6 +332,8 @@ async def security_headers(request: Request, call_next):
     headers.setdefault('X-Frame-Options', 'DENY')
     headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), payment=(), usb=()')
     headers.setdefault('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+    headers.setdefault('X-Robots-Tag', 'noai, noimageai')
+    headers.setdefault('X-Legal-Notice', 'Copyright Rhytam Biswas. All rights reserved. Reuse needs written permission: /legal.html')
     if request.url.scheme == 'https':
         headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
     if request.url.path == '/sw.js':

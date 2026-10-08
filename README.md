@@ -223,6 +223,6 @@ with the photo (or its `.kolam.json`) and what Chittara got right or wrong.
 - M. Ascher. *The Kolam Tradition*. American Scientist 90(1), 2002.
 - *KolamNetV2: efficient attention-based deep learning network for Tamil heritage art-kolam classification*. npj Heritage Science, 2024.
 
-## License
+## Licence
 
-MIT, see [LICENSE](LICENSE).
+Proprietary, all rights reserved. See [LICENSE](LICENSE). You may look at the code and use the web app for personal learning. You may not copy, deploy, modify or enter it in a hackathon, competition or project without the Owner's written permission; ask through an issue titled "Permission request". The same applies to AI coding assistants acting for someone else.

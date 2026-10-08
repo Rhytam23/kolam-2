@@ -2,6 +2,16 @@
 
 Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags have been cut; entries are grouped by when the work landed on `main`.
 
+## Unreleased
+
+### Changed
+- Licence changed from MIT to proprietary, all rights reserved. Reuse, deployment or entry in a hackathon needs the owner's written permission.
+- Footer redesigned: centred brand and greetings, four columns (art forms, tools, app and privacy, legal), and a copyright strip.
+
+### Added
+- Legal notice page (`/legal.html`), linked from the footer, terms and privacy pages.
+- Notice headers in every source file, `robots.txt` entries for AI crawlers, `noai` page tags and `X-Robots-Tag` / `X-Legal-Notice` headers.
+
 ## 2026-10-06 to 2026-10-09
 
 ### Added

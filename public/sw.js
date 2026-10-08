@@ -1,7 +1,7 @@
 // Offline support: the app itself (studio, drawing guide, practice) works without a connection
 // once visited. Reading a photo always needs the server, so the API is never cached.
-const CACHE = 'chittara-v4';
-const SHELL = ['/', '/privacy.html', '/terms.html', '/pages.css', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'chittara-v5';
+const SHELL = ['/', '/privacy.html', '/terms.html', '/legal.html', '/pages.css', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
