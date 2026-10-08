@@ -18,6 +18,7 @@ import { readingGuide } from '../data/reading';
 import { withArticle, type Tradition } from '../data/traditions';
 import { useI18n } from '../lib/i18n';
 import { useCulture } from './culture/CultureContext';
+import { GENERAL_VOICE, artName, voiceFor } from '../data/voice';
 
 const ZOOM_LEVELS = [1, 1.5, 2];
 const HIT_RADIUS_PX = 12;
@@ -47,6 +48,10 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const k = useKolam();
     const { t, lang } = useI18n();
     const kit = useCulture();
+    const voice = voiceFor(kit.slug);
+    // Designs can be saved only where the dot-design engine makes them (kolam, muggulu, and the general reader).
+    const canSave = !tradition || tradition.modes.includes('kolam');
+    const savedName = voice === GENERAL_VOICE ? 'kolam' : artName(voice);
     // The result opens in the art form's own studio, kept as read (?from=photo), or in the full studio.
     const openStudio = (part: 'generator' | 'walkthrough') =>
         navigate(tradition ? `/${tradition.slug}?from=photo#${part}` : `/studio#${part}`);
@@ -307,7 +312,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
             clearImage();
             open(parsed);
             setError(null);
-            setStatus(`Opened ${picked.name}. Its kolam is now in the Design Studio.`);
+            setStatus(`Opened ${picked.name}. Its design is now in the Design Studio.`);
         } catch {
             setError('That file is not a valid .kolam.json file.');
         }
@@ -578,7 +583,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                     </div>
                                 </div>
                                 <p className="mt-3 text-xs text-muted">
-                                    Tap to add a missed dot, tap a dot to remove it, drag to move it. Then recreate the kolam from your corrected dots.
+                                    Tap to add a missed dot, tap a dot to remove it, drag to move it. Then recreate the design from your corrected dots.
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-4">
                                     <Button size="sm" onClick={() => file && runAnalysis(file, dots)} disabled={!file || !edited || loading || dots.length < 4}>
@@ -606,9 +611,10 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                             onDraw={() => { recreate(); openStudio('walkthrough'); }}
                         />
 
+                        {canSave && (
                         <Card>
                             <div className="flex items-center justify-between mb-4 gap-2">
-                                <h3 className="font-heading text-xl text-kaavi">Saved kolams</h3>
+                                <h3 className="font-heading text-xl text-kaavi">Saved {savedName}s</h3>
                                 <div className="flex gap-3 text-sm font-semibold">
                                     <button className="text-kaavi disabled:text-muted/50" onClick={save} disabled={!scan && !dots.length}>Save</button>
                                     <button className="text-kaavi disabled:text-muted/50" onClick={() => downloadKolamFile(currentFile())} disabled={!scan && !dots.length}>Export</button>
@@ -617,7 +623,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                             </div>
                             <input ref={jsonInputRef} type="file" accept=".json,application/json" onChange={openFile} className="hidden" />
                             <div className="space-y-2 max-h-80 overflow-auto">
-                                {saved.length === 0 && <p className="text-sm text-muted">Saved kolams stay in this browser. Export a .kolam.json file to share one.</p>}
+                                {saved.length === 0 && <p className="text-sm text-muted">Saved {savedName}s stay in this browser. Export a .kolam.json file to share one.</p>}
                                 {saved.map(item => (
                                     <div key={item.id} className="flex items-center justify-between gap-3 border border-kaavi/15 rounded-xl p-3 bg-paper">
                                         <div>
@@ -632,6 +638,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                 ))}
                             </div>
                         </Card>
+                        )}
                     </div>
                 </div>
             </div>

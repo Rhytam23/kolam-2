@@ -22,6 +22,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags 
 - Clean drawings and scans are no longer "repaired".
 
 ### Fixed
+- Each art form's studio, drawing guide and practice now show only that art form's own designs and wording. Before, reading a photo and returning to another page could leave a dot kolam (pulli, sikku, powder instructions) on the alpana page. The guide for painted art forms now says paint with a fingertip or cloth in rice paste, and describes dots as light guide marks.
+- A drawing traced from a photo no longer follows the visitor to another art form's page.
 - A lace mandala lost over 40% of its white lines (blended edge pixels were dropped) and later came out swollen; coverage now matches the source and small gaps stay open.
 - Thin strokes came out washed-out grey instead of their true colour.
 - Photos with a shadow side no longer produce an extra "shadow" colour layer.

@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { countLoops, diamondDesign, makeSingleLine, squareDesign, symmetries, type SymmetryName } from '../utils/kolamLogic';
 import { makeRadial, type RadialDesign, type RadialStyle } from '../utils/radial';
 import { makeGeometric, type GeometricDesign, type GeometricPattern } from '../utils/geometric';
@@ -91,6 +91,10 @@ const KolamContext = createContext<KolamContextValue | null>(null);
 
 export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mode, setMode] = useState<Mode>('kolam');
+  // The kind of design that was open before a traced photo took over, so clearing the photo goes back to it
+  // (and not to a fixed kind, which would show one art form's designs on another's page).
+  const lastMode = useRef<Exclude<Mode, 'traced'>>('kolam');
+  useEffect(() => { if (mode !== 'traced') lastMode.current = mode; }, [mode]);
   const [size, setSize] = useState(5);
   const [shape, setShape] = useState<Shape>('square');
   const [singleLine, setSingleLine] = useState(true);
@@ -124,7 +128,7 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setTraced = useCallback((next: Traced | null) => {
     setTracedState(next);
     if (next) setMode('traced');
-    else setMode(m => (m === 'traced' ? 'kolam' : m));
+    else setMode(m => (m === 'traced' ? lastMode.current : m));
   }, []);
 
   const makeSimilar = useCallback((order: number, palette: PaletteEntry[]) => {

@@ -5,6 +5,8 @@ import ColourGuide from './ColourGuide';
 import { SYMMETRY_LABELS, countLoops, portCounts, rowPattern, symmetries } from '../utils/kolamLogic';
 import type { ImageSymmetry, PaletteEntry, RadialSymmetry } from '../types/kolam';
 import type { Scan } from './KolamContext';
+import { GENERAL_VOICE, VOICES, artName, dotTitle, voiceFor } from '../data/voice';
+import { useCulture } from './culture/CultureContext';
 
 const IMAGE_SYMMETRY_LABELS: Record<keyof ImageSymmetry, string> = {
     mirrorVertical: 'Mirror (left–right)',
@@ -33,6 +35,10 @@ const Row: React.FC<{ label: string; hint?: string; children: React.ReactNode }>
 );
 
 const DesignPrinciples: React.FC<Props> = ({ scan, imageSymmetry, radial, palette, confidence, onRecreate, onSimilar, onDraw }) => {
+    const slug = useCulture().slug;
+    const voice = voiceFor(slug);
+    // A dot design on a page of no one art form is read as a kolam; on an art form's own page it is that art form.
+    const dotVoice = voice === GENERAL_VOICE ? VOICES.kolam : voice;
     const facts = useMemo(() => {
         if (!scan) return null;
         const { design, lattice } = scan;
@@ -46,9 +52,11 @@ const DesignPrinciples: React.FC<Props> = ({ scan, imageSymmetry, radial, palett
             dots: design.mask.join('').split('1').length - 1,
             grid: `${design.rows} × ${design.cols}`,
             orientation: Math.min(angle, 90 - angle) < 10 ? 'upright' : Math.abs(angle - 45) < 10 ? 'turned 45°' : `turned ${angle.toFixed(0)}°`,
-            kind: loops === 1 ? 'Sikku kolam: one continuous line around every dot' : `Pulli kolam: ${loops} separate lines around the dots`,
+            kind: loops === 1
+                ? `${dotVoice === VOICES.kolam ? 'Sikku kolam' : 'One-line design'}: one continuous line around every dot`
+                : `${dotVoice === VOICES.kolam ? 'Pulli kolam' : `${dotTitle(dotVoice)} design`}: ${loops} separate lines around the dots`,
         };
-    }, [scan]);
+    }, [scan, dotVoice]);
 
     const strongImageSymmetry = imageSymmetry
         ? (Object.keys(IMAGE_SYMMETRY_LABELS) as Array<keyof ImageSymmetry>).filter(k => imageSymmetry[k] >= 0.8)
@@ -73,7 +81,7 @@ const DesignPrinciples: React.FC<Props> = ({ scan, imageSymmetry, radial, palett
             <dl className="text-sm">
                 {facts && (
                     <>
-                        <Row label="Pulli (dots)" hint="rows × columns">{facts.grid}, {facts.orientation}</Row>
+                        <Row label={dotVoice.dotWord === 'dots' ? 'Dots' : `${dotTitle(dotVoice)} (dots)`} hint="rows × columns">{facts.grid}, {facts.orientation}</Row>
                         <Row label="Dots per row">{facts.pattern} ({facts.dots} dots)</Row>
                         <Row label="Between two dots" hint="lines cross · bend back · join">{facts.ports.crossings} · {facts.ports.turns} · {facts.ports.joins}</Row>
                         <Row label="Separate lines">{facts.loops === 1 ? '1 (one continuous line)' : facts.loops}</Row>
@@ -97,11 +105,11 @@ const DesignPrinciples: React.FC<Props> = ({ scan, imageSymmetry, radial, palett
 
             <div className="flex flex-wrap gap-2 mt-5">
                 {facts ? (
-                    <Button size="sm" onClick={onRecreate}>Open the recreated kolam</Button>
+                    <Button size="sm" onClick={onRecreate}>Open the recreated {artName(dotVoice)}</Button>
                 ) : (
                     <Button size="sm" onClick={onRecreate}>See the traced drawing</Button>
                 )}
-                <Button size="sm" variant="secondary" onClick={onSimilar}>Make a similar {facts ? 'rangoli' : 'design'}</Button>
+                <Button size="sm" variant="secondary" onClick={onSimilar}>Make a similar {facts && voice === GENERAL_VOICE ? 'rangoli' : 'design'}</Button>
                 <Button size="sm" variant="secondary" onClick={onDraw}>Draw it step by step</Button>
             </div>
         </Card>

@@ -54,5 +54,14 @@ Motifs (`src/components/culture/Ornaments.tsx`): diya, lotus, shankha (conch), l
 
 Rules: all ornaments are `aria-hidden`; greetings carry a `lang`; animations inside border patterns are switched off (`pattern .flicker, pattern .step-in`) and every animation respects `prefers-reduced-motion`; a transform-based animation must sit on an inner group, never on the group that carries `transform=`.
 
+## Keeping each studio inside its own art form
+The studio, drawing guide and practice share one state (`KolamProvider`), so each art form's studio is scoped:
+- `specToFit()` (`src/data/designs.ts`) is run by `KolamGenerator` on every art form's page. If the state holds a kind of design, round style or line pattern the art form does not offer (left over from another page), it opens the art form's own signature design instead. Tabs are only the kinds the art form offers, plus "Traced from your photo" when a photo was read in that art form.
+- A drawing traced from a photo belongs to the art form it was read in: opening another art form's page clears it.
+- Clearing a traced drawing returns to the kind of design that was open before, never to a fixed kolam.
+- `/studio` (the full studio) offers everything.
+
+Wording comes from `src/data/voice.ts` (`TraditionVoice`): the art form's name, its word for a dot (pulli, chukka), tab names, how the ground is prepared and the material applied, and whether dots are part of how it is made (`'tradition'`: kolam and muggulu) or only a help for learners (`'aid'`: the guide then calls them light guide marks, "a learning aid", and says the art form is made by hand). Everything is taken from the art form's own page in `traditions.ts`. `voice.test.ts` fails if a non-kolam voice uses the words kolam, pulli or sikku, or describes a painted art form as poured; `studioScope.test.ts` checks `specToFit` for all eleven art forms.
+
 ## Adding an art form
-Add an entry to `TRADITIONS` with a `Theme`, `script` (word and `lang`), palettes, modes and designs, and a kit in `KITS` (`src/lib/culture.ts`); routes, titles and the header menu follow from it. `src/lib/culture.test.ts` fails if a kit is missing or two art forms look the same.
+Add an entry to `TRADITIONS` with a `Theme`, `script` (word and `lang`), palettes, modes and designs, a kit in `KITS` (`src/lib/culture.ts`) and a voice in `VOICES` (`src/data/voice.ts`); routes, titles and the header menu follow from it. `src/lib/culture.test.ts` fails if a kit is missing or two art forms look the same.

@@ -70,6 +70,35 @@ export const applyPreset = (k: ReturnType<typeof useKolam>, spec: DesignSpec) =>
   k.setMode(spec.mode);
 };
 
+/** What a studio offers, for checking that nothing foreign is on show. */
+export interface ScopeLimits {
+  modes: readonly string[];
+  radialStyles: readonly RadialStyle[];
+  patterns: readonly GeometricPattern[];
+  presets: readonly DesignPreset[];
+}
+
+/**
+ * The design to open when the studio is showing something its art form does not offer (a kind of design,
+ * a round style or a line pattern left over from another page), or null when everything on show is its own.
+ * It is the first of the art form's own designs of an offered kind, so its signature design when possible.
+ */
+export const specToFit = (
+  state: { mode: string; radialStyle: RadialStyle; geoPattern: GeometricPattern },
+  scope: ScopeLimits,
+): DesignSpec | null => {
+  if (state.mode === 'traced') return null;
+  const allowed = (spec: DesignSpec) =>
+    scope.modes.includes(spec.mode)
+    && (spec.mode !== 'radial' || scope.radialStyles.includes(spec.style))
+    && (spec.mode !== 'geometric' || scope.patterns.includes(spec.pattern));
+  const foreign = !scope.modes.includes(state.mode)
+    || (state.mode === 'radial' && !scope.radialStyles.includes(state.radialStyle))
+    || (state.mode === 'geometric' && !scope.patterns.includes(state.geoPattern));
+  if (!foreign) return null;
+  return scope.presets.map(p => p.spec).find(allowed) ?? null;
+};
+
 /** The designs offered in the general studio. */
 export const STUDIO_PRESETS: DesignPreset[] = [
   { title: 'Sikku kolam', kind: 'Kolam', detail: '13 dots, one unbroken line', spec: { mode: 'kolam', shape: 'diamond', size: 5, singleLine: true, palette: 'kaavi' } },

@@ -11,6 +11,8 @@ import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
 import { SectionHeading } from './ui/SectionHeading';
 import Practice from './Practice';
+import { GENERAL_VOICE, VOICES, artName, voiceFor } from '../data/voice';
+import { useCulture } from './culture/CultureContext';
 
 interface Step {
     title: string;
@@ -40,6 +42,13 @@ const partDash = (from: number, to: number) => `0 ${from} ${to - from} 1`;
 const DrawGuide: React.FC = () => {
     const k = useKolam();
     const { mode, design, loops, symmetry, radial, traced, guideView, setGuideView } = k;
+    const slug = useCulture().slug;
+    const voice = voiceFor(slug);
+    // Pages of no one art form show the wording the app began with; a dot design there is a kolam.
+    const general = voice === GENERAL_VOICE;
+    const dotVoice = general ? VOICES.kolam : voice;
+    const aid = !general && voice.dots === 'aid';
+    const aidNote = ` These marks are only a help for learning: ${artName(voice)} is made by hand, and the colour covers them.`;
     const [step, setStep] = useState(0);
     const [playing, setPlaying] = useState(false);
     const colours = artworkColours(k);
@@ -72,30 +81,32 @@ const DrawGuide: React.FC = () => {
                 list: [
                     {
                         title: '1. Prepare the ground',
-                        text: `Sweep the floor and sprinkle water so the powder sticks. This design is drawn on a ${ground.name.toLowerCase()}.`,
+                        text: `${voice.ground} This design is drawn on a ${ground.name.toLowerCase()}.`,
                         tip: ground.material,
                         picture: bg,
                     },
                     {
-                        title: radial.dotsInColour ? '2. Put down the dots, in colour' : '2. Put down the small dots',
+                        title: radial.dotsInColour ? '2. Put down the dots, in colour' : aid ? '2. Mark the centre and the guide points' : '2. Put down the small dots',
                         text: radial.dotsInColour
                             ? `Start with the ${nearestTraditional(radial.centre).name.toLowerCase()} dot in the centre, then place ${total - 1} dots around it: ${dotsPerRing}. Use the coloured powders now: once the curls are drawn round the dots, they cannot be coloured.`
-                            : `Start with one dot in the centre, then place ${total - 1} small dots around it: ${dotsPerRing}. Dots of the same ring are all the same distance from the centre.`,
+                            : aid
+                                ? `Lightly mark the centre, then the ${total - 1} guide points around it: ${dotsPerRing}. Points of the same ring are all the same distance from the centre.${aidNote}`
+                                : `Start with one dot in the centre, then place ${total - 1} small dots around it: ${dotsPerRing}. Dots of the same ring are all the same distance from the centre.`,
                         tip: radial.dotsInColour
                             ? 'Keep a pinch of each colour ready and put down every dot of one colour before the next. Every dot will end up inside a line.'
-                            : 'Take a pinch of powder and touch it to the floor for each dot. Place opposite dots in pairs so the pattern stays even.',
+                            : aid ? 'Touch very lightly, so the marks are easy to cover. Place opposite points in pairs so the pattern stays even.' : 'Take a pinch of powder and touch it to the floor for each dot. Place opposite dots in pairs so the pattern stays even.',
                         picture: <>{bg}{dotsOf}</>,
                     },
                     ...rings.map((ring, i) => ({
-                        title: `${3 + i}. Join the dots: ring ${i + 1}`,
+                        title: general ? `${3 + i}. Join the dots: ring ${i + 1}` : `${3 + i}. ${voice.ringTitle} ring ${i + 1}`,
                         text: ring.motif === 'curl'
                             ? `Wind a curl round each dot of this ring: ${ring.count} curls, pointing ${ring.flip ? 'in towards the centre' : 'outwards'}. Start at the pointed tip, come down one side, round the dot, and curl inwards.`
                             : ring.around
                                 ? 'Draw a circle round the centre dot, the same distance from it all the way round.'
                                 : ring.count === 1
                                 ? 'Join the dots round the centre into a circle.'
-                                : `${i === 0 ? 'Starting next to the centre, join' : 'Join'} the dots of this ring into ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from dot to dot${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
-                        tip: ring.motif === 'curl' ? 'Keep every curl the same size; the dots keep them evenly spaced.' : ring.filled ? 'Draw only the outline now; colour comes at the end.' : ring.double ? 'Draw each outline through the dots, then a second line just inside it. Keep both thin and even.' : 'Keep the line thin and even; alpana outlines are the design itself.',
+                                : `${i === 0 ? (general ? 'Starting next to the centre, join the dots of this ring into' : `Starting next to the centre. ${voice.ring}`) : voice.ring} ${ring.count} ${MOTIF_NAMES[ring.motif]}. Each line runs from ${aid ? 'point to point' : 'dot to dot'}${ring.motif === 'dot' ? '; here the dots themselves are the decoration.' : ', curving gently between them.'}`,
+                        tip: ring.motif === 'curl' ? 'Keep every curl the same size; the dots keep them evenly spaced.' : general ? (ring.filled ? 'Draw only the outline now; colour comes at the end.' : ring.double ? 'Draw each outline through the dots, then a second line just inside it. Keep both thin and even.' : 'Keep the line thin and even; alpana outlines are the design itself.') : `${voice.apply}${ring.double ? ' Draw a second line just inside the first.' : ''}`,
                         picture: <>{bg}{rings.slice(0, i).map((r, j) => <g key={j}>{joined(r, dotColour)}</g>)}<g key={`${step}-${i}`}>{joined(ring, HIGHLIGHT, true)}</g>{dotsOf}</>,
                     })),
                     {
@@ -103,7 +114,7 @@ const DrawGuide: React.FC = () => {
                         text: radial.dotsInColour
                             ? 'Every dot now sits inside its curl. There is nothing to fill: the colour went down with the dots. Touch up any thin places in the lines.'
                             : 'Fill each shape with its colour, working from the centre outwards so you never lean on finished parts. The dots disappear under the colour.',
-                        tip: radial.rings.some(r => !r.filled) ? 'For alpana, trace the lines with rice paste (pithali) using a fingertip or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.',
+                        tip: general ? (radial.rings.some(r => !r.filled) ? 'For alpana, trace the lines with rice paste (pithali) using a fingertip or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.') : voice.finish,
                         colours: true,
                         picture: <>{bg}{radial.rings.map((r, i) => { const st = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={st.fill} stroke={st.stroke} strokeWidth={st.strokeWidth} strokeLinejoin="round" />; })}<circle r={centreRadius(radial)} fill={radial.centre} stroke={radial.dotsInColour ? 'none' : radial.outline} strokeWidth={0.012} /></>,
                     },
@@ -128,20 +139,20 @@ const DrawGuide: React.FC = () => {
                 list: [
                     {
                         title: '1. Prepare the ground',
-                        text: `Sweep and wet the floor, or coat it the traditional way. This design is drawn on a ${ground.name.toLowerCase()}.`,
+                        text: `${general ? 'Sweep and wet the floor, or coat it the traditional way.' : voice.ground} This design is drawn on a ${ground.name.toLowerCase()}.`,
                         tip: ground.material,
                         picture: bg,
                     },
                     {
-                        title: '2. Put down the dots',
-                        text: `Make a square grid of ${g.size} rows of ${g.size} dots, ${g.size * g.size} in all. Start with the middle row and the middle column so the grid stays square.`,
+                        title: aid ? '2. Mark the guide dots' : '2. Put down the dots',
+                        text: `Make a square grid of ${g.size} rows of ${g.size} dots, ${g.size * g.size} in all. Start with the middle row and the middle column so the grid stays square.${aid ? aidNote : ''}`,
                         tip: 'Keep the gaps between dots equal; every straight line of the design runs from one dot to another.',
                         picture: <>{bg}{dotsLayer}</>,
                     },
                     ...g.groups.map((title, i) => ({
                         title: `${3 + i}. Draw ${title}`,
-                        text: `Join the dots with straight lines to draw ${title}. A line from one dot to another passes exactly through every dot on its way.`,
-                        tip: i === 0 ? 'Pinch the powder between thumb and finger and let it run in a steady line from dot to dot.' : 'Check the new lines against the ones already drawn: the design is the same on every side.',
+                        text: aid ? `Draw ${title} with straight lines from guide dot to guide dot. A line passes exactly through every dot on its way.` : `Join the dots with straight lines to draw ${title}. A line from one dot to another passes exactly through every dot on its way.`,
+                        tip: i === 0 ? (general ? 'Pinch the powder between thumb and finger and let it run in a steady line from dot to dot.' : voice.apply) : 'Check the new lines against the ones already drawn: the design is the same on every side.',
                         picture: <>{bg}{g.groups.slice(0, i).map((_, j) => <g key={j}>{outline(j, g.line)}</g>)}<g key={`${step}-${i}`}>{outline(i, HIGHLIGHT, true)}</g>{dotsLayer}</>,
                     })),
                     {
@@ -149,7 +160,7 @@ const DrawGuide: React.FC = () => {
                         text: filled
                             ? 'Fill the shapes with their colours, from the middle outwards. Leave the lines and dots showing between them.'
                             : 'The design is complete: white lines and dots on the ground, as it is traditionally drawn.',
-                        tip: filled ? 'Fill the largest shapes first and the small ones last.' : undefined,
+                        tip: filled ? 'Fill the largest shapes first and the small ones last.' : general ? undefined : voice.finish,
                         colours: filled,
                         picture: <>{bg}{g.shapes.map((sh, i) => <path key={i} d={shapePath(g, sh, UNIT, PAD)} fill={sh.fill ?? 'none'} stroke={g.line} strokeWidth={UNIT * 0.06} strokeLinejoin="round" />)}{dotsLayer}</>,
                     },
@@ -263,9 +274,9 @@ const DrawGuide: React.FC = () => {
             ? Array.from({ length: PARTS }, (_, p) => ({
                 title: `Draw the line: part ${p + 1} of ${PARTS}`,
                 text: p === 0
-                    ? 'With all the dots in place, start at the circle and draw the line between the dots, looping around each one. In a pulli kolam the line goes around the dots, never over them.'
-                    : p === PARTS - 1 ? 'Finish the line where you started. The whole kolam is a single closed line.' : 'Keep going without lifting your hand; it is all one line.',
-                tip: 'Let the rice flour fall in a thin stream from between your thumb and forefinger.',
+                    ? `With all the dots in place, start at the circle and draw the line between the dots, looping around each one. In ${dotVoice.art} the line goes around the dots, never over them.`
+                    : p === PARTS - 1 ? `Finish the line where you started. The whole ${artName(dotVoice)} is a single closed line.` : 'Keep going without lifting your hand; it is all one line.',
+                tip: dotVoice.apply,
                 picture: <>{bg}{line(paths[0], stroke(0), { strokeDasharray: partDash(0, p / PARTS) })}{line(paths[0], HIGHLIGHT, { strokeDasharray: partDash(p / PARTS, (p + 1) / PARTS) })}{pulli}{p === 0 && startMarker(paths[0])}</>,
             }))
             : paths.map((d, i) => ({
@@ -280,12 +291,12 @@ const DrawGuide: React.FC = () => {
             list: [
                 {
                     title: 'Prepare the ground',
-                    text: `Kolams are drawn at dawn on a swept, wet threshold. This design is drawn on a ${ground.name.toLowerCase()}.`,
+                    text: `${dotVoice.ground} This design is drawn on a ${ground.name.toLowerCase()}.`,
                     tip: ground.material,
                     picture: bg,
                 },
                 {
-                    title: 'Place the pulli (dots)',
+                    title: dotVoice.dotWord === 'dots' ? 'Place the dots' : `Place the ${dotVoice.dotWord} (dots)`,
                     text: `Put ${dots.length} dots in rows of ${rowPattern(design)}, evenly spaced. Start with the middle row so the grid stays straight.`,
                     tip: 'Keep the gap between dots about two finger-widths; even spacing is what makes the curves look smooth.',
                     picture: <>{bg}{pulli}</>,
@@ -301,12 +312,13 @@ const DrawGuide: React.FC = () => {
                 {
                     title: 'Colour and finish',
                     text: 'Go over any thin places, then add colour: powders along or beside the lines, and flowers at the centre if you like.',
+                    tip: dotVoice.finish,
                     colours: true,
                     picture: <>{bg}{paths.map((d, i) => <g key={i}>{line(d, stroke(i))}</g>)}{pulli}</>,
                 },
             ].map((s, i) => ({ ...s, title: s.title.match(/^\d/) ? s.title : `${i + 1}. ${s.title}` })),
         };
-    }, [mode, design, loops, symmetry, radial, traced, colours, step, k.geometric]);
+    }, [mode, design, loops, symmetry, radial, traced, colours, step, k.geometric, slug]);
 
     const signature = `${mode}|${JSON.stringify(design)}|${radial.rings.length}|${radial.rings[0]?.count}|${traced?.layers.length}|${k.geometric.pattern}${k.geometric.size}`;
     useEffect(() => { setStep(0); setPlaying(false); }, [signature]);
@@ -326,7 +338,9 @@ const DrawGuide: React.FC = () => {
             <div className="container mx-auto max-w-5xl">
                 <SectionHeading title="Draw It Yourself" className="mb-4" />
                 <p className="text-center text-muted mb-8 max-w-2xl mx-auto">
-                    Step by step instructions for the design in the studio above: dots first, then each line or ring, then colour. Then practise it by tapping the dots in order.
+                    {general || voice.dots === 'tradition'
+                        ? 'Step by step instructions for the design in the studio above: dots first, then each line or ring, then colour. Then practise it by tapping the dots in order.'
+                        : `Step by step instructions for the design in the studio above, ${voice.start === 'centre-out' ? 'worked from the centre outwards' : 'one part at a time'}, then colour. Then practise it by tapping the guide points in order.`}
                 </p>
                 <div className="flex justify-center gap-2 mb-10" role="tablist" aria-label="Guide or practice">
                     {([['steps', 'Watch the steps'], ['practice', 'Practise it yourself']] as const).map(([id, label]) => (

@@ -70,6 +70,8 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
     useEffect(() => {
         const search = new URLSearchParams(currentSearch());
         if (search.get('from') === 'photo') return;
+        // A drawing traced from a photo belongs to the art form it was read in: it must not follow the visitor to another.
+        k.setTraced(null);
         applyPreset(k, (t.designs[Number(search.get('design'))] ?? t.designs[0]).spec);
     }, [t.slug]); // eslint-disable-line react-hooks/exhaustive-deps
 

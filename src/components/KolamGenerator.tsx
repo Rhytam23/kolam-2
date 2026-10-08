@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { Label } from './ui/Label';
@@ -10,7 +10,9 @@ import { RADIAL_STYLES, type RadialStyle } from '../utils/radial';
 import { GEOMETRIC_PATTERNS, geometricSize, type GeometricPattern } from '../utils/geometric';
 import { PALETTES, type PaletteName } from '../lib/colours';
 import { artworkColours, artworkSvg } from '../lib/artwork';
-import { STUDIO_PRESETS, applyPreset, presetBackground, presetSvg, type DesignPreset } from '../data/designs';
+import { STUDIO_PRESETS, applyPreset, presetBackground, presetSvg, specToFit, type DesignPreset } from '../data/designs';
+import { GENERAL_VOICE, artName, voiceFor } from '../data/voice';
+import { useCulture } from './culture/CultureContext';
 import { downloadBlob, downloadKolamFile, svgToPng } from '../lib/kolamFile';
 import { SectionHeading } from './ui/SectionHeading';
 
@@ -71,7 +73,7 @@ export const FULL_STUDIO: StudioScope = {
     presets: STUDIO_PRESETS,
 };
 
-const MODE_LABELS: Record<Mode, string> = { kolam: 'Dot kolam', radial: 'Round designs', geometric: 'Straight lines', traced: 'Traced from your photo' };
+const TRACED_LABEL = 'Traced from your photo';
 
 const scrollToGuide = () => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' });
 const scrollToStudio = () => document.getElementById('generator')?.scrollIntoView({ behavior: 'smooth' });
@@ -79,6 +81,16 @@ const scrollToStudio = () => document.getElementById('generator')?.scrollIntoVie
 const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO }) => {
     const k = useKolam();
     const { mode, setMode, design, loops, symmetry, scan, useScan, setUseScan, traced } = k;
+    const voice = voiceFor(useCulture().slug);
+    const modeLabels: Record<Mode, string> = { ...voice.modeLabels, traced: TRACED_LABEL };
+
+    // The studio, guide and practice share one state. Whatever another page left in it that this art form
+    // does not offer (a kind of design, a round style, a line pattern) is replaced by the art form's own design.
+    useLayoutEffect(() => {
+        const spec = specToFit({ mode, radialStyle: k.radialStyle, geoPattern: k.geoPattern }, scope);
+        if (spec) applyPreset(k, spec);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [scope, mode, k.radialStyle, k.geoPattern]);
 
     const [showDots, setShowDots] = useState(true);
     const svg = useMemo(() => artworkSvg(k, { dots: showDots }), [k, showDots]);
@@ -88,10 +100,9 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
     const geoPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.geoColours) ?? null;
 
     const cards = useMemo(() => scope.presets.map(p => ({ ...p, svg: presetSvg(p.spec), background: presetBackground(p.spec) })), [scope.presets]);
-    const tabs: Array<[Mode, string]> = scope.modes.map(m => [m, MODE_LABELS[m]]);
+    const tabs: Array<[Mode, string]> = scope.modes.map(m => [m, modeLabels[m]]);
     // A design read from a photo can be of another kind than this studio offers: keep its tab.
-    if (traced && !tabs.some(([m]) => m === 'traced')) tabs.push(['traced', MODE_LABELS.traced]);
-    if (!tabs.some(([m]) => m === mode)) tabs.push([mode, MODE_LABELS[mode]]);
+    if (traced && !tabs.some(([m]) => m === 'traced')) tabs.push(['traced', TRACED_LABEL]);
 
     return (
         <section className="py-20 px-4">
@@ -120,7 +131,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                                 {!useScan && (
                                     <>
                                         <div>
-                                            <Label>Dot arrangement</Label>
+                                            <Label>{voice.dotWord === 'dots' ? 'Dot' : voice.dotWord[0].toUpperCase() + voice.dotWord.slice(1)} arrangement</Label>
                                             <div className="flex gap-2">
                                                 <Toggle active={k.shape === 'square'} onClick={() => k.setShape('square' as Shape)}>Square</Toggle>
                                                 <Toggle active={k.shape === 'diamond'} onClick={() => k.setShape('diamond' as Shape)}>Diamond (1-3-5-3-1)</Toggle>
@@ -138,11 +149,11 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                                 )}
                                 <label className="flex items-center gap-3 text-ink">
                                     <input type="checkbox" checked={k.singleLine} onChange={e => k.setSingleLine(e.target.checked)} className="accent-kaavi w-4 h-4" />
-                                    One continuous line (sikku kolam)
+                                    {voice.singleLine}
                                 </label>
                                 <PaletteChoice value={k.kolamPalette} onChange={k.setKolamPalette} names={scope.palettes} />
                                 <dl className="grid grid-cols-2 gap-3 text-sm">
-                                    <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Pulli (dots)</dt><dd className="text-xl">{design.mask.join('').split('1').length - 1}</dd></div>
+                                    <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">{voice.dotWord === 'dots' ? 'Dots' : `${voice.dotWord[0].toUpperCase() + voice.dotWord.slice(1)} (dots)`}</dt><dd className="text-xl">{design.mask.join('').split('1').length - 1}</dd></div>
                                     <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Separate lines</dt><dd className="text-xl">{loops}</dd></div>
                                 </dl>
                                 <div className="flex flex-wrap gap-2">
@@ -201,7 +212,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                         {mode === 'traced' && traced && (
                             <p className="text-sm text-muted">
                                 Your photo, traced into {traced.layers.length} colour layer{traced.layers.length === 1 ? '' : 's'}. The guide below shows
-                                which colour to lay down first. To make a new design in the same spirit, choose <strong>{MODE_LABELS[tabs.find(([m]) => m !== 'traced')?.[0] ?? 'radial']}</strong> above.
+                                which colour to lay down first. To make a new design in the same spirit, choose <strong>{modeLabels[tabs.find(([m]) => m !== 'traced')?.[0] ?? 'radial']}</strong> above.
                             </p>
                         )}
 
@@ -209,8 +220,12 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                             <label className="flex items-start gap-3 text-ink">
                                 <input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} className="accent-kaavi w-4 h-4 mt-1" />
                                 <span>
-                                    Show the small guide dots
-                                    <span className="block text-xs text-muted">Put these down first, then join them. Download with dots to print a template.</span>
+                                    {voice.dots === 'aid' && voice.art !== GENERAL_VOICE.art ? 'Show the light guide marks' : 'Show the small guide dots'}
+                                    <span className="block text-xs text-muted">
+                                        {voice.dots === 'aid' && voice.art !== GENERAL_VOICE.art
+                                            ? `A learning aid: ${artName(voice)} is made by hand. Download with the marks to print a template.`
+                                            : 'Put these down first, then join them. Download with dots to print a template.'}
+                                    </span>
                                 </span>
                             </label>
                         )}
@@ -220,7 +235,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                         <div className="flex flex-wrap gap-2">
                             <Button size="sm" variant="secondary" onClick={() => downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${name}.svg`)}>SVG</Button>
                             <Button size="sm" variant="secondary" onClick={async () => downloadBlob(await svgToPng(svg, mode === 'traced' ? 1 : 2), `${name}.png`)}>PNG</Button>
-                            {mode === 'kolam' && <Button size="sm" variant="secondary" onClick={() => downloadKolamFile(k.currentFile())}>.kolam.json</Button>}
+                            {mode === 'kolam' && <Button size="sm" variant="secondary" onClick={() => downloadKolamFile(k.currentFile())}>{voice.file}</Button>}
                             <Button size="sm" onClick={scrollToGuide}>Draw it step by step</Button>
                         </div>
                     </Card>
