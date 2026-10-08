@@ -314,7 +314,9 @@ async def analyze_kolam(
         _slots.release()
     _stats['analyzed'] += 1
     _stats['seconds'] += time.monotonic() - started
-    cache_put(key, response)
+    # A repaired or straightened photo is itself the visitor's photo: it is returned once and never kept.
+    if 'image' not in response:
+        cache_put(key, response)
     return response
 
 

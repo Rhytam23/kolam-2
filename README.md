@@ -37,17 +37,29 @@ No sample photo at hand? Press **Try a sample** in the analyzer.
 
 ## How photos are read
 
-`POST /api/analyze` runs these steps on a small worker pool, so the site stays responsive while photos are read.
+Poor photos are repaired first (uneven light, flat contrast, grain, softness, tiny size) and the response says what was done. Free-hand designs are traced as smooth curves in their real colours, with a tidied copy to switch to, and the reader shows how closely the trace matches your picture; dot designs are read as a dot grid. The server queues photos and answers "busy, retry shortly" under load. The full pipeline, limits and tuning are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-1. **Guards:** per-visitor rate limit (the visitor is the last `X-Forwarded-For` entry behind a proxy), type and size limits, a pixel limit read from the file header, then a cache lookup (same photo and settings gives an instant answer).
-2. **Queue:** at most `MAX_CONCURRENT` photos are read at once and up to `MAX_WAITING` wait. Beyond that the server answers `503` with `Retry-After`, and the web app retries by itself.
-3. **Reduce and straighten:** the long side is reduced to `MAX_SIDE`; a sheet photographed at an angle is flattened.
-4. **Photo repair** (`backend/enhance.py`): blur, flat contrast, uneven light (a fitted lighting plane), grain, glare and small size are measured and only the needed fixes applied. Clean drawings and scans are never "repaired", except to remove a shadow across the whole sheet. For dot designs both versions are read and the better reading wins. The response lists what was fixed and gives retake tips.
-5. **Reading:** dot designs (kolam, muggulu) go through dot detection, lattice fit and strand reading. Everything else is traced.
-6. **Tracing** (`backend/drawing.py`, `backend/vectorize.py`): the real colours are found first and every pixel goes to the nearest one, so anti-aliased pixels along thin lines are not lost. Colours are decided on an enlarged picture so edges fall between pixels; for two-colour drawings the ink level is chosen by drawing each candidate, shrinking it back to the picture's size and keeping the closest. Each colour becomes smooth cubic Béziers with sharp corners kept. A **tidied** copy smooths wobbles and, for turning patterns, restores petals by majority vote.
-7. **Drawing guide:** guide dots sit on corners and curve anchors, outlines are numbered from the centre outwards, and Practice lets a person tap through them.
+## Documentation
 
-Limits: no method reproduces every photo exactly. A picture can only be traced as finely as it holds detail (a 223 px image has one-pixel lines), and blurry, tiny or heavily shadowed photos get a lower score and tips for retaking. Dot grids are capped at 25×25 dots and must be rectangular or diamond. Interface translations (`src/lib/i18n.tsx`) cover the navigation and the photo reader and should be reviewed by native speakers. On a free host with one shared CPU, many people reading photos at the very same moment will queue.
+| | |
+| --- | --- |
+| [Project overview](docs/PROJECT_OVERVIEW.md) | What it is, features, stack |
+| [Architecture](docs/ARCHITECTURE.md) | Photo pipeline, frontend and backend modules |
+| [Setup](docs/SETUP.md) | Install and run locally or with Docker |
+| [Environment](docs/ENVIRONMENT.md) | Every setting and its default |
+| [API](docs/API.md) | `/api/health` and `/api/analyze` |
+| [Data storage](docs/DATABASE.md) | There is no database: what is kept, and where |
+| [Security](docs/SECURITY.md) | Headers, limits, data handling |
+| [Deployment](docs/DEPLOYMENT.md) | Docker, Render, capacity, rollback |
+| [Maintenance](docs/MAINTENANCE.md) | Routine tasks and where to change things |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Symptoms, causes, fixes |
+| [Testing](docs/TESTING.md) | Running and extending the tests |
+| [SEO](docs/SEO.md) | Titles, link previews, sitemap |
+| [Design system](docs/DESIGN_SYSTEM.md) | Colours, fonts, components, accessibility |
+| [Analytics](docs/ANALYTICS.md) | None by design; what you can see instead |
+| [Operations guide](docs/ADMIN_GUIDE.md) | Running the service (there is no admin panel) |
+| [Handover](docs/CLIENT_HANDOVER.md) | Checklist for a new owner |
+| [Changelog](CHANGELOG.md) | What changed, and when |
 
 ## Privacy and hosting
 

@@ -59,3 +59,13 @@ def test_failed_analysis_is_logged_and_reported(monkeypatch, caplog):
     monkeypatch.setattr(main, 'run_analysis', boom)
     assert post(crossing_kolam(3, 3)).status_code == 500
     assert 'analysis pipeline failed' in caplog.text
+
+
+def test_a_repaired_photo_is_never_cached():
+    """The response then contains the visitor's (corrected) photo, which must not be kept in memory."""
+    from tests.test_drawing import FLOOR, RICE, petals
+    shade = np.linspace(0.4, 1.0, 700)[None, :, None]
+    img = (petals(8, background=FLOOR, ink=RICE) * shade).astype(np.uint8)
+    body = post(img, grid='false').json()
+    assert body['image'].startswith('data:image/jpeg')
+    assert not main._cache
