@@ -11,6 +11,7 @@ import CultureDivider from '../components/culture/CultureDivider';
 import { Ornament } from '../components/culture/Ornaments';
 import Doorway from '../components/culture/Doorway';
 import Greeting from '../components/culture/Greeting';
+import FrameBar from '../components/culture/FrameBar';
 import { useCulture } from '../components/culture/CultureContext';
 import Reveal from '../components/landing/Reveal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -49,7 +50,7 @@ const LiveDesign: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => {
 };
 
 const Fact: React.FC<{ title: string; children: React.ReactNode; delay?: number }> = ({ title, children, delay }) => (
-    <Reveal delay={delay} className="rounded-2xl border border-brass/40 bg-floor/60 p-6">
+    <Reveal delay={delay} className="culture-card-floor bg-floor/60 p-6">
         <p className="font-heading text-xl text-brass-light">{title}</p>
         <p className="mt-2 text-rice/90 leading-relaxed">{children}</p>
     </Reveal>
@@ -59,6 +60,8 @@ const Fact: React.FC<{ title: string; children: React.ReactNode; delay?: number 
 const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => {
     const k = useKolam();
     const kit = useCulture();
+    // Some art forms are shown with everything centred around the design, others with the text beside it.
+    const centred = kit.hero === 'centred';
 
     useEffect(() => {
         applyTheme(t.theme, headingFont(t.script.lang), culturePatterns(kitFor(t.slug), t.theme));
@@ -96,15 +99,15 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
             <section className="relative floor-bg text-rice">
                 <div className="absolute inset-0 floor-dots pointer-events-none" aria-hidden />
                 <Doorway className="absolute top-16 inset-x-0 z-10 pointer-events-none" />
-                <div className={`relative container mx-auto px-4 ${kit.doorway === 'toran' ? 'pt-44' : 'pt-36'} pb-16 grid lg:grid-cols-2 gap-12 items-center`}>
-                    <div className="text-center lg:text-left">
+                <div className={`relative container mx-auto px-4 ${kit.doorway === 'toran' ? 'pt-44' : 'pt-36'} pb-16 grid ${centred ? 'gap-12 justify-items-center' : 'lg:grid-cols-2 gap-12 items-center'}`}>
+                    <div className={centred ? 'text-center max-w-3xl' : 'text-center lg:text-left'}>
                         <Greeting className="mb-3" />
                         <p className="text-sm uppercase tracking-widest text-brass-light">{t.region}</p>
                         <p lang={t.script.lang} className="mt-3 font-script text-5xl md:text-6xl text-brass-light leading-tight">{t.script.word}</p>
                         <h1 className="font-heading text-5xl md:text-6xl text-rice mt-1">{t.name}</h1>
-                        <div className="brass-rule max-w-sm mx-auto lg:mx-0 my-6" aria-hidden><Ornament id={kit.ornament} className="h-9 w-9 shrink-0" /></div>
-                        <p className="text-lg text-rice/90 max-w-xl mx-auto lg:mx-0">{t.about[0]}</p>
-                        <div className="mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3 justify-center lg:justify-start">
+                        <div className={`brass-rule max-w-sm mx-auto ${centred ? '' : 'lg:mx-0'} my-6`} aria-hidden><Ornament id={kit.ornament} className="h-9 w-9 shrink-0" /></div>
+                        <p className={`text-lg text-rice/90 max-w-xl mx-auto ${centred ? '' : 'lg:mx-0'}`}>{t.about[0]}</p>
+                        <div className={`mt-8 flex flex-col sm:flex-row sm:flex-wrap gap-3 justify-center ${centred ? '' : 'lg:justify-start'}`}>
                             <Button variant="brass" onClick={() => openGuide('steps')}>Learn to {kit.verb} it</Button>
                             <Button variant="outline-light" onClick={() => openGuide('practice')}>Practise it</Button>
                             <Button variant="outline-light" onClick={() => navigate(`/${t.slug}#generator`)}>Make your own</Button>
@@ -113,6 +116,7 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
                     </div>
                     <LiveDesign tradition={t} />
                 </div>
+                <FrameBar className="absolute bottom-0 inset-x-0" />
             </section>
 
             <div className="floor-bg">

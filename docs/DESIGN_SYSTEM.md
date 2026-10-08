@@ -16,6 +16,25 @@ Defined as `r g b` CSS variables in `src/index.css` and used through Tailwind (`
 
 Fixed accents: `marigold #F08A00`, `turmeric #E1AD01`, `leaf #2E7D32`, `kumkum #C62839`, `sand #FBEBD3`.
 
+## Each art form's own colours and character
+No shared palette: each art form is coloured from its own documented materials plus one colour tradition of its own region, and the eleven grounds sit on different parts of the colour wheel (a test checks that no two grounds are alike, that every text pair is at least 4.5:1 and every ornament at least 3:1). The reasons are in `src/data/colourStory.ts` and are shown on the About page (`/about#colours`).
+
+| Art form | Looks like | Ground | Accent | Action |
+|---|---|---|---|---|
+| Kolam | Sky before dawn; temple-wall stripes | Indigo night `#1B2342` | Sunrise saffron `#E9A23B` | Kaavi red `#B3401F` |
+| Muggulu | Harvest field | Olive earth `#3A3D1E` | Pumpkin-flower yellow `#E7B817` | Sankranti pink `#A8235A` |
+| Rangoli | Diwali gulal, bright courtyard | Festival pink `#FFE4EE` | Gulal magenta `#C2185B` | Peacock teal `#00798C` |
+| Alpana | Red-bordered white sari | Rice-paste white `#FFFDF7` | Sindoor red `#B3122E` | Sindoor red `#B3122E` |
+| Pookalam | Onam kasavu on banana leaf | Banana-leaf green `#1E4A2A` | Kasavu gold `#D4A017` | Leaf green `#1F5C30` |
+| Mandana | Terracotta wall, Jodhpur blue | Geru terracotta `#7B2D1B` | Turban ochre `#E3A72F` | Jodhpur blue `#1F4C8F` |
+| Aipan | Himalayan snow and geru | Snow `#E6F0F7` | Pichhora saffron `#B7650A` | Geru red `#9B2C20` |
+| Aripan | Madhubani paper | Paper cream `#FBE8B5` | Red `#D62828` | Indigo `#1D4E89` |
+| Jhoti chita | Pattachitra | Lamp black `#1A1412` | Haritala yellow `#F2C14E` | Hingula red `#B3262B` |
+| Chowk purana | Banarasi brocade | Wine purple `#3B1030` | Zari gold `#D9A441` | Brocade plum `#7A1E5E` |
+| Chittara | Arishina and kumkuma | Turmeric yellow `#FBD34D` | Kumkum red `#C1272D` | Kumkum red `#B3202A` |
+
+Character beyond colour is set in `src/index.css` per `[data-culture="slug"]` (the app puts the slug on `<html>`; a gallery card puts its own on itself): the shape of cards (`--radius-card`, `--card-border`, `--card-shadow`), of photographs (`--radius-media`: round for pookalam, arched for mandana, chamfered for chittara) and of buttons (`--radius-button`), and the border bar under the hero and above the footer (`FrameBar`: kaavi-and-white temple stripes, dots, scallops, a sari border, a kasavu border, zigzag, chowki, a Madhubani double line, a pattachitra vine, tiles, diamonds). Kolam also gets a saffron glow at the horizon of its dark floor (`--floor-glow`). `hero` in the culture kit chooses text beside the design (kolam, muggulu, mandana, aipan, chowk purana, chittara) or everything centred (rangoli, alpana, pookalam, aripan, jhoti chita).
+
 ## Per-tradition themes
 Each art form has a `Theme` (`src/lib/theme.ts`, `src/data/traditions.ts`) applied by `applyTheme()` when its page opens and reset on leaving. Text sits on `floor` (dark sections) or `paper` (light sections) only; `contrast()` in `theme.ts` is available to check a pair (aim for WCAG AA).
 

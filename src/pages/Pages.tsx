@@ -5,6 +5,7 @@ import Research from '../components/Research';
 import Contact from '../components/Contact';
 import TraditionGallery from '../components/TraditionGallery';
 import { ProjectPanel } from '../components/About';
+import ColourStory from '../components/ColourStory';
 import CultureDivider from '../components/culture/CultureDivider';
 import { Ornament } from '../components/culture/Ornaments';
 import { SectionHeading } from '../components/ui/SectionHeading';
@@ -28,6 +29,7 @@ export const AboutPage: React.FC = () => (
             <ProjectPanel />
         </section>
         <div data-paper className="paper-bg">
+            <div id="colours" className="scroll-mt-16"><ColourStory /></div>
             <div id="research" className="scroll-mt-16"><ErrorBoundary name="reference list"><Research /></ErrorBoundary></div>
             <CultureDivider index={5} />
             <div id="contact" className="scroll-mt-16"><ErrorBoundary name="feedback section"><Contact /></ErrorBoundary></div>

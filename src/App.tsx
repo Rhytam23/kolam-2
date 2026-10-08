@@ -37,6 +37,11 @@ const App: React.FC = () => {
     }, [path]);
 
     const kit = kitFor(traditionBySlug(path.split('/')[1])?.slug);
+    // The shape of cards and buttons and the border bar follow the art form of the page (see index.css).
+    useEffect(() => {
+        document.documentElement.dataset.culture = kit.slug;
+        return () => { delete document.documentElement.dataset.culture; };
+    }, [kit.slug]);
 
     return (
         <I18nProvider>

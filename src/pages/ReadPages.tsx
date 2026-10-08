@@ -5,6 +5,7 @@ import CultureDivider from '../components/culture/CultureDivider';
 import { Ornament } from '../components/culture/Ornaments';
 import Doorway from '../components/culture/Doorway';
 import Greeting from '../components/culture/Greeting';
+import FrameBar from '../components/culture/FrameBar';
 import { useCulture } from '../components/culture/CultureContext';
 import Reveal from '../components/landing/Reveal';
 import { SectionHeading } from '../components/ui/SectionHeading';
@@ -106,6 +107,7 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
                         No photo to hand? Try the sample: it is this page's own {t.designs[0].title.toLowerCase()}. <Link to={READ_A_PHOTO} className={linkClass}>How reading works</Link>
                     </p>
                 </div>
+                <FrameBar className="absolute bottom-0 inset-x-0" />
             </section>
 
             <div data-paper className="paper-bg">

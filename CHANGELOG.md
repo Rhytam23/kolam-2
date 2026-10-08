@@ -5,6 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags 
 ## 2026-10-06 to 2026-10-09
 
 ### Added
+- Each art form now has its own colour scheme, chosen from its own materials and one colour tradition of its region (indigo dawn for kolam, the red-bordered white sari for alpana, kasavu gold on banana-leaf green for pookalam, pattachitra black for jhoti chita, and so on), its own card, photograph and button shapes, its own border bar, and a centred or split hero. The reasons are on the About page under "Why these colours".
 - A cultural kit for each of the eleven art forms: greeting in its own script, a motif on every heading rule, its own border band between sections, a doorway decoration (toran, flower garland or leaves), its own background pattern, its own verb (draw, paint, lay) and, where the app has the language, a one-time offer to switch the interface to it.
 - Photo repair before reading: quality score for blur, flat contrast, uneven light, grain, glare and size; only the needed fixes are applied; the reader shows what was fixed, a before/after toggle and retake tips.
 - Smooth cubic Bézier tracing of free-hand designs, with a "Tidied" copy (wobbles smoothed, petals of turning patterns restored by majority vote).

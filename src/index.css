@@ -37,6 +37,7 @@ body {
 .floor-bg {
   background-color: rgb(var(--floor));
   background-image:
+    var(--floor-glow, linear-gradient(transparent, transparent)),
     radial-gradient(ellipse at 50% 30%, rgb(var(--floor-2) / 0.75), transparent 70%),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.18 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
@@ -158,4 +159,99 @@ pattern .step-in, pattern .flicker { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .kolam-draw, .fade-in, .sway, .flicker, .step-in { animation: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/*
+ * The character of each art form: the shape of its cards and buttons and its border bar. Each art form's
+ * values are set on [data-culture="slug"], which the app puts on <html> for that art form's pages and a
+ * gallery card puts on itself, so a card of another art form keeps that art form's own look.
+ * Colours come from the theme variables, so they follow the page; see lib/culture.ts and docs/DESIGN_SYSTEM.md.
+ */
+.culture-card {
+  border-radius: var(--radius-card, 1rem);
+  border: var(--card-border, 1px solid rgb(var(--kaavi) / 0.15));
+  box-shadow: var(--card-shadow, 0 1px 2px rgb(0 0 0 / 0.05));
+}
+.culture-card-floor {
+  border-radius: var(--radius-card, 1rem);
+  border: 1px solid rgb(var(--brass) / 0.4);
+}
+.culture-media { border-radius: var(--radius-media, 0.75rem); }
+.btn-shape { border-radius: var(--radius-button, 9999px); }
+
+.culture-bar {
+  height: var(--bar-height, 0);
+  background-image: var(--bar-image, none);
+  background-size: var(--bar-size, auto);
+  background-repeat: repeat-x;
+}
+
+[data-culture="kolam"] {
+  --radius-card: 1rem; --card-border: 3px double rgb(var(--kaavi) / 0.5); --radius-media: 0.75rem; --radius-button: 9999px;
+  /* the kaavi-and-white stripe of a southern temple wall */
+  --bar-height: 14px; --bar-size: 44px 14px;
+  --bar-image: repeating-linear-gradient(90deg, rgb(var(--kaavi)) 0 22px, rgb(var(--rice)) 22px 44px);
+  /* a kolam is drawn before sunrise: a saffron glow at the horizon of the dark floor */
+  --floor-glow: linear-gradient(to top, rgb(var(--brass) / 0.3), transparent 45%);
+}
+[data-culture="muggulu"] {
+  --radius-card: 1.5rem; --card-border: 2px dotted rgb(var(--kaavi) / 0.6); --radius-media: 1rem; --radius-button: 9999px;
+  --bar-height: 22px; --bar-size: 22px 22px;
+  --bar-image: radial-gradient(circle at 50% 50%, rgb(var(--brass-light)) 3px, transparent 3.6px);
+}
+[data-culture="rangoli"] {
+  --radius-card: 1.75rem 0.5rem 1.75rem 0.5rem; --card-border: 1px solid rgb(var(--brass) / 0.35); --radius-media: 1.75rem 0.5rem 1.75rem 0.5rem; --radius-button: 9999px;
+  --bar-height: 14px; --bar-size: 28px 14px;
+  --bar-image: radial-gradient(circle at 50% 0, rgb(var(--brass)) 10px, transparent 10.6px);
+}
+[data-culture="alpana"] {
+  --radius-card: 0.75rem; --card-border: 1px solid rgb(var(--kaavi) / 0.2); --radius-media: 0.5rem; --radius-button: 0.75rem;
+  /* the red border of a white sari: a thick and a thin line */
+  --card-shadow: inset 6px 0 0 rgb(var(--kaavi)), inset -6px 0 0 rgb(var(--kaavi));
+  --bar-height: 21px; --bar-size: auto;
+  --bar-image: linear-gradient(rgb(var(--kaavi)) 0 12px, transparent 12px 18px, rgb(var(--kaavi)) 18px 21px);
+}
+[data-culture="pookalam"] {
+  --radius-card: 1.25rem; --card-border: 2px solid rgb(var(--brass) / 0.8); --radius-media: 9999px; --radius-button: 0.75rem;
+  --card-shadow: 0 0 0 3px rgb(var(--paper)), 0 0 0 5px rgb(var(--brass) / 0.55);
+  /* a kasavu border: gold lines either side of a broad band */
+  --bar-height: 22px; --bar-size: auto;
+  --bar-image: linear-gradient(rgb(var(--brass-light)) 0 3px, transparent 3px 8px, rgb(var(--brass)) 8px 14px, transparent 14px 19px, rgb(var(--brass-light)) 19px 22px);
+}
+[data-culture="mandana"] {
+  --radius-card: 0.75rem; --card-border: 1px solid rgb(var(--kaavi) / 0.3); --radius-media: 9999px 9999px 0.5rem 0.5rem; --radius-button: 0.375rem;
+  --bar-height: 12px; --bar-size: 24px 12px;
+  --bar-image: conic-gradient(from -45deg at bottom, rgb(var(--brass-light)) 90deg, transparent 0);
+}
+[data-culture="aipan"] {
+  --radius-card: 0.25rem; --card-border: 2px dotted rgb(var(--kaavi) / 0.7); --radius-media: 0.25rem; --radius-button: 0.75rem;
+  --bar-height: 10px; --bar-size: 16px 10px;
+  --bar-image: linear-gradient(90deg, rgb(var(--kaavi)) 0 10px, transparent 10px 16px);
+}
+[data-culture="aripan"] {
+  --radius-card: 0.25rem; --card-border: 3px double rgb(var(--kaavi) / 0.6); --radius-media: 0; --radius-button: 0.75rem;
+  --bar-height: 8px; --bar-size: auto;
+  --bar-image: linear-gradient(rgb(var(--brass)) 0 2px, transparent 2px 6px, rgb(var(--kaavi)) 6px 8px);
+}
+[data-culture="jhoti-chita"] {
+  --radius-card: 1rem; --card-border: 2px solid rgb(var(--brass) / 0.6); --radius-media: 1rem; --radius-button: 0.75rem;
+  --card-shadow: inset 0 0 0 4px rgb(var(--paper)), inset 0 0 0 5px rgb(var(--brass) / 0.6);
+  /* a pattachitra vine border */
+  --bar-height: 20px; --bar-size: 60px 20px;
+  --bar-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='20' fill='none' stroke='%23F2C14E' stroke-width='1.6'%3E%3Cpath d='M0 10C10 0 20 20 30 10S50 0 60 10'/%3E%3Cpath d='M15 4C17 1 20 1 21 3M45 16C43 19 40 19 39 17'/%3E%3C/svg%3E");
+}
+[data-culture="chowk-purana"] {
+  --radius-card: 0; --card-border: 1px solid rgb(var(--brass) / 0.8); --radius-media: 0; --radius-button: 0.25rem;
+  --card-shadow: inset 0 0 0 4px rgb(var(--paper)), inset 0 0 0 5px rgb(var(--brass) / 0.7);
+  --bar-height: 12px; --bar-size: 18px 12px;
+  --bar-image: linear-gradient(90deg, rgb(var(--brass)) 0 14px, transparent 14px 18px);
+}
+[data-culture="chittara"] {
+  --radius-card: 0.125rem; --card-border: 2px solid rgb(var(--kaavi) / 0.8); --radius-media: 0; --radius-button: 0.125rem;
+  --bar-height: 20px; --bar-size: 20px 20px;
+  --bar-image: conic-gradient(from -45deg at bottom, rgb(var(--kaavi)) 90deg, transparent 0) 0 0 / 20px 10px, conic-gradient(from 135deg at top, rgb(var(--kaavi)) 90deg, transparent 0) 0 10px / 20px 10px;
+}
+/* Chittara cards and photographs have chamfered corners, like the notched panels of its bands. */
+[data-culture="chittara"] .culture-media {
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
 }

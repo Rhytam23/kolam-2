@@ -31,27 +31,29 @@ export interface CultureKit {
   paper: PatternId;
   /** What a person does with the material: draw, paint or lay. */
   verb: 'draw' | 'paint' | 'lay';
+  /** How the top of its page is composed: text beside the design, or everything centred around it. */
+  hero: 'split' | 'centred';
   /** The interface language to offer, if the app has one for this tradition. */
   suggestedLang?: Exclude<LangCode, 'en'>;
 }
 
 export const KITS: Record<string, CultureKit> = {
-  kolam: { slug: 'kolam', greeting: { word: 'வணக்கம்', lang: 'ta', meaning: 'Welcome' }, ornament: 'diya', band: 'kolam', doorway: 'toran', ground: 'pulli', paper: 'pulli', verb: 'draw', suggestedLang: 'ta' },
-  muggulu: { slug: 'muggulu', greeting: { word: 'నమస్కారం', lang: 'te', meaning: 'Welcome' }, ornament: 'gobbemma', band: { icons: ['gobbemma', 'rosette'], connector: 'dots' }, doorway: 'toran', ground: 'pulli', paper: 'pulli', verb: 'draw', suggestedLang: 'te' },
-  rangoli: { slug: 'rangoli', greeting: { word: 'नमस्कार', lang: 'mr', meaning: 'Welcome' }, ornament: 'lotus', band: { icons: ['diya', 'lotus'], connector: 'dots' }, doorway: 'toran', ground: 'rosette', paper: 'rosette', verb: 'draw' },
-  alpana: { slug: 'alpana', greeting: { word: 'নমস্কার', lang: 'bn', meaning: 'Welcome' }, ornament: 'shankha', band: { icons: ['footprints', 'lotus'], connector: 'wave' }, doorway: 'leaves', ground: 'lotus', paper: 'lotus', verb: 'paint', suggestedLang: 'bn' },
-  pookalam: { slug: 'pookalam', greeting: { word: 'നമസ്കാരം', lang: 'ml', meaning: 'Welcome' }, ornament: 'lamp', band: { icons: ['rosette'], connector: 'line' }, doorway: 'garland', ground: 'rosette', paper: 'rosette', verb: 'lay' },
-  mandana: { slug: 'mandana', greeting: { word: 'नमस्ते', lang: 'hi', meaning: 'Welcome' }, ornament: 'peacock', band: { icons: ['diamond', 'chowk'], connector: 'zigzag' }, doorway: 'none', ground: 'chowk', paper: 'chowk', verb: 'paint', suggestedLang: 'hi' },
-  aipan: { slug: 'aipan', greeting: { word: 'नमस्कार', lang: 'hi', meaning: 'Welcome' }, ornament: 'footprints', band: { icons: ['chowk', 'footprints'], connector: 'dots' }, doorway: 'none', ground: 'chowk', paper: 'chowk', verb: 'paint', suggestedLang: 'hi' },
-  aripan: { slug: 'aripan', greeting: { word: 'प्रणाम', lang: 'mai', meaning: 'Greetings' }, ornament: 'fish', band: { icons: ['fish', 'lotus'], connector: 'wave' }, doorway: 'none', ground: 'creeper', paper: 'creeper', verb: 'paint' },
-  'jhoti-chita': { slug: 'jhoti-chita', greeting: { word: 'ନମସ୍କାର', lang: 'or', meaning: 'Welcome' }, ornament: 'paddy', band: { icons: ['paddy', 'footprints'], connector: 'wave' }, doorway: 'leaves', ground: 'creeper', paper: 'creeper', verb: 'paint' },
-  'chowk-purana': { slug: 'chowk-purana', greeting: { word: 'नमस्ते', lang: 'hi', meaning: 'Welcome' }, ornament: 'chowk', band: { icons: ['chowk', 'lotus'], connector: 'line' }, doorway: 'toran', ground: 'chowk', paper: 'chowk', verb: 'draw', suggestedLang: 'hi' },
-  chittara: { slug: 'chittara', greeting: { word: 'ನಮಸ್ಕಾರ', lang: 'kn', meaning: 'Welcome' }, ornament: 'diamond', band: { icons: ['diamond'], connector: 'zigzag' }, doorway: 'none', ground: 'diamond', paper: 'diamond', verb: 'paint' },
+  kolam: { slug: 'kolam', greeting: { word: 'வணக்கம்', lang: 'ta', meaning: 'Welcome' }, ornament: 'diya', band: 'kolam', doorway: 'toran', ground: 'pulli', paper: 'pulli', hero: 'split', verb: 'draw', suggestedLang: 'ta' },
+  muggulu: { slug: 'muggulu', greeting: { word: 'నమస్కారం', lang: 'te', meaning: 'Welcome' }, ornament: 'gobbemma', band: { icons: ['gobbemma', 'rosette'], connector: 'dots' }, doorway: 'toran', ground: 'pulli', paper: 'pulli', hero: 'split', verb: 'draw', suggestedLang: 'te' },
+  rangoli: { slug: 'rangoli', greeting: { word: 'नमस्कार', lang: 'mr', meaning: 'Welcome' }, ornament: 'lotus', band: { icons: ['diya', 'lotus'], connector: 'dots' }, doorway: 'toran', ground: 'rosette', paper: 'rosette', hero: 'centred', verb: 'draw' },
+  alpana: { slug: 'alpana', greeting: { word: 'নমস্কার', lang: 'bn', meaning: 'Welcome' }, ornament: 'shankha', band: { icons: ['footprints', 'lotus'], connector: 'wave' }, doorway: 'leaves', ground: 'lotus', paper: 'lotus', hero: 'centred', verb: 'paint', suggestedLang: 'bn' },
+  pookalam: { slug: 'pookalam', greeting: { word: 'നമസ്കാരം', lang: 'ml', meaning: 'Welcome' }, ornament: 'lamp', band: { icons: ['rosette'], connector: 'line' }, doorway: 'garland', ground: 'rosette', paper: 'rosette', hero: 'centred', verb: 'lay' },
+  mandana: { slug: 'mandana', greeting: { word: 'नमस्ते', lang: 'hi', meaning: 'Welcome' }, ornament: 'peacock', band: { icons: ['diamond', 'chowk'], connector: 'zigzag' }, doorway: 'none', ground: 'chowk', paper: 'chowk', hero: 'split', verb: 'paint', suggestedLang: 'hi' },
+  aipan: { slug: 'aipan', greeting: { word: 'नमस्कार', lang: 'hi', meaning: 'Welcome' }, ornament: 'footprints', band: { icons: ['chowk', 'footprints'], connector: 'dots' }, doorway: 'none', ground: 'chowk', paper: 'chowk', hero: 'split', verb: 'paint', suggestedLang: 'hi' },
+  aripan: { slug: 'aripan', greeting: { word: 'प्रणाम', lang: 'mai', meaning: 'Greetings' }, ornament: 'fish', band: { icons: ['fish', 'lotus'], connector: 'wave' }, doorway: 'none', ground: 'creeper', paper: 'creeper', hero: 'centred', verb: 'paint' },
+  'jhoti-chita': { slug: 'jhoti-chita', greeting: { word: 'ନମସ୍କାର', lang: 'or', meaning: 'Welcome' }, ornament: 'paddy', band: { icons: ['paddy', 'footprints'], connector: 'wave' }, doorway: 'leaves', ground: 'creeper', paper: 'creeper', hero: 'centred', verb: 'paint' },
+  'chowk-purana': { slug: 'chowk-purana', greeting: { word: 'नमस्ते', lang: 'hi', meaning: 'Welcome' }, ornament: 'chowk', band: { icons: ['chowk', 'lotus'], connector: 'line' }, doorway: 'toran', ground: 'chowk', paper: 'chowk', hero: 'split', verb: 'draw', suggestedLang: 'hi' },
+  chittara: { slug: 'chittara', greeting: { word: 'ನಮಸ್ಕಾರ', lang: 'kn', meaning: 'Welcome' }, ornament: 'diamond', band: { icons: ['diamond'], connector: 'zigzag' }, doorway: 'none', ground: 'diamond', paper: 'diamond', hero: 'split', verb: 'paint' },
 };
 
 /** Pages that belong to no one art form (home, studio, about): the lamp, with every band taking its turn. */
 export const HOME_KIT: CultureKit = {
-  slug: 'home', greeting: { word: 'स्वागत', lang: 'hi', meaning: 'Welcome' }, ornament: 'diya', band: 'kolam', doorway: 'toran', ground: 'pulli', paper: 'pulli', verb: 'draw',
+  slug: 'home', greeting: { word: 'स्वागत', lang: 'hi', meaning: 'Welcome' }, ornament: 'diya', band: 'kolam', doorway: 'toran', ground: 'pulli', paper: 'pulli', hero: 'split', verb: 'draw',
 };
 
 export const kitFor = (slug?: string): CultureKit => (slug && KITS[slug]) || HOME_KIT;

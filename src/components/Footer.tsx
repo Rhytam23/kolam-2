@@ -1,5 +1,6 @@
 import React from 'react';
 import CultureDivider from './culture/CultureDivider';
+import FrameBar from './culture/FrameBar';
 import { Ornament } from './culture/Ornaments';
 import { useCulture } from './culture/CultureContext';
 import { KIT_LIST } from '../lib/culture';
@@ -13,7 +14,8 @@ const REPO = 'https://github.com/Rhytam23/kolam-2';
 const Footer: React.FC = () => {
     const { ornament } = useCulture();
     return (
-    <footer className="floor-bg text-rice pt-10 pb-8 px-4">
+    <footer className="floor-bg text-rice pt-0 pb-8 px-4">
+        <FrameBar className="-mx-4 mb-10" />
         <CultureDivider tone="rice" spacing={40} className="mb-10" index={8} />
         <nav aria-label="Art forms and pages" className="container mx-auto mb-10 text-sm">
             <p className="font-semibold text-brass-light mb-3">Art forms</p>

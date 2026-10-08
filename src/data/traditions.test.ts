@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { READ_A_PHOTO, ROUTES, TRADITIONS, readerPath, withArticle } from './traditions';
+import { COLOUR_STORY } from './colourStory';
 import { buildDesign } from './designs';
 import { DEFAULT_THEME, contrast, type Theme } from '../lib/theme';
 import { PALETTES } from '../lib/colours';
@@ -49,6 +50,30 @@ describe('traditions', () => {
     const looks = TRADITIONS.map(t => `${t.theme.floor}|${t.theme.brass}`);
     expect(new Set(looks).size).toBe(TRADITIONS.length);
     expect(TRADITIONS.every(t => t.theme.floor !== DEFAULT_THEME.floor)).toBe(true);
+  });
+
+  it('gives every art form a ground of its own, clearly apart from the others', () => {
+    const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    for (let i = 0; i < TRADITIONS.length; i++) {
+      for (let j = i + 1; j < TRADITIONS.length; j++) {
+        const a = rgb(TRADITIONS[i].theme.floor), b = rgb(TRADITIONS[j].theme.floor);
+        const distance = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        expect(distance, `${TRADITIONS[i].slug} and ${TRADITIONS[j].slug}`).toBeGreaterThanOrEqual(25);
+      }
+    }
+  });
+
+  it('keeps its ornaments visible on its ground (3:1)', () => {
+    for (const t of TRADITIONS) expect(contrast(t.theme.brass, t.theme.floor), t.slug).toBeGreaterThanOrEqual(3);
+  });
+
+  it('explains every art form\'s colours', () => {
+    for (const t of TRADITIONS) {
+      const story = COLOUR_STORY[t.slug];
+      expect(story, t.slug).toBeTruthy();
+      expect(story.names).toHaveLength(4);
+      expect(story.reason.length).toBeGreaterThan(40);
+    }
   });
 
   it('offer designs and colours that exist and can be drawn', () => {

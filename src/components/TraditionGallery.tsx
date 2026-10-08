@@ -18,10 +18,11 @@ export const TraditionCard: React.FC<{ tradition: Tradition; delay?: number } & 
     <Reveal as="li" delay={delay}>
         <Link
             to={to ? to(t) : `/${t.slug}`}
-            className="group block h-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-black/10 transition hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-brass-light"
+            data-culture={t.slug}
+            className="group block h-full overflow-hidden culture-card shadow-lg ring-1 ring-black/10 transition hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-brass-light"
             style={{ backgroundColor: t.theme.floor }}
         >
-            <div className="relative aspect-square" style={{ backgroundColor: presetBackground(t.designs[0].spec) }}>
+            <div className="relative aspect-square culture-media" style={{ backgroundColor: presetBackground(t.designs[0].spec) }}>
                 <div className="absolute inset-[6%]"><DesignFrame spec={t.designs[0].spec} rough={false} /></div>
                 <span className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-black/10" style={{ backgroundColor: t.theme.floor }} aria-hidden>
                     <Ornament id={kitFor(t.slug).ornament} className="h-6 w-6" color={t.theme.brassLight} />
