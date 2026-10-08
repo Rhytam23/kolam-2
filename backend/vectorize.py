@@ -44,7 +44,28 @@ def _smooth_contour(contour: np.ndarray, sigma: float) -> np.ndarray:
     return out[:, None, :].astype(np.float32)
 
 
-def trace_mask(mask: np.ndarray, min_area: float = 4.0, smooth: float = 0.0, edge_sigma: float = 1.6) -> str:
+def _grow_to_edge(contour: np.ndarray, mask: np.ndarray, distance: float = 0.5) -> np.ndarray:
+    """findContours returns the centres of the edge pixels; the real edge of the shape lies half a pixel further out.
+    Without this every shape (and especially a thin line) comes out too thin. Moves each point outward along the
+    local normal, working out which side is 'outside' by looking at the mask."""
+    pts = contour[:, 0, :].astype(np.float64)
+    if len(pts) < 3:
+        return contour
+    tangent = np.roll(pts, -1, axis=0) - np.roll(pts, 1, axis=0)
+    length = np.maximum(np.linalg.norm(tangent, axis=1), 1e-9)
+    normal = np.stack([tangent[:, 1], -tangent[:, 0]], axis=1) / length[:, None]
+    h, w = mask.shape
+    probe = np.rint(pts + normal * 1.0).astype(int)
+    inside = (probe[:, 0] >= 0) & (probe[:, 0] < w) & (probe[:, 1] >= 0) & (probe[:, 1] < h)
+    hits = np.zeros(len(pts), bool)
+    hits[inside] = mask[probe[inside, 1], probe[inside, 0]] > 0
+    # If most probes land on the shape the normal points inward: flip it.
+    if hits[inside].mean() > 0.5 if inside.any() else False:
+        normal = -normal
+    return (pts + normal * distance)[:, None, :].astype(np.float32)
+
+
+def trace_mask(mask: np.ndarray, min_area: float = 4.0, smooth: float = 0.0, edge_sigma: float = 0.6) -> str:
     """Outline a binary mask as a smooth SVG path in 0-1 coordinates (draw with fill-rule="evenodd").
 
     smooth > 0 blurs the mask first, giving rounder, tidier shapes (used for the 'tidied' version).
@@ -55,9 +76,9 @@ def trace_mask(mask: np.ndarray, min_area: float = 4.0, smooth: float = 0.0, edg
         work = (cv2.GaussianBlur(work.astype(np.float32), (0, 0), smooth) > 0.5).astype(np.uint8)
     contours, _ = cv2.findContours(work, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
     contours = [c for c in contours if cv2.contourArea(c) >= min_area and len(c) >= 6]
-    contours = [_smooth_contour(c, edge_sigma) for c in contours]
+    contours = [_grow_to_edge(_smooth_contour(c, edge_sigma), work) for c in contours]
     # Curves need far fewer anchors than straight polygons: simplify gently, more if the budget demands.
-    epsilon = 0.7 + smooth * 0.4
+    epsilon = 0.6 + smooth * 0.4
     while True:
         simplified = [cv2.approxPolyDP(c.astype(np.float32), epsilon, True)[:, 0, :].astype(np.float64) for c in contours]
         if sum(len(c) for c in simplified) <= MAX_PATH_POINTS or epsilon > 10:

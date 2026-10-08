@@ -12,7 +12,7 @@ from vectorize import trace_mask as trace
 WORK_SIDE = 900          # images are reduced to this size for colour work
 MAX_COLOURS = 8
 SMOOTH = 0.0            # blur (in source pixels) applied to clean drawings before deciding colours
-INK_BIAS = 0.38         # how far from the ground to the ink a pixel must be to count as ink
+INK_LEVELS = (0.44, 0.5, 0.56)   # where along ground-to-ink an edge may sit; the one that best reproduces the picture wins
 GROUND_SHADE = 70       # a photo colour this close to the ground colour is a shade of the ground (shadow), not a drawing
 HIGH_SIDE = 1500         # the long side colours are decided at, after enlarging, so edges land between pixels
 FIT_SAMPLE = 60_000      # pixels the colours are learned from; every pixel is then given its nearest colour
@@ -123,7 +123,7 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
     if graphic and SMOOTH > 0:
         # Scan and compression speckle would make ragged edges; a light blur at the enlarged size removes it.
         big = cv2.GaussianBlur(big, (0, 0), SMOOTH * factor)
-    hi = _decide(big, real_centres, graphic)
+    hi = _decide(big, small, real_centres, graphic)
 
     border = np.concatenate([hi[0], hi[-1], hi[:, 0], hi[:, -1]])
     border_share = {int(c): float(np.mean(border == c)) for c in np.unique(border)}
@@ -159,10 +159,13 @@ def colour_masks(image_bgr: np.ndarray) -> tuple[list[dict], list[tuple[str, np.
     return palette, layers[::-1]
 
 
-def _decide(big: np.ndarray, centres: np.ndarray, graphic: bool) -> np.ndarray:
-    """The colour of every pixel of the enlarged picture. With two colours, a pixel counts as the second (the
-    drawn one) once it is INK_BIAS of the way from the ground to it: thin lines are lighter than their true
-    colour after anti-aliasing, so halfway would lose them."""
+def _decide(big: np.ndarray, small: np.ndarray, centres: np.ndarray, graphic: bool) -> np.ndarray:
+    """The colour of every pixel of the enlarged picture.
+
+    With two colours the drawn colour's membership (0 at the ground, 1 at the ink) is thresholded. Thin lines are
+    lighter than their true colour after anti-aliasing, so the level is not assumed: each candidate level is drawn,
+    shrunk back to the picture's own size and compared with the picture, and the closest one is kept.
+    """
     flat = big.reshape(-1, 3).astype(np.float32)
     if graphic and len(centres) == 2:
         # Which of the two is the ground is not known yet: the one most pixels are nearest to.
@@ -170,8 +173,17 @@ def _decide(big: np.ndarray, centres: np.ndarray, graphic: bool) -> np.ndarray:
         ground = int(np.argmax(np.bincount(votes, minlength=2)))
         a, b = centres[ground], centres[1 - ground]
         axis = b - a
-        t = ((flat - a) @ axis) / max(float(axis @ axis), 1e-6)
-        return np.where(t > INK_BIAS, 1 - ground, ground).astype(np.int32).reshape(big.shape[:2])
+        denom = max(float(axis @ axis), 1e-6)
+        t_big = (((flat - a) @ axis) / denom).reshape(big.shape[:2])
+        t_small = np.clip((((small.reshape(-1, 3).astype(np.float32) - a) @ axis) / denom).reshape(small.shape[:2]), 0, 1)
+        h, w = small.shape[:2]
+
+        def error(level: float) -> float:
+            drawn = cv2.resize((t_big > level).astype(np.float32), (w, h), interpolation=cv2.INTER_AREA)
+            return float(np.mean((drawn - t_small) ** 2))
+
+        level = min(INK_LEVELS, key=error)
+        return np.where(t_big > level, 1 - ground, ground).astype(np.int32)
     return _nearest(flat, centres).reshape(big.shape[:2])
 
 
@@ -215,23 +227,19 @@ def tidy_layers(masks: list[tuple[str, np.ndarray]], radial: dict | None, ink: n
 
 
 def trace_fidelity(image_bgr: np.ndarray, masks: list[tuple[str, np.ndarray]], palette: list[dict]) -> float | None:
-    """How closely the drawn colours match the picture, 0 to 1: the share of the picture's pixels whose colour
-    decision (ground or one of the drawn colours) the traced layers reproduce, scored on the layers' own grid."""
+    """How closely the trace matches the picture, 0 to 1. The traced layers are drawn, shrunk to the picture's own
+    size, and compared pixel by pixel with the picture (1 minus the mean difference), so thick or missing lines
+    both cost points."""
     if not masks:
         return None
-    h, w = masks[0][1].shape
-    small = cv2.resize(image_bgr, (w, h), interpolation=cv2.INTER_AREA)
     ground = next((p for p in palette if p['background']), None)
-    colours = [m[0] for m in masks]
-    hexes = ([ground['hex']] if ground else []) + colours
-    centres = np.array([[int(hx[5:7], 16), int(hx[3:5], 16), int(hx[1:3], 16)] for hx in hexes], np.float32)
-    truth = _nearest(small.reshape(-1, 3).astype(np.float32), centres).reshape(h, w)
-    predicted = np.zeros((h, w), np.int32)            # 0 = ground when there is one
-    offset = 1 if ground else 0
-    for i, (_, mask) in enumerate(masks):
-        predicted[mask.astype(bool)] = i + offset
-    # Edge pixels are blended and ambiguous in the source; judge only pixels at least 2 px away from any edge.
-    edge = cv2.dilate(cv2.Canny(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY), 40, 120), np.ones((5, 5), np.uint8)) > 0
-    # Thin features are all edge, so they would never be judged: count them too, at a lower weight.
-    weight = np.where(edge, 0.35, 1.0)
-    return round(float((weight * (truth == predicted)).sum() / weight.sum()), 3)
+    if ground is None:
+        return None
+    h, w = image_bgr.shape[:2]
+    rgb = lambda hx: np.array([int(hx[5:7], 16), int(hx[3:5], 16), int(hx[1:3], 16)], np.float32)   # BGR order
+    canvas = np.tile(rgb(ground['hex']), (h, w, 1))
+    for colour, mask in masks:                                                   # big areas first, as they are drawn
+        cover = cv2.resize(mask.astype(np.float32), (w, h), interpolation=cv2.INTER_AREA)[..., None]
+        canvas = canvas * (1 - cover) + rgb(colour) * cover
+    difference = np.abs(canvas - image_bgr.astype(np.float32)).mean(axis=2) / 255.0
+    return round(float(1.0 - difference.mean() / 0.5), 3)    # 0.5 mean difference = as bad as a blank picture

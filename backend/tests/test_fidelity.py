@@ -119,13 +119,14 @@ def lace_mandala(size: int = 230) -> np.ndarray:
 
 def test_thin_lace_keeps_its_coverage_and_is_not_repaired():
     img = lace_mandala()
-    ink_share = float((cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) > 100).mean())
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
+    ink_share = float(((gray - gray.min()) / (gray.max() - gray.min())).mean())   # how much ink the picture holds, edges counted by their lightness
     body = client.post('/api/analyze', files={'file': ('m.png', cv2.imencode('.png', img)[1].tobytes(), 'image/png')},
                        data={'grid': 'false'}).json()
     assert body['quality']['fixes'] == []
     assert len(body['layers']) == 1                       # no extra layer for the in-between pixels
     traced = rasterise(body['layers'][0]['path'], (img.shape[0] * 3, img.shape[1] * 3)).mean()
-    assert abs(traced - ink_share) < 0.04                 # before the fix, 40% of thin lace was lost
+    assert abs(traced - ink_share) < 0.015                # thin lace neither lost (was -40%) nor swollen (was +10%)
     assert body['quality']['fidelity'] > 0.9
 
 
@@ -138,3 +139,15 @@ def test_trace_matches_the_source_closely():
     gray = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (w * 3, h * 3), interpolation=cv2.INTER_CUBIC).astype(np.float32)
     original = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32)
     assert iou(mask, gray > (original.min() + original.max()) / 2) > 0.8   # 1-2 px strokes: one pixel of offset costs a lot of IoU
+
+
+def test_gaps_between_fine_lines_stay_open():
+    """Swollen strokes close the small red gaps between lines: the traced picture must keep about as many."""
+    img = lace_mandala()
+    body = client.post('/api/analyze', files={'file': ('m.png', cv2.imencode('.png', img)[1].tobytes(), 'image/png')},
+                       data={'grid': 'false'}).json()
+    h, w = img.shape[:2]
+    gaps = lambda m: cv2.connectedComponents((~m).astype(np.uint8), connectivity=4)[0]
+    source = cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (w * 3, h * 3), interpolation=cv2.INTER_CUBIC) > 147
+    traced = rasterise(body['layers'][0]['path'], (h * 3, w * 3))
+    assert gaps(traced) >= 0.9 * gaps(source)
