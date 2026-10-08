@@ -37,7 +37,17 @@ No sample photo at hand? Press **Try a sample** in the analyzer.
 
 ## How photos are read
 
-Poor photos are repaired first (uneven light, flat contrast, grain, softness, tiny size) and the response says what was done. Free-hand designs are traced as smooth curves in their real colours, with a tidied copy to switch to; dot designs are read as a dot grid. Very poor photos still give lower confidence plus tips for retaking. See [docs/architecture.md](docs/architecture.md) for the steps and limits, including how the server protects itself when many people read photos at once.
+`POST /api/analyze` runs these steps on a small worker pool, so the site stays responsive while photos are read.
+
+1. **Guards:** per-visitor rate limit (the visitor is the last `X-Forwarded-For` entry behind a proxy), type and size limits, a pixel limit read from the file header, then a cache lookup (same photo and settings gives an instant answer).
+2. **Queue:** at most `MAX_CONCURRENT` photos are read at once and up to `MAX_WAITING` wait. Beyond that the server answers `503` with `Retry-After`, and the web app retries by itself.
+3. **Reduce and straighten:** the long side is reduced to `MAX_SIDE`; a sheet photographed at an angle is flattened.
+4. **Photo repair** (`backend/enhance.py`): blur, flat contrast, uneven light (a fitted lighting plane), grain, glare and small size are measured and only the needed fixes applied. Clean drawings and scans are never "repaired", except to remove a shadow across the whole sheet. For dot designs both versions are read and the better reading wins. The response lists what was fixed and gives retake tips.
+5. **Reading:** dot designs (kolam, muggulu) go through dot detection, lattice fit and strand reading. Everything else is traced.
+6. **Tracing** (`backend/drawing.py`, `backend/vectorize.py`): the real colours are found first and every pixel goes to the nearest one, so anti-aliased pixels along thin lines are not lost. Colours are decided on an enlarged picture so edges fall between pixels; for two-colour drawings the ink level is chosen by drawing each candidate, shrinking it back to the picture's size and keeping the closest. Each colour becomes smooth cubic Béziers with sharp corners kept. A **tidied** copy smooths wobbles and, for turning patterns, restores petals by majority vote.
+7. **Drawing guide:** guide dots sit on corners and curve anchors, outlines are numbered from the centre outwards, and Practice lets a person tap through them.
+
+Limits: no method reproduces every photo exactly. A picture can only be traced as finely as it holds detail (a 223 px image has one-pixel lines), and blurry, tiny or heavily shadowed photos get a lower score and tips for retaking. Dot grids are capped at 25×25 dots and must be rectangular or diamond. Interface translations (`src/lib/i18n.tsx`) cover the navigation and the photo reader and should be reviewed by native speakers. On a free host with one shared CPU, many people reading photos at the very same moment will queue.
 
 ## Privacy and hosting
 
@@ -131,12 +141,14 @@ offline; reading a photo needs a connection.
 | `preset` | `balanced` (default), `clean-scan`, `phone-photo`, `noisy-background` |
 | `deskew` | `true` (default): straighten a photographed sheet. The corrected image is returned as `image` |
 | `dots` | optional JSON list of `{x, y}` (0–1): use these dots instead of detecting them |
+| `grid` | `true` (default); `false` skips the dot-grid search, for art forms drawn without dots |
 
 The response includes `dots`, `lattice` (grid size, origin and axes in image coordinates),
 `design` (see below), `symmetry` (mirror/rotation scores of the drawing), `radial` (turning
 symmetry: `order` N for N-fold), `palette` (main colours, their share and which one is the ground),
-`layers` (each colour traced as an SVG path in 0–1 coordinates), `confidence` (dot-grid reading only)
-and `message`. Free-hand designs return `lattice: null` and `design: null`.
+`layers` (each colour traced as SVG Bézier paths in 0–1 coordinates), `tidied` (a cleaner copy of `layers`, free-hand designs only),
+`quality` (photo score before and after repair, what was fixed, retake tips, and `fidelity`: how closely the trace matches the picture, 0–1),
+`confidence` (dot-grid reading only) and `message`. When the server is busy it answers `503` with `Retry-After`. Free-hand designs return `lattice: null` and `design: null`.
 
 ## The `.kolam.json` format
 
@@ -171,12 +183,17 @@ src/data/designs.ts         design presets, built and opened in the studio
 src/pages/                  the landing, one page and one photo reader per art form, /read-a-photo, /studio, /about
 src/lib/router.ts           page addresses without a router library
 src/lib/theme.ts            each page's colours, applied as CSS variables
+src/lib/fonts.ts            each art form's heading typeface
+src/lib/i18n.tsx            interface languages (English, Bengali, Tamil, Telugu, Hindi)
+src/utils/traced.ts         guide dots and drawing order for designs read from photos
 src/lib/colours.ts          traditional colours, materials and colour sets
 src/components/             analyzer, generator, walkthrough and page sections
 src/lib/                    API client and .kolam.json helpers
 backend/detection.py        dot detection (OpenCV)
 backend/principles.py       lattice fit, crossing/turn reading, symmetry
-backend/drawing.py          turning symmetry, colour palette and traced layers for any design
+backend/drawing.py          turning symmetry, colour palette, traced and tidied layers for any design
+backend/enhance.py          photo quality check and repair
+backend/vectorize.py        masks to smooth Bézier outlines
 backend/main.py             FastAPI app; also serves the built frontend
 public/                     app icons, manifest and the offline service worker (sw.js)
 render.yaml                 one-click hosting on Render
