@@ -95,26 +95,34 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
     curvy = 1.0 - straightness(img)
     straight = 1.0 - curvy
     # Turning symmetry is measured on everything that differs from the ground, whatever its brightness, so that a
-    # design in light and dark colours is not read as only its darker half.
-    if ground:
+    # design in light and dark colours is not read as only its darker half. That only works when the ground is
+    # really a large part of the picture; a design that fills the whole sheet keeps the reading already made.
+    reader_turning = bool(radial and (radial['circular'] or radial['order'] >= 6))
+    everything = None
+    if ground and ground['share'] >= 0.4:
         ground_bgr = np.array([int(ground['hex'][i:i + 2], 16) for i in (5, 3, 1)], np.float32)
-        everything = (np.linalg.norm(img.astype(np.float32) - ground_bgr, axis=2) > 45).astype(np.uint8)
-    else:
-        everything = ink.astype(np.uint8)
-    radial = radial_symmetry(everything.astype(bool)) or radial
+        mask = np.linalg.norm(img.astype(np.float32) - ground_bgr, axis=2) > 45
+        if 0.01 < mask.mean() < 0.8:
+            everything = mask
+            radial = radial_symmetry(mask) or radial
+            ink = mask
     order = radial['order'] if radial else 1
     circular = bool(radial and radial['circular'])
-    ink = everything.astype(bool)
     turning = circular or order >= 6
-    square = _squareness(ink) > 0.85 and order in (4, 8, 12, 16)
+    square = _squareness(ink) > 0.85 and order in (4, 8, 12, 16) and straight > 0.35
 
     grid = lattice or probe
     fit = grid['fit'] if grid else 0.0
     dots = dot_count if lattice else (probe['count'] if probe else 0)
-    # A real dot grid is at least 3x3, mostly filled, and (being square) cannot turn 5, 6, 8... ways about a centre:
+    # A real dot grid is at least 3x3, well filled (a diamond fills about half its square), and (being square) cannot turn 5, 6, 8... ways about a centre:
     # that is the sign of petals and rings whose crossings only look like dots.
     dotted = bool(grid) and fit >= 0.6 and dots >= 9 and grid['rows'] >= 3 and grid['cols'] >= 3 \
-        and dots >= 0.6 * grid['rows'] * grid['cols'] and not turning
+        and dots >= 0.4 * grid['rows'] * grid['cols'] and not reader_turning
+    if dotted and not lattice:
+        # Only a quick probe found it (the reader did not look for dots): demand a bigger, sparser grid, since
+        # crossings in a dense colourful design can look like dots.
+        covered = 1.0 - (ground['share'] if ground else 1.0)
+        dotted = dots >= 16 and grid['rows'] >= 4 and grid['cols'] >= 4 and dots >= 0.6 * grid['rows'] * grid['cols'] and covered < 0.3
 
     if dotted:
         add('kolam', 0.75, 'a regular grid of dots')
@@ -123,11 +131,15 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
             add('muggulu', 0.25, 'straight lines running through the dots')
         else:
             add('kolam', 0.1, 'lines that curve around the dots')
-        if len(bright_hues) >= 3:
-            add('muggulu', 0.15, 'several bright colours on the dot grid')
+        if sum(1 for _, s_, v_, _ in drawn if s_ > 0.35 and v_ > 0.3) >= 3:
+            add('muggulu', 0.3, 'several bright colours on the dot grid')
     dark_ground = ground_v < 0.28
     yellow_ground = 35 <= ground_h <= 70 and ground_s > 0.55 and ground_v > 0.7
     cream_ground = ground_v > 0.72 and 0.08 < ground_s <= 0.55 and 15 <= ground_h <= 60
+    mud_ground = 0.28 <= ground_v < 0.5 and 0.15 < ground_s <= 0.75 and 5 <= ground_h <= 45
+    accents = any(s_ > 0.45 and v_ > 0.4 and (h_ <= 20 or h_ >= 340 or 35 <= h_ <= 70) and share >= 0.008 for h_, s_, v_, share in drawn)
+    dark_ink = any(v_ < 0.25 and share >= 0.05 for _, _, v_, share in drawn)
+    yellow_drawn = any(35 <= h_ <= 70 and s_ > 0.25 and v_ > 0.7 and share >= 0.02 for h_, s_, v_, share in drawn)
     red_ground = (ground_h <= 22 or ground_h >= 340) and ground_s > 0.4 and 0.25 <= ground_v <= 0.8
     if not dotted:
         if dark_ground:
@@ -136,6 +148,15 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
                 add('jhoti-chita', 0.2, 'white lines on it, like rice paste on dark mud')
         if yellow_ground:
             add('chittara', 0.6, 'a turmeric-yellow ground')
+        elif yellow_drawn and dark_ink:
+            add('chittara', 0.55, 'yellow and black on a light ground')
+        if mud_ground and white_ink:
+            if accents:
+                add('jhoti-chita', 0.3, 'white lines on a dark earth ground')
+                add('aripan', 0.6, 'white lines with touches of red or yellow on earth')
+            else:
+                add('jhoti-chita', 0.5, 'white lines only, on a dark earth ground')
+            add('alpana', 0.2, 'white paste lines on earth')
         if cream_ground and len(bright_hues) >= 2:
             add('aripan', 0.55, 'a paper-like ground with fine red, yellow or blue lines')
         if red_ground:
@@ -148,7 +169,7 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
             if straight > 0.4:
                 add('mandana', 0.2, 'zig-zag and straight-edged motifs')
                 add('aipan', 0.15, 'straight-edged, chowki-like motifs')
-        if white_ink and not dark_ground:
+        if white_ink and not dark_ground and not mud_ground:
             add('alpana', 0.35, 'white paste lines')
             if curvy > 0.65:
                 add('alpana', 0.2, 'flowing, curved lines')
@@ -172,5 +193,5 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
     ranked = sorted(SLUGS, key=lambda s: -score[s])
     top = score[ranked[0]]
     out = [{'slug': s, 'score': round(min(score[s], 1.0), 2), 'reasons': why[s]} for s in ranked[:3]]
-    sure = top >= 0.6 and top - score[ranked[1]] >= 0.15
+    sure = top >= 0.7 and top - score[ranked[1]] >= 0.2
     return {'ranked': out, 'sure': sure}

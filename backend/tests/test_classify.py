@@ -102,3 +102,28 @@ def test_tiny_picture_is_refused_politely():
     ok, buf = cv2.imencode('.png', np.zeros((5, 5, 3), np.uint8))
     r = TestClient(main.app).post('/api/analyze', files={'file': ('t.png', buf.tobytes(), 'image/png')})
     assert r.status_code == 422 and 'too small' in r.json()['detail']
+
+
+# The app's own sample design of each art form, as the reader sends it. Each must put its own art form first, except
+# where colour alone cannot separate two neighbours: then it must be in the first two and the answer must not be "sure".
+SAMPLES = {
+    'kolam': True, 'muggulu': True, 'rangoli': True, 'alpana': True, 'pookalam': True, 'mandana': True,
+    'aripan': True, 'jhoti-chita': True, 'chowk-purana': True, 'chittara': True, 'aipan': False,
+}
+
+
+def test_each_art_forms_own_sample_is_recognised():
+    import pathlib
+    from fastapi.testclient import TestClient
+    import main
+    client = TestClient(main.app)
+    folder = pathlib.Path(__file__).parent / 'fixtures'
+    for slug, must_lead in SAMPLES.items():
+        grid = 'true' if slug in ('kolam', 'muggulu') else 'false'
+        r = client.post('/api/analyze', files={'file': (f'{slug}.png', (folder / f'{slug}.png').read_bytes(), 'image/png')},
+                        data={'grid': grid}).json()['resemblance']
+        names = [x['slug'] for x in r['ranked']]
+        if must_lead:
+            assert names[0] == slug, (slug, r)
+        else:
+            assert slug in names[:2] and not r['sure'], (slug, r)
