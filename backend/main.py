@@ -152,6 +152,8 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
     img = cv2.imdecode(np.frombuffer(contents, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise HTTPException(status_code=400, detail='Could not read the image')
+    if min(img.shape[:2]) < 16:
+        raise HTTPException(status_code=422, detail='The picture is too small to read. Use one at least 16 pixels on each side, ideally much larger.')
     longest = max(img.shape[:2])
     if longest > config.MAX_SIDE:
         factor = config.MAX_SIDE / longest

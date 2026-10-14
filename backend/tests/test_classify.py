@@ -80,7 +80,7 @@ def test_result_shape_is_always_valid():
         res = top(photo)
         if res is None:
             continue
-        assert 1 <= len(res['ranked']) <= 3 and all(x['slug'] in SLUGS for x in res['ranked'])
+        assert len(res['ranked']) <= 3 and all(x['slug'] in SLUGS for x in res['ranked'])
         assert isinstance(res['sure'], bool)
 
 
@@ -90,3 +90,15 @@ def test_straightness_tells_squares_from_circles():
     ci = np.full((400, 400, 3), 255, np.uint8)
     cv2.circle(ci, (200, 200), 140, (0, 0, 0), 8)
     assert straightness(sq) > 0.7 > 0.4 > straightness(ci) - 0.0 or straightness(sq) > straightness(ci) + 0.3
+
+
+def test_blank_picture_has_nothing_to_compare():
+    assert top(np.full((300, 300, 3), 255, np.uint8)) == {'ranked': [], 'sure': False}
+
+
+def test_tiny_picture_is_refused_politely():
+    from fastapi.testclient import TestClient
+    import main
+    ok, buf = cv2.imencode('.png', np.zeros((5, 5, 3), np.uint8))
+    r = TestClient(main.app).post('/api/analyze', files={'file': ('t.png', buf.tobytes(), 'image/png')})
+    assert r.status_code == 422 and 'too small' in r.json()['detail']

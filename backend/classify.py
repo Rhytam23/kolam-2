@@ -78,6 +78,8 @@ def _squareness(mask: np.ndarray) -> float:
 def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice: dict | None, dot_count: int,
              ink: np.ndarray, probe: dict | None = None) -> dict:
     """Ranks the traditions by resemblance. Returns {'ranked': [{slug, score, reasons}], 'sure': bool}."""
+    if not any(not p.get('background') and p['share'] >= 0.005 for p in palette):
+        return {'ranked': [], 'sure': False}          # nothing drawn on it, so nothing to compare
     score = {s: 0.05 for s in SLUGS}
     why: dict[str, list[str]] = {s: [] for s in SLUGS}
 
