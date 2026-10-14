@@ -21,7 +21,7 @@ interface CardLink {
 }
 
 /** A card for each art form, in its own colours, with its signature design. */
-export const TraditionCard: React.FC<{ tradition: Tradition; delay?: number } & CardLink> = ({ tradition: t, delay = 0, to, action = 'Explore and draw' }) => (
+const TraditionCard: React.FC<{ tradition: Tradition; delay?: number } & CardLink> = ({ tradition: t, delay = 0, to, action = 'Explore and draw' }) => (
     <Reveal as="li" delay={delay}>
         <Link
             to={to ? to(t) : `/${t.slug}`}

@@ -20,7 +20,7 @@ import type { Design, Lattice, Point } from '../types/kolam';
 
 type Port = 'x' | 'p' | 'j' | 'b';
 
-export interface LoopPoint {
+interface LoopPoint {
   X: number;
   Y: number;
   inX: number;
@@ -273,7 +273,7 @@ export const loopPaths = (d: Design, unit = 1, pad = 0) => {
 export const designPath = (d: Design, unit = 1, pad = 0) => loopPaths(d, unit, pad).join('');
 
 /** One bend of a line: the stretch that curves round a single dot. */
-export interface Bend {
+interface Bend {
   dot: Point;
   path: string;
 }
@@ -321,7 +321,7 @@ export const designDots = (d: Design): Point[] => {
   return dots;
 };
 
-export interface SvgOptions {
+interface SvgOptions {
   unit?: number;
   background?: string;
   /** One colour, or a list used loop by loop (as in coloured festival kolams). */

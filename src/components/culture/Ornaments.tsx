@@ -140,4 +140,3 @@ export const Ornament: React.FC<{ id: IconId; className?: string; color?: string
     </svg>
   );
 
-export const ICON_IDS = Object.keys({ diya: 1, ...SHAPES }) as IconId[];

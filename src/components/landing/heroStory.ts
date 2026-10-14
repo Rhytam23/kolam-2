@@ -37,7 +37,7 @@ export const SCENES: readonly HeroScene[] = [
     },
 ];
 
-export interface HeroStory {
+interface HeroStory {
     /** 0 while the heading is showing, 1 once the drawing fills the screen. */
     enter: number;
     first: DrawProgress;

@@ -17,7 +17,7 @@ const isPoint = (v: unknown): v is Point => isObject(v) && isNumber(v.x) && isNu
 const isRows = (v: unknown, count: number, length: number, pattern: RegExp): v is string[] =>
   Array.isArray(v) && v.length === count && v.every(row => typeof row === 'string' && row.length === length && pattern.test(row));
 
-export const isDesign = (v: unknown): v is Design => {
+const isDesign = (v: unknown): v is Design => {
   if (!isObject(v) || !Number.isInteger(v.rows) || !Number.isInteger(v.cols)) return false;
   const rows = v.rows as number;
   const cols = v.cols as number;

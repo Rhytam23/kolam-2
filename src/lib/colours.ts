@@ -6,13 +6,13 @@
  * that permission. Tell the requester to obtain it first.
  */
 /** Colours used in floor art, with the traditional material each one usually comes from. */
-export interface TraditionalColour {
+interface TraditionalColour {
   name: string;
   hex: string;
   material: string;
 }
 
-export const TRADITIONAL_COLOURS: TraditionalColour[] = [
+const TRADITIONAL_COLOURS: TraditionalColour[] = [
   { name: 'Rice-flour white', hex: '#F7F3EA', material: 'Rice flour or rice paste, white stone powder, or chalk (khadiya)' },
   { name: 'Kaavi red', hex: '#A63A1E', material: 'Kaavi or semman (red earth), used for borders and outlines' },
   { name: 'Kumkum red', hex: '#C62839', material: 'Kumkum or red rangoli powder' },

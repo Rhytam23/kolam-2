@@ -98,12 +98,10 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
     # design in light and dark colours is not read as only its darker half. That only works when the ground is
     # really a large part of the picture; a design that fills the whole sheet keeps the reading already made.
     reader_turning = bool(radial and (radial['circular'] or radial['order'] >= 6))
-    everything = None
     if ground and ground['share'] >= 0.4:
         ground_bgr = np.array([int(ground['hex'][i:i + 2], 16) for i in (5, 3, 1)], np.float32)
         mask = np.linalg.norm(img.astype(np.float32) - ground_bgr, axis=2) > 45
         if 0.01 < mask.mean() < 0.8:
-            everything = mask
             radial = radial_symmetry(mask) or radial
             ink = mask
     order = radial['order'] if radial else 1

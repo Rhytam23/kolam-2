@@ -13,7 +13,7 @@
 export type Motif = 'lotus' | 'leaf' | 'drop' | 'loop' | 'dot' | 'curl' | 'wedge';
 export type RadialStyle = 'lotus' | 'alpana' | 'marigold' | 'star' | 'curls' | 'festival' | 'pookalam' | 'aripan' | 'jhoti';
 
-export interface RadialRing {
+interface RadialRing {
   motif: Motif;
   count: number;
   inner: number;
@@ -62,7 +62,7 @@ const MOTIFS: Record<Exclude<RadialStyle, 'alpana' | 'curls' | 'festival' | 'poo
   star: ['leaf', 'leaf', 'lotus', 'leaf'],
 };
 
-export interface RadialOptions {
+interface RadialOptions {
   petals: number;
   layers: number;
   style: RadialStyle;
@@ -463,7 +463,7 @@ export const DOT_RADIUS = 0.016;
 /** Guide dots closer than this are put down as one. */
 const MERGE = 0.05;
 
-export interface GuideDot {
+interface GuideDot {
   x: number;
   y: number;
   /** Index, from the centre outwards, of the ring that first needs this dot (-1 for the centre). */
@@ -548,7 +548,7 @@ const cubicPath = ([p0, p1, p2, p3]: Cubic) =>
   `M${fmt(p0[0])} ${fmt(p0[1])}C${[p1, p2, p3].map(p => `${fmt(p[0])} ${fmt(p[1])}`).join(' ')}`;
 
 /** One shape of a ring, ready to be drawn dot by dot. */
-export interface MotifStroke {
+interface MotifStroke {
   /** The dots the line passes through, in drawing order (a closed shape ends where it began). */
   dots: Pt[];
   /** The line from dots[i] to dots[i + 1]. */

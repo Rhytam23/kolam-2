@@ -3,9 +3,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from classify import SLUGS, classify, straightness
-from drawing import colour_masks, radial_symmetry
-from principles import stroke_mask
+from classify import SLUGS, straightness
 from main import run_analysis
 
 
@@ -75,7 +73,6 @@ def test_white_zigzag_on_red_earth_is_mandana():
 
 
 def test_result_shape_is_always_valid():
-    img = np.full((400, 400, 3), 200, np.uint8)
     for photo in (np.full((400, 400, 3), 200, np.uint8), np.random.default_rng(1).integers(0, 255, (400, 400, 3), dtype=np.uint8)):
         res = top(photo)
         if res is None:

@@ -17,7 +17,7 @@ import { tracedSize, tracedStrokes, type TracedArt } from './traced';
  * of line between each dot and the next. Tapping the right dot draws the piece that leads to it.
  */
 
-export interface Stroke {
+interface Stroke {
     /** Indexes into PracticePlan.dots, in drawing order. */
     dots: number[];
     /** pieces[i] is the line from dots[i] to dots[i + 1]. */
@@ -222,7 +222,7 @@ const complete = (plan: PracticePlan, state: PracticeState, stroke: number): Pra
     return { done, active: null, drawn: s.finish ? [...state.drawn, s.finish] : state.drawn };
 };
 
-export type TapResult = { ok: true; state: PracticeState; finishedStroke: boolean } | { ok: false; state: PracticeState };
+type TapResult = { ok: true; state: PracticeState; finishedStroke: boolean } | { ok: false; state: PracticeState };
 
 /** What happens when the visitor taps a dot. */
 export const tapDot = (plan: PracticePlan, state: PracticeState, dot: number): TapResult => {

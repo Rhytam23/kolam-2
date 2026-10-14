@@ -16,9 +16,9 @@ import type { LangCode } from './i18n';
  */
 
 export type IconId = 'diya' | 'lotus' | 'shankha' | 'lamp' | 'peacock' | 'footprints' | 'fish' | 'paddy' | 'gobbemma' | 'chowk' | 'diamond' | 'rosette';
-export type Connector = 'dots' | 'line' | 'wave' | 'zigzag' | 'none';
-export type PatternId = 'pulli' | 'lotus' | 'rosette' | 'chowk' | 'diamond' | 'creeper';
-export type DoorwayId = 'toran' | 'garland' | 'leaves' | 'none';
+type Connector = 'dots' | 'line' | 'wave' | 'zigzag' | 'none';
+type PatternId = 'pulli' | 'lotus' | 'rosette' | 'chowk' | 'diamond' | 'creeper';
+type DoorwayId = 'toran' | 'garland' | 'leaves' | 'none';
 
 /** A border band: motifs in a row, joined by a connector, repeated across the width. */
 export interface BandSpec { icons: IconId[]; connector: Connector }

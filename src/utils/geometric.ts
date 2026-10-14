@@ -24,7 +24,7 @@ export const GEOMETRIC_PATTERNS: Record<GeometricPattern, { label: string; hint:
   mandana: { label: 'Mandana', hint: 'A saw-tooth border round a star, as in Mandana.' },
 };
 
-export interface GeometricShape {
+interface GeometricShape {
   /** Corners, as indexes into the design's dots, in drawing order. */
   corners: number[];
   fill: string | null;
@@ -45,7 +45,7 @@ export interface GeometricDesign {
   line: string;
 }
 
-export interface GeometricOptions {
+interface GeometricOptions {
   pattern: GeometricPattern;
   size: number;
   /** The line colour first, then the fill colours. */
@@ -180,7 +180,7 @@ export const makeGeometric = ({ pattern, size: wanted, colors, background }: Geo
 const fmt = (v: number) => String(Math.round(v * 100) / 100);
 
 /** Every dot a straight line from dot a to dot b passes through, in order (including both ends). */
-export const dotsAlong = (d: GeometricDesign, a: number, b: number): number[] => {
+const dotsAlong = (d: GeometricDesign, a: number, b: number): number[] => {
   const [pa, pb] = [d.dots[a], d.dots[b]];
   const dx = pb.x - pa.x;
   const dy = pb.y - pa.y;

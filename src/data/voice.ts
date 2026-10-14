@@ -14,7 +14,7 @@
  * Practitioners of each tradition should review these texts.
  */
 
-export interface TraditionVoice {
+interface TraditionVoice {
   /** The art form in a sentence: "a kolam", "an alpana". */
   art: string;
   /** Its plural: "kolams". */

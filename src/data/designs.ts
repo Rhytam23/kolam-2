@@ -28,7 +28,7 @@ export interface DesignPreset {
   spec: DesignSpec;
 }
 
-export type BuiltDesign =
+type BuiltDesign =
   | { mode: 'kolam'; design: Design; spec: Extract<DesignSpec, { mode: 'kolam' }> }
   | { mode: 'radial'; design: RadialDesign; spec: Extract<DesignSpec, { mode: 'radial' }> }
   | { mode: 'geometric'; design: GeometricDesign; spec: Extract<DesignSpec, { mode: 'geometric' }> };
@@ -78,7 +78,7 @@ export const applyPreset = (k: ReturnType<typeof useKolam>, spec: DesignSpec) =>
 };
 
 /** What a studio offers, for checking that nothing foreign is on show. */
-export interface ScopeLimits {
+interface ScopeLimits {
   modes: readonly string[];
   radialStyles: readonly RadialStyle[];
   patterns: readonly GeometricPattern[];

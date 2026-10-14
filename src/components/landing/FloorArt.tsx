@@ -254,7 +254,7 @@ export const RangoliFrame: React.FC<RangoliFrameProps> = ({ design, stage = 'col
 // ---------------------------------------------------------------- straight-line frames
 
 /** A straight-line design drawn as by hand: the dot grid, then each group of shapes, then colour. */
-export const GeometricFrame: React.FC<{ design: GeometricDesign; progress?: DrawProgress }> = ({ design, progress = { dots: 1, lines: 1, colour: 1 } }) => {
+const GeometricFrame: React.FC<{ design: GeometricDesign; progress?: DrawProgress }> = ({ design, progress = { dots: 1, lines: 1, colour: 1 } }) => {
     const unit = 40;
     const side = (design.size + 1) * unit;
     const paths = useMemo(() => design.shapes.map(shape => shapePath(design, shape, unit)), [design]);

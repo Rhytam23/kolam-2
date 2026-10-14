@@ -70,7 +70,7 @@ export interface StudioScope {
     presets: readonly DesignPreset[];
 }
 
-export const FULL_STUDIO: StudioScope = {
+const FULL_STUDIO: StudioScope = {
     title: 'Design Studio',
     intro: 'Make your own floor design, or a similar one to a photo you analysed. Then follow the step-by-step guide below to draw it on your doorstep.',
     modes: ['kolam', 'radial', 'geometric'],

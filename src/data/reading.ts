@@ -9,7 +9,7 @@ import type { AnalysisPreset } from '../types/kolam';
 import type { Tradition } from './traditions';
 
 /** How a photo of each kind of design is read, and how to photograph it well. */
-export interface ReadingGuide {
+interface ReadingGuide {
     /** What the reader looks for, after "It finds". */
     finds: string;
     tips: string[];

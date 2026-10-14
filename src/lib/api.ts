@@ -14,7 +14,7 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, ''
 export const MAX_UPLOAD_MB = 8;
 export const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
-export interface AnalyzeOptions {
+interface AnalyzeOptions {
   preset: AnalysisPreset;
   deskew: boolean;
   /** Use these (corrected) dots instead of detecting them again. */

@@ -26,7 +26,7 @@ export const layerTransform = (t: TracedArt) => {
   return `scale(${w} ${h})`;
 };
 
-export interface Anchor { x: number; y: number; corner: boolean; /** the line from here to the next anchor is straight */ straight: boolean }
+interface Anchor { x: number; y: number; corner: boolean; /** the line from here to the next anchor is straight */ straight: boolean }
 
 /** The anchor points of every closed outline in a traced path (M x y, then L x y or C c1 c2 end, then Z). */
 export const pathAnchors = (path: string): Anchor[][] => {
@@ -115,7 +115,7 @@ export const tracedDots = (t: TracedArt, maxDots = 220): Array<{ x: number; y: n
   return dots;
 };
 
-export interface TracedStroke {
+interface TracedStroke {
   /** Guide dots on this outline, in drawing order; the first is repeated at the end (the outline closes). */
   dots: Array<{ x: number; y: number }>;
   /** pieces[i] is the true curve (or straight line) from dots[i] to dots[i + 1], in TRACE units. */
