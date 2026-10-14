@@ -53,8 +53,12 @@ def order_points(points: np.ndarray) -> np.ndarray:
     return rect
 
 
-def deskew_if_needed(image: np.ndarray) -> tuple[np.ndarray, bool]:
-    """Warp a photographed sheet to a flat rectangle. Returns the image and whether it changed."""
+def deskew_if_needed(image: np.ndarray, crop_upright: bool = True) -> tuple[np.ndarray, bool]:
+    """Warp a photographed sheet to a flat rectangle. Returns the image and whether it changed.
+
+    A sheet that is already upright has no perspective to correct; the warp would only crop it. With
+    crop_upright=False such a sheet is left alone (a drawing's own inner square looks exactly like that).
+    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blur, 50, 150)
@@ -75,6 +79,11 @@ def deskew_if_needed(image: np.ndarray) -> tuple[np.ndarray, bool]:
 
     pts = approx.reshape(4, 2).astype('float32')
     rect = order_points(pts)
+    if not crop_upright:
+        x, y, bw, bh = cv2.boundingRect(approx)
+        upright = np.array([[x, y], [x + bw, y], [x + bw, y + bh], [x, y + bh]], np.float32)
+        if float(np.abs(rect - upright).max()) < 0.03 * max(bw, bh):
+            return image, False
     (tl, tr, br, bl) = rect
 
     width_a = np.linalg.norm(br - bl)

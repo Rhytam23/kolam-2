@@ -124,3 +124,15 @@ def test_each_art_forms_own_sample_is_recognised():
             assert names[0] == slug, (slug, r)
         else:
             assert slug in names[:2] and not r['sure'], (slug, r)
+
+
+def test_clean_drawing_is_not_cropped_by_straightening():
+    """A drawing whose inner square looks like a sheet of paper must keep its whole frame (it was being cropped)."""
+    import pathlib
+    from fastapi.testclient import TestClient
+    import main
+    data = (pathlib.Path(__file__).parent / 'fixtures' / 'mandana.png').read_bytes()
+    r = TestClient(main.app).post('/api/analyze', files={'file': ('m.png', data, 'image/png')}, data={'grid': 'false'}).json()
+    assert 'image' not in r                                    # no corrected copy was made
+    assert (r['width'], r['height']) == (800, 800)
+    assert max(p['share'] for p in r['palette'] if p['background']) > 0.35   # the red frame is still there

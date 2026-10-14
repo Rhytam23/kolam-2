@@ -27,7 +27,7 @@ from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, 
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
 from classify import classify, dot_evidence
 from drawing import colour_masks, radial_symmetry, tidy_layers, trace_fidelity
-from enhance import assess, repair, retake_tips
+from enhance import assess, is_clean_graphic, repair, retake_tips
 from vectorize import trace_mask
 from principles import image_symmetry, infer_design, infer_lattice, ink_is_dark, stroke_mask
 
@@ -160,8 +160,10 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
         img = cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_AREA)
 
     corrected = False
+    # Only a tilted sheet is straightened. In a clean drawing or scan, an upright inner square (a frame inside
+    # the design) can look like a sheet, and cropping to it would cut away part of the design.
     if deskew:
-        img, corrected = deskew_if_needed(img)
+        img, corrected = deskew_if_needed(img, crop_upright=not is_clean_graphic(img))
 
     # Poor photos are repaired first. For dot designs both versions are read and the better reading wins.
     quality = assess(img)

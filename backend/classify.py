@@ -164,6 +164,8 @@ def classify(img: np.ndarray, palette: list[dict], radial: dict | None, lattice:
             if white_ink:
                 add('mandana', 0.1, 'white lines on it')
                 add('aipan', 0.1, 'white lines on it')
+            if dark_ink:
+                add('chittara', 0.35, 'black outlines with red and yellow, which mandana and aipan rarely use')
             if straight > 0.4:
                 add('mandana', 0.2, 'zig-zag and straight-edged motifs')
                 add('aipan', 0.15, 'straight-edged, chowki-like motifs')
