@@ -49,3 +49,8 @@ curl -F file=@photo.jpg -F grid=false http://localhost:8000/api/analyze
 | 500 | The reading failed; the cause is logged (never the photo) |
 
 Responses over 1 KB are gzip-compressed.
+
+
+## `resemblance` (in the `/api/analyze` response)
+
+Which of the eleven art forms the picture looks closest to: `{ "ranked": [{ "slug", "score", "reasons" }], "sure": bool }`, best first, at most three. It is a resemblance from measurable features (a real dot grid, ground colour, number of bright colours, straight or curved lines, turning symmetry, a square layout), not a certainty; `sure` is true only when the best match is clearly ahead. The reader shows it and offers to read the photo in that art form (`backend/classify.py`).

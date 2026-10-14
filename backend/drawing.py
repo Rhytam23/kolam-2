@@ -35,7 +35,10 @@ def radial_symmetry(mask: np.ndarray) -> dict | None:
         return None
     scale = 128 / radius
     small = cv2.GaussianBlur(cv2.resize(mask.astype(np.float32), None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA), (7, 7), 0)
-    polar = cv2.warpPolar(small, (128, 720), (cx * scale, cy * scale), 128, cv2.WARP_POLAR_LINEAR)[:, 6:]
+    # Pad so that the sampling circle never leaves the picture: warpPolar reads uninitialised memory out there.
+    pad = 130
+    small = cv2.copyMakeBorder(small, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
+    polar = cv2.warpPolar(small, (128, 720), (cx * scale + pad, cy * scale + pad), 128, cv2.WARP_POLAR_LINEAR)[:, 6:]
     loose = cv2.dilate(polar, np.ones((5, 5), np.float32))  # tolerate hand-drawn wobble
     total = max(float(polar.sum()), 1e-6)
     scores = {n: float(np.minimum(polar, np.roll(loose, round(720 / n), axis=0)).sum() / total) for n in range(2, 17)}

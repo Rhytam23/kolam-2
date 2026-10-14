@@ -4,11 +4,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags 
 
 ## Unreleased
 
+### Fixed
+- Turning-symmetry reading could read uninitialised memory when a design reached the edge of the picture.
+- The guide no longer says "0 guide points" for a design with only a centre dot.
+
 ### Changed
 - Licence changed from MIT to proprietary, all rights reserved. Reuse, deployment or entry in a hackathon needs the owner's written permission.
 - Footer redesigned: centred brand and greetings, four columns (art forms, tools, app and privacy, legal), and a copyright strip.
 
 ### Added
+- The reader says which art form a picture looks closest to, with the reasons, and offers to read it there (`resemblance` in the API, `backend/classify.py`).
 - Legal notice page (`/legal.html`), linked from the footer, terms and privacy pages.
 - Notice headers in every source file, `robots.txt` entries for AI crawlers, `noai` page tags and `X-Robots-Tag` / `X-Legal-Notice` headers.
 

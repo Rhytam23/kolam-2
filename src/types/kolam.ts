@@ -80,6 +80,13 @@ export interface PhotoQuality {
   fidelity?: number | null;
 }
 
+/** Which art form the picture looks closest to, with the measured reasons. A resemblance, not a certainty. */
+export interface Resemblance {
+  ranked: { slug: string; score: number; reasons: string[] }[];
+  /** True when the best match is clearly ahead of the next. */
+  sure: boolean;
+}
+
 export interface AnalysisResponse {
   width: number;
   height: number;
@@ -96,6 +103,8 @@ export interface AnalysisResponse {
   layers: ColourLayer[];
   /** A cleaner copy of `layers`: wobbles smoothed, petals of a turning pattern made to match. Free-hand designs only. */
   tidied?: ColourLayer[];
+  /** The art form this picture looks closest to. */
+  resemblance?: Resemblance | null;
   /** How good the photo was and what was repaired before it was read. */
   quality?: PhotoQuality;
   /** Present when perspective correction changed the image: the corrected image the dots refer to. */

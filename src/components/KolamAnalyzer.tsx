@@ -11,7 +11,7 @@ import { Card } from './ui/Card';
 import { Label } from './ui/Label';
 import DesignPrinciples from './DesignPrinciples';
 import { useKolam } from './KolamContext';
-import { ANALYSIS_PRESETS, type AnalysisPreset, type AnalysisResponse, type PhotoQuality, type Point } from '../types/kolam';
+import { ANALYSIS_PRESETS, type AnalysisPreset, type AnalysisResponse, type PhotoQuality, type Point, type Resemblance } from '../types/kolam';
 import type { TracedArt } from '../utils/traced';
 import { ACCEPTED_TYPES, MAX_UPLOAD_MB, analyzeKolam, shrinkImage } from '../lib/api';
 import { downloadBlob, parseKolamFile, svgToPng, downloadKolamFile } from '../lib/kolamFile';
@@ -22,7 +22,8 @@ import { BRAND } from '../lib/brand';
 import { navigate } from '../lib/router';
 import { presetSvg } from '../data/designs';
 import { readingGuide } from '../data/reading';
-import { withArticle, type Tradition } from '../data/traditions';
+import { readerPath, traditionBySlug, withArticle, type Tradition } from '../data/traditions';
+import { handOverPhoto, takeHandedOverPhoto } from '../lib/handoff';
 import { useI18n } from '../lib/i18n';
 import { useCulture } from './culture/CultureContext';
 import { GENERAL_VOICE, artName, voiceFor } from '../data/voice';
@@ -75,6 +76,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const [repairedUrl, setRepairedUrl] = useState<string | null>(null);
     const [showOriginal, setShowOriginal] = useState(false);
     const [quality, setQuality] = useState<PhotoQuality | null>(null);
+    const [resemblance, setResemblance] = useState<Resemblance | null>(null);
     // A free-hand design is traced exactly as drawn, or tidied (wobbles smoothed, petals matched).
     const [tracedSets, setTracedSets] = useState<{ exact: TracedArt; tidied: TracedArt | null } | null>(null);
     const [variant, setVariant] = useState<'exact' | 'tidied'>('exact');
@@ -217,6 +219,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                 onBusy: (seconds, attempt) => setStatus(`Many people are reading photos right now. Trying again in ${seconds} seconds (${attempt}/3)…`),
             });
             setQuality(data.quality ?? null);
+            setResemblance(data.resemblance ?? null);
             setRepairedUrl(data.image ?? null);
             setShowOriginal(false);
             if (data.image) setImageUrl(data.image);
@@ -271,6 +274,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
         setRepairedUrl(null);
         setShowOriginal(false);
         setQuality(null);
+        setResemblance(null);
         setTracedSets(null);
         setFile(upload);
         setDots([]);
@@ -280,6 +284,12 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
         setZoomIndex(0);
         void runAnalysis(upload);
     };
+
+    // A photo sent over from another art form's reader is read here straight away.
+    useEffect(() => {
+        const sent = takeHandedOverPhoto();
+        if (sent) void loadImage(sent);
+    }, [tradition?.slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
         const picked = e.target.files?.[0];
@@ -300,6 +310,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
         setOriginalUrl(null);
         setRepairedUrl(null);
         setQuality(null);
+        setResemblance(null);
         setTracedSets(null);
         setFile(null);
         setMeta(null);
@@ -513,6 +524,29 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                 <strong>{kit.verb[0].toUpperCase() + kit.verb.slice(1)} it:</strong> {tradition.materials}
                             </p>
                         )}
+                        {resemblance && !loading && (() => {
+                            const best = resemblance.ranked[0];
+                            const match = best && best.score >= 0.3 ? traditionBySlug(best.slug) : undefined;
+                            if (!match) return null;
+                            const second = resemblance.ranked[1] && resemblance.ranked[1].score >= 0.3 ? traditionBySlug(resemblance.ranked[1].slug) : undefined;
+                            const here = tradition?.slug === match.slug;
+                            return (
+                                <div className="text-sm rounded-xl border border-kaavi/20 bg-paper px-4 py-3 space-y-1" data-testid="resemblance">
+                                    <p className="text-ink">
+                                        {here
+                                            ? <>This looks like <strong>{match.name}</strong>, the art form you are in.</>
+                                            : <>This picture looks {tradition ? (resemblance.sure ? 'closer' : 'a little closer') : (resemblance.sure ? 'closest' : 'a little closer')} to <strong>{match.name}</strong>{tradition ? <> than to {tradition.name}</> : null}.</>}
+                                    </p>
+                                    {best.reasons.length > 0 && <p className="text-muted">Because of {best.reasons.join(', ')}.</p>}
+                                    {!resemblance.sure && second && <p className="text-muted">It could also be {second.name}. This is a resemblance, not a certainty.</p>}
+                                    {!here && (
+                                        <Button type="button" variant="secondary" onClick={() => { if (file) handOverPhoto(file); navigate(readerPath(match.slug)); }}>
+                                            Read it as {match.name}
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })()}
                         {quality && (quality.fixes.length > 0 || quality.tips.length > 0 || quality.fidelity != null) && (
                             <div className="text-sm rounded-xl border border-kaavi/20 bg-paper px-4 py-3 space-y-1" data-testid="photo-quality">
                                 {quality.fixes.length > 0 && (

@@ -25,6 +25,7 @@ from PIL import Image
 import config
 from config import ALLOWED_TYPES, MAX_DOTS, MAX_UPLOAD_BYTES, PORT, STATIC_DIR, get_allowed_origins
 from detection import PRESET_CONFIGS, deskew_if_needed, detect_dots
+from classify import classify, dot_evidence
 from drawing import colour_masks, radial_symmetry, tidy_layers, trace_fidelity
 from enhance import assess, repair, retake_tips
 from vectorize import trace_mask
@@ -213,6 +214,8 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
     layers = [{'color': colour, 'path': path} for colour, mask in masks if (path := trace_mask(mask))]
     tidied = tidy_layers(masks, radial, ink) if lattice is None and masks else []
     after = assess(img) if fixes else quality
+    probe = dot_evidence(img, preset) if lattice is None else None
+    resemblance = classify(img, palette, radial, lattice, len(found), ink, probe) if palette else None
     fidelity = trace_fidelity(img, masks, palette) if masks else None
 
     if lattice:
@@ -242,6 +245,7 @@ def run_analysis(contents: bytes, preset: str, deskew: bool, manual_dots: list[d
         'palette': palette,
         'layers': layers,
         'tidied': tidied,
+        'resemblance': resemblance,
         'quality': {
             'score': quality['score'], 'problems': quality['problems'], 'fixes': fixes,
             'scoreAfter': after['score'], 'tips': retake_tips(after['problems']), 'fidelity': fidelity,

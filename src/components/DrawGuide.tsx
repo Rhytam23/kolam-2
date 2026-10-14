@@ -94,7 +94,9 @@ const DrawGuide: React.FC = () => {
                     },
                     {
                         title: radial.dotsInColour ? '2. Put down the dots, in colour' : aid ? '2. Mark the centre and the guide points' : '2. Put down the small dots',
-                        text: radial.dotsInColour
+                        text: total <= 1
+                            ? `${aid ? 'Lightly mark' : 'Put down'} one ${aid ? 'point' : 'dot'} for the centre. This design has no other dots, so everything else is drawn around it.`
+                            : radial.dotsInColour
                             ? `Start with the ${nearestTraditional(radial.centre).name.toLowerCase()} dot in the centre, then place ${total - 1} dots around it: ${dotsPerRing}. Use the coloured powders now: once the curls are drawn round the dots, they cannot be coloured.`
                             : aid
                                 ? `Lightly mark the centre, then the ${total - 1} guide points around it: ${dotsPerRing}. Points of the same ring are all the same distance from the centre.${aidNote}`
