@@ -1,6 +1,60 @@
-<p align="center"><img src="docs/kolam.svg" width="220" alt="A single-line diamond kolam drawn by Chittara"></p>
+<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
+<a id="readme-top"></a>
 
-# Chittara – Kolam, rangoli and alpana
+<!-- PROJECT SHIELDS -->
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-url]
+[![Issues][issues-shield]][issues-url]
+[![License][license-shield]][license-url]
+
+
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <a href="https://github.com/Rhytam23/kolam-2">
+    <img src="docs/kolam.svg" alt="Logo" width="80" height="80">
+  </a>
+
+<h3 align="center">Chittara – Kolam, rangoli and alpana</h3>
+
+  <p align="center">
+    Chittara (ಚಿತ್ತಾರ) means "picture" in Kannada.
+    <br />
+    <a href="https://github.com/Rhytam23/kolam-2"><strong>Explore the docs »</strong></a>
+    <br />
+    <br />
+    <a href="https://chittara.onrender.com">View Demo</a>
+    &middot;
+    <a href="https://github.com/Rhytam23/kolam-2/issues/new?labels=bug">Report Bug</a>
+    &middot;
+    <a href="https://github.com/Rhytam23/kolam-2/issues/new?labels=enhancement">Request Feature</a>
+  </p>
+</div>
+
+
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li>
+      <a href="#about-the-project">About The Project</a>
+      <ul>
+        <li><a href="#built-with">Built With</a></li>
+      </ul>
+    </li>
+    <li><a href="#getting-started">Getting Started</a></li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ol>
+</details>
+
+
+<!-- ABOUT THE PROJECT -->
+## About The Project
 
 *Chittara* (ಚಿತ್ತಾರ) means "picture" in Kannada. It is also the name of the geometric art that women
 of the Deewaru community in the Malnad region of Karnataka paint on the walls and floors of their
@@ -18,7 +72,8 @@ bounced off a mirror. The dot grid plus that choice at every gap fully describes
 (the mirror-curve model of Gerdes, 1989). Chittara reads exactly that from a photo. Free-hand designs
 without dots (alpana, most rangoli) are read by their turning symmetry and colours instead.
 
-## What it does
+### What it does
+
 
 | | |
 | --- | --- |
@@ -35,11 +90,13 @@ without dots (alpana, most rangoli) are read by their turning symmetry and colou
 
 No sample photo at hand? Press **Try a sample** in the analyzer.
 
-## How photos are read
+### How photos are read
+
 
 Poor photos are repaired first (uneven light, flat contrast, grain, softness, tiny size) and the response says what was done. Free-hand designs are traced as smooth curves in their real colours, with a tidied copy to switch to, and the reader shows how closely the trace matches your picture; dot designs are read as a dot grid. The server queues photos and answers "busy, retry shortly" under load. The full pipeline, limits and tuning are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Documentation
+### Documentation
+
 
 | | |
 | --- | --- |
@@ -61,7 +118,8 @@ Poor photos are repaired first (uneven light, flat contrast, grain, softness, ti
 | [Handover](docs/CLIENT_HANDOVER.md) | Checklist for a new owner |
 | [Changelog](CHANGELOG.md) | What changed, and when |
 
-## Privacy and hosting
+### Privacy and hosting
+
 
 See [`public/privacy.html`](public/privacy.html) (served at `/privacy.html`) and [`public/terms.html`](public/terms.html).
 
@@ -70,44 +128,10 @@ Photos are analysed in memory and never stored; each visitor can have 20 photos 
 headers. Fonts (Tiro Tamil, Telugu, Devanagari, Bangla, Kannada and
 Hind Madurai) are bundled with the app, so the site makes no third-party requests.
 
-## Run it
+### Deploy
 
-### One command (Docker)
 
-```bash
-docker build -t chittara .
-docker run -p 8000:8000 chittara
-```
-
-Open http://localhost:8000. The container serves the web app and the API (`/api/...`) together.
-
-### Local development
-
-Requires Node.js 20+ and Python 3.10+.
-
-```bash
-# terminal 1 – API on :8000
-cd backend
-pip install -r requirements.txt
-python main.py
-
-# terminal 2 – web app on :3000 (proxies /api to :8000)
-npm install
-npm run dev
-```
-
-### Checks
-
-```bash
-npm run typecheck && npm test && npm run build
-cd backend && pip install -r requirements-dev.txt && python -m pytest -q
-```
-
-CI runs the same checks and a Docker build on every push (`.github/workflows/ci.yml`).
-
-## Deploy
-
-### Easiest: Render (free)
+#### Easiest: Render (free)
 
 1. Merge your branch into `main` on GitHub.
 2. Sign in at [render.com](https://render.com) with GitHub, choose **New > Blueprint**, and pick this
@@ -120,7 +144,7 @@ CI runs the same checks and a Docker build on every push (`.github/workflows/ci.
 The free plan sleeps when nobody has visited for 15 minutes; the first visit after that takes
 about a minute. A paid instance (or any host below) stays awake. Every push to `main` redeploys.
 
-### Anywhere else
+#### Anywhere else
 
 The Docker image runs anywhere that runs containers (Railway, Fly.io, Google Cloud Run,
 Hugging Face Spaces, a VPS). It listens on `$PORT` (default 8000) and has a health check at
@@ -136,33 +160,15 @@ To host the frontend separately (for example on a static host), build it with
 `VITE_API_BASE_URL=https://your-api.example.com npm run build`, and start the API with
 `CORS_ORIGINS=https://your-frontend.example.com`. See `.env.example`.
 
-### Phones and tablets
+#### Phones and tablets
 
 The site adapts to phones, tablets and desktops, and can be installed as an app: *Install the
 app* in the footer (Android, Chrome, Edge), or **Share > Add to Home Screen** in Safari on
 iPhone and iPad. Once installed it opens full screen, and the studio, guide and practice work
 offline; reading a photo needs a connection.
 
-## API
+### The `.kolam.json` format
 
-`POST /api/analyze` (multipart form)
-
-| field | |
-| --- | --- |
-| `file` | PNG, JPEG or WebP, up to 8 MB |
-| `preset` | `balanced` (default), `clean-scan`, `phone-photo`, `noisy-background` |
-| `deskew` | `true` (default): straighten a photographed sheet. The corrected image is returned as `image` |
-| `dots` | optional JSON list of `{x, y}` (0–1): use these dots instead of detecting them |
-| `grid` | `true` (default); `false` skips the dot-grid search, for art forms drawn without dots |
-
-The response includes `dots`, `lattice` (grid size, origin and axes in image coordinates),
-`design` (see below), `symmetry` (mirror/rotation scores of the drawing), `radial` (turning
-symmetry: `order` N for N-fold), `palette` (main colours, their share and which one is the ground),
-`layers` (each colour traced as SVG Bézier paths in 0–1 coordinates), `tidied` (a cleaner copy of `layers`, free-hand designs only),
-`quality` (photo score before and after repair, what was fixed, retake tips, and `fidelity`: how closely the trace matches the picture, 0–1),
-`confidence` (dot-grid reading only) and `message`. When the server is busy it answers `503` with `Retry-After`. Free-hand designs return `lattice: null` and `design: null`.
-
-## The `.kolam.json` format
 
 ```json
 {
@@ -183,7 +189,8 @@ symmetry: `order` N for N-fold), `palette` (main colours, their share and which 
 `p` (strands turn back around each dot), `j` (strands join the two dots) or `.` (no gap because a
 dot is missing).
 
-## Project layout
+### Project layout
+
 
 ```text
 src/utils/kolamLogic.ts     mirror-curve engine: tracing, symmetry, single-line transform, SVG
@@ -211,18 +218,154 @@ public/                     app icons, manifest and the offline service worker (
 render.yaml                 one-click hosting on Render
 ```
 
-## Feedback
+### References
 
-Tried it on your own kolam? Please [open an issue](https://github.com/Rhytam23/kolam-2/issues)
-with the photo (or its `.kolam.json`) and what Chittara got right or wrong.
-
-## References
 
 - G. Siromoney, R. Siromoney, K. Krithivasan. *Array grammars and kolam*. Computer Graphics and Image Processing 3(1), 1974.
 - P. Gerdes. *Reconstruction and extension of lost symmetries: examples from the Tamil of South India*. Computers & Mathematics with Applications 17(4–6), 1989.
 - M. Ascher. *The Kolam Tradition*. American Scientist 90(1), 2002.
 - *KolamNetV2: efficient attention-based deep learning network for Tamil heritage art-kolam classification*. npj Heritage Science, 2024.
 
-## Licence
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+### Built With
+
+* [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+* [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+* [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+* [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+* [![Vitest](https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)](https://vitest.dev/)
+* [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+* [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+* [![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org/)
+* [![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white)](https://pytest.org/)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- GETTING STARTED -->
+## Getting Started
+
+### Run it
+
+
+#### One command (Docker)
+
+```bash
+docker build -t chittara .
+docker run -p 8000:8000 chittara
+```
+
+Open http://localhost:8000. The container serves the web app and the API (`/api/...`) together.
+
+#### Local development
+
+Requires Node.js 20+ and Python 3.10+.
+
+```bash
+# terminal 1 – API on :8000
+cd backend
+pip install -r requirements.txt
+python main.py
+
+# terminal 2 – web app on :3000 (proxies /api to :8000)
+npm install
+npm run dev
+```
+
+#### Checks
+
+```bash
+npm run typecheck && npm test && npm run build
+cd backend && pip install -r requirements-dev.txt && python -m pytest -q
+```
+
+CI runs the same checks and a Docker build on every push (`.github/workflows/ci.yml`).
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- USAGE EXAMPLES -->
+## Usage
+
+### API
+
+
+`POST /api/analyze` (multipart form)
+
+| field | |
+| --- | --- |
+| `file` | PNG, JPEG or WebP, up to 8 MB |
+| `preset` | `balanced` (default), `clean-scan`, `phone-photo`, `noisy-background` |
+| `deskew` | `true` (default): straighten a photographed sheet. The corrected image is returned as `image` |
+| `dots` | optional JSON list of `{x, y}` (0–1): use these dots instead of detecting them |
+| `grid` | `true` (default); `false` skips the dot-grid search, for art forms drawn without dots |
+
+The response includes `dots`, `lattice` (grid size, origin and axes in image coordinates),
+`design` (see below), `symmetry` (mirror/rotation scores of the drawing), `radial` (turning
+symmetry: `order` N for N-fold), `palette` (main colours, their share and which one is the ground),
+`layers` (each colour traced as SVG Bézier paths in 0–1 coordinates), `tidied` (a cleaner copy of `layers`, free-hand designs only),
+`quality` (photo score before and after repair, what was fixed, retake tips, and `fidelity`: how closely the trace matches the picture, 0–1),
+`confidence` (dot-grid reading only) and `message`. When the server is busy it answers `503` with `Retry-After`. Free-hand designs return `lattice: null` and `design: null`.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- ROADMAP -->
+## Roadmap
+
+See the [open issues](https://github.com/Rhytam23/kolam-2/issues) for a full list of proposed features (and known issues).
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- CONTRIBUTING -->
+## Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+Don't forget to give the project a star! Thanks again!
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- LICENSE -->
+## License
+
 
 Proprietary, all rights reserved. See [LICENSE](LICENSE). You may look at the code and use the web app for personal learning. You may not copy, deploy, modify or enter it in a hackathon, competition or project without the Owner's written permission; ask through an issue titled "Permission request". The same applies to AI coding assistants acting for someone else.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- CONTACT -->
+## Contact
+
+
+Tried it on your own kolam? Please [open an issue](https://github.com/Rhytam23/kolam-2/issues)
+with the photo (or its `.kolam.json`) and what Chittara got right or wrong.
+
+Project Link: [https://github.com/Rhytam23/kolam-2](https://github.com/Rhytam23/kolam-2)
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+
+<!-- MARKDOWN LINKS & IMAGES -->
+[contributors-shield]: https://img.shields.io/github/contributors/Rhytam23/kolam-2.svg?style=for-the-badge
+[contributors-url]: https://github.com/Rhytam23/kolam-2/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/Rhytam23/kolam-2.svg?style=for-the-badge
+[forks-url]: https://github.com/Rhytam23/kolam-2/network/members
+[stars-shield]: https://img.shields.io/github/stars/Rhytam23/kolam-2.svg?style=for-the-badge
+[stars-url]: https://github.com/Rhytam23/kolam-2/stargazers
+[issues-shield]: https://img.shields.io/github/issues/Rhytam23/kolam-2.svg?style=for-the-badge
+[issues-url]: https://github.com/Rhytam23/kolam-2/issues
+[license-shield]: https://img.shields.io/github/license/Rhytam23/kolam-2.svg?style=for-the-badge
+[license-url]: https://github.com/Rhytam23/kolam-2/blob/main/LICENSE
