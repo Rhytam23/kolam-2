@@ -57,3 +57,7 @@ export const contrast = (a: string, b: string) => {
   const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 };
+
+/** The colour that shows when `fg` is drawn over `bg` at `alpha` (0 to 1), as text with an opacity such as `text-rice/80`. */
+export const blend = (fg: string, bg: string, alpha: number) =>
+  '#' + [1, 3, 5].map(i => Math.round(parseInt(fg.slice(i, i + 2), 16) * alpha + parseInt(bg.slice(i, i + 2), 16) * (1 - alpha)).toString(16).padStart(2, '0')).join('');

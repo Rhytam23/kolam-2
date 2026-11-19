@@ -31,10 +31,10 @@ const Greeting: React.FC<{ className?: string }> = ({ className = '' }) => {
       </p>
       {offer && (
         <p className="mt-2 text-sm text-rice/90">
-          <button type="button" className="underline decoration-brass/60 underline-offset-4 hover:text-brass-light" onClick={() => { setLang(offer.code); close(); }}>
+          <button type="button" className="inline-flex min-h-10 items-center -my-3 px-3 -mx-3 underline decoration-brass/60 underline-offset-4 hover:text-brass-light" onClick={() => { setLang(offer.code); close(); }}>
             <span lang={offer.code}>{offer.name}</span>
           </button>
-          <button type="button" className="ml-3 text-rice/70 hover:text-rice" onClick={close} aria-label="Dismiss language offer">×</button>
+          <button type="button" className="ml-1 inline-flex h-10 w-10 items-center justify-center -my-3 text-xl leading-none text-rice/70 hover:text-rice" onClick={close} aria-label="Dismiss language offer">×</button>
         </p>
       )}
     </div>

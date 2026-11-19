@@ -111,3 +111,102 @@ describe('practice with a design read from a photo', () => {
         expect(isFinished(state)).toBe(true);
     });
 });
+
+import { dotPlace, focusMessage, keyboardStep, practiceKey } from './practice';
+
+describe('practice with the keyboard', () => {
+    it('maps keys to actions, and lets Tab leave the drawing at either end', () => {
+        expect(practiceKey('Enter', false, 0, 3)).toBe('tap');
+        expect(practiceKey(' ', false, 0, 3)).toBe('tap');
+        expect(practiceKey('ArrowRight', false, 0, 3)).toBe('next');
+        expect(practiceKey('ArrowDown', false, 0, 3)).toBe('next');
+        expect(practiceKey('ArrowLeft', false, 0, 3)).toBe('previous');
+        expect(practiceKey('ArrowUp', false, 0, 3)).toBe('previous');
+        expect(practiceKey('Tab', false, 0, 3)).toBe('next');
+        expect(practiceKey('Tab', false, 2, 3)).toBeNull(); // last dot: Tab moves on to the buttons
+        expect(practiceKey('Tab', true, 0, 3)).toBeNull(); // first dot: Shift+Tab moves back out
+        expect(practiceKey('Tab', true, 2, 3)).toBe('previous');
+        expect(practiceKey('Tab', false, 0, 1)).toBeNull(); // a single valid dot never traps Tab
+        expect(practiceKey('a', false, 0, 3)).toBeNull();
+    });
+
+    it('chooses between the valid dots only, wrapping with the arrow keys', () => {
+        const plan = radialPlan(makeRadial({ petals: 8, layers: 2, style: 'lotus', ...PALETTES.pongal }));
+        const state = startPractice(plan);
+        const valid = expectedDots(plan, state);
+        expect(valid.length).toBeGreaterThan(1);
+        const forward = keyboardStep(plan, state, 0, 'ArrowRight');
+        expect(forward).toMatchObject({ cursor: 1, handled: true });
+        expect(keyboardStep(plan, state, valid.length - 1, 'ArrowRight').cursor).toBe(0);
+        expect(keyboardStep(plan, state, 0, 'ArrowLeft').cursor).toBe(valid.length - 1);
+        expect(keyboardStep(plan, state, 0, 'x').handled).toBe(false);
+    });
+
+    it('taps the chosen dot with Enter or Space, exactly like a tap with a finger', () => {
+        const plan = kolamPlan(makeSingleLine(diamondDesign(5)));
+        const state = startPractice(plan);
+        const out = keyboardStep(plan, state, 0, 'Enter');
+        expect(out.tap?.dot).toBe(expectedDots(plan, state)[0]);
+        expect(out.tap?.result).toEqual(tapDot(plan, state, out.tap!.dot));
+        expect(out.state.drawn).toHaveLength(1);
+        expect(keyboardStep(plan, state, 0, ' ').tap?.result.ok).toBe(true);
+    });
+
+    it('can never tap a wrong dot', () => {
+        const plan = kolamPlan(squareDesign(3));
+        let state = startPractice(plan);
+        for (let n = 0; n < 500 && !isFinished(state); n++) {
+            const out = keyboardStep(plan, state, 99, 'Enter'); // a stale cursor is clamped
+            expect(out.tap?.result.ok).toBe(true);
+            state = out.state;
+        }
+        expect(isFinished(state)).toBe(true);
+    });
+
+    const keyboardPass = (plan: PracticePlan) => {
+        let state = startPractice(plan);
+        let cursor = 0;
+        let presses = 0;
+        while (!isFinished(state) && presses < 20000) {
+            // Wander to the last valid dot with the arrow keys, then tap it with Space.
+            const count = expectedDots(plan, state).length;
+            for (let i = 0; i < count - 1; i++) cursor = keyboardStep(plan, state, cursor, 'ArrowRight').cursor;
+            const out = keyboardStep(plan, state, cursor, ' ');
+            expect(out.tap?.result.ok).toBe(true);
+            state = out.state;
+            cursor = out.cursor;
+            presses++;
+        }
+        return state;
+    };
+
+    it('completes a full practice pass using only keys, on every kind of design', () => {
+        const plans = [
+            kolamPlan(makeSingleLine(diamondDesign(5))),
+            kolamPlan(squareDesign(3)),
+            radialPlan(makeRadial({ petals: 8, layers: 2, style: 'lotus', ...PALETTES.pongal })),
+            radialPlan(makeRadial({ petals: 8, layers: 3, style: 'curls', ...PALETTES.darkFloor })),
+            ...(Object.keys(GEOMETRIC_PATTERNS) as GeometricPattern[]).map(p => geometricPlan(makeGeometric({ pattern: p, size: 9, ...PALETTES.sankranti }))),
+        ];
+        for (const plan of plans) {
+            const state = keyboardPass(plan);
+            expect(isFinished(state)).toBe(true);
+            expect(state.done.every(Boolean)).toBe(true);
+            // Nothing further is choosable once the design is finished.
+            expect(keyboardStep(plan, state, 0, 'Enter').handled).toBe(false);
+        }
+    });
+
+    it('says where each valid dot is, in words', () => {
+        const plan = kolamPlan(squareDesign(3));
+        const places = plan.dots.map((_, i) => dotPlace(plan, i));
+        expect(places).toContain('top left');
+        expect(places).toContain('bottom right');
+        expect(places).toContain('centre');
+        const start = startPractice(plan);
+        expect(focusMessage(plan, start, 0)).toMatch(/^Start at the dot at the .+Press Enter or Space/);
+        const next = keyboardStep(plan, start, 0, 'Enter').state;
+        expect(focusMessage(plan, next, 0)).toMatch(/^Next dot /);
+        expect(focusMessage(plan, { ...next, done: next.done.map(() => true) }, 0)).toBe('The design is finished.');
+    });
+});

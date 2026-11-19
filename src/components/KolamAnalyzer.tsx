@@ -6,7 +6,7 @@ import DesignPrinciples from './DesignPrinciples';
 import { useKolam } from './KolamContext';
 import { ANALYSIS_PRESETS, type AnalysisPreset, type AnalysisResponse, type PhotoQuality, type Point, type Resemblance } from '../types/kolam';
 import type { TracedArt } from '../utils/traced';
-import { ACCEPTED_TYPES, MAX_UPLOAD_MB, analyzeKolam, shrinkImage } from '../lib/api';
+import { ACCEPTED_TYPES, AnalysisError, MAX_UPLOAD_MB, analysisErrorMessage, analyzeKolam, shrinkImage } from '../lib/api';
 import { downloadBlob, parseKolamFile, svgToPng, downloadKolamFile } from '../lib/kolamFile';
 import { countLoops, designPath, designToSvg, diamondDesign, makeSingleLine, rowPattern, snapToLattice } from '../utils/kolamLogic';
 import { tracedDots, tracedSize } from '../utils/traced';
@@ -96,6 +96,8 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
     const dragRef = useRef<Drag | null>(null);
     const abortRef = useRef<AbortController | null>(null);
     const objectUrlRef = useRef<string | null>(null);
+    // What to send again when the visitor presses "Try again" after a failed reading.
+    const lastTry = useRef<{ file: File; dots?: Point[] } | null>(null);
 
     const hasSurface = !!imageUrl || dots.length > 0;
     const zoom = ZOOM_LEVELS[zoomIndex];
@@ -239,7 +241,9 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
             }
         } catch (err) {
             if ((err as Error).name === 'AbortError') return;
-            setError((err as Error).message);
+            // Only our own friendly messages are shown; anything unexpected gets the generic one.
+            setError(err instanceof AnalysisError ? err.message : analysisErrorMessage(-1));
+            lastTry.current = { file: source, dots: manualDots };
             setStatus('You can still place dots by hand, or try another photo or image type.');
         } finally {
             if (abortRef.current === controller) setLoading(false);
@@ -485,7 +489,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                 type="file"
                                 accept="image/*"
                                 onChange={onPick}
-                                className="block w-full text-sm text-muted file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-kaavi/10 file:text-kaavi hover:file:bg-kaavi/20 cursor-pointer"
+                                className="block w-full text-sm text-muted file:mr-4 file:py-2.5 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-kaavi/10 file:text-kaavi hover:file:bg-kaavi/20 cursor-pointer"
                             />
                             <p className="text-xs text-muted">Or drop a photo here. Stand directly above the design, in daylight, with all of it in the frame.</p>
                             <p className="text-xs text-muted">Your photo is read and deleted straight away. <a className="text-kaavi underline" href="/privacy.html#photos">How photos are handled</a></p>
@@ -502,7 +506,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                     {ANALYSIS_PRESETS.map(option => <option key={option} value={option}>{PRESET_LABELS[option]}</option>)}
                                 </select>
                             </div>
-                            <label className="flex items-center gap-2 text-sm text-ink">
+                            <label className="flex min-h-10 items-center gap-2 text-sm text-ink">
                                 <input type="checkbox" checked={deskew} onChange={e => setDeskew(e.target.checked)} className="accent-kaavi" />
                                 {t('reader.straighten')}
                             </label>
@@ -510,7 +514,14 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                     </div>
                     <div className="mt-4 space-y-2" aria-live="polite">
                         {loading && <p className="text-kaavi animate-pulse">{lang === 'en' && tradition ? `Reading your ${tradition.name.toLowerCase()}…` : t('reader.reading')}</p>}
-                        {error && <p className="text-kumkum text-sm bg-kumkum/10 px-4 py-2 rounded">{error}</p>}
+                        {error && (
+                            <div role="alert" className="flex flex-wrap items-center gap-x-4 gap-y-2 text-kumkum text-sm bg-kumkum/10 px-4 py-2 rounded">
+                                <p>{error}</p>
+                                {!loading && lastTry.current && (
+                                    <Button size="sm" variant="secondary" onClick={() => lastTry.current && void runAnalysis(lastTry.current.file, lastTry.current.dots)}>Try again</Button>
+                                )}
+                            </div>
+                        )}
                         <p className="text-sm text-muted">{status}</p>
                         {lang === 'en' && tradition && (scan || traced) && !loading && (
                             <p className="text-sm text-ink" data-testid="culture-next">
@@ -550,7 +561,7 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                 {quality.fidelity != null && (
                                     <p className="text-ink">{t('reader.matches')}: <strong>{Math.round(quality.fidelity * 100)}%</strong></p>
                                 )}
-                                {quality.tips.map(tip => <p key={tip} className="text-muted">Tip: {tip}</p>)}
+                                {quality.tips.map((tip, i) => <p key={`${i}-${tip}`} className="text-muted">Tip: {tip}</p>)}
                             </div>
                         )}
                     </div>
@@ -588,12 +599,12 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                                         </Button>
                                     )}
                                     {traced && (
-                                        <label className="flex items-center gap-2 text-sm text-ink">
+                                        <label className="flex min-h-10 items-center gap-2 text-sm text-ink">
                                             {t('reader.compare')}
-                                            <input type="range" min={0} max={1} step={0.05} value={overlay} onChange={e => setOverlay(Number(e.target.value))} className="accent-kaavi w-24" aria-label={t('reader.compare')} />
+                                            <input type="range" min={0} max={1} step={0.05} value={overlay} onChange={e => setOverlay(Number(e.target.value))} className="accent-kaavi w-24 h-10 -my-3" aria-label={t('reader.compare')} />
                                         </label>
                                     )}
-                                    <label className="flex items-center gap-2 text-sm text-ink ml-auto">
+                                    <label className="flex min-h-10 items-center gap-2 text-sm text-ink ml-auto">
                                         <input type="checkbox" checked={showRecreation} onChange={e => setShowRecreation(e.target.checked)} className="accent-kaavi" />
                                         Show recreation
                                     </label>
@@ -649,10 +660,10 @@ const KolamAnalyzer: React.FC<{ tradition?: Tradition }> = ({ tradition }) => {
                         <Card>
                             <div className="flex items-center justify-between mb-4 gap-2">
                                 <h3 className="font-heading text-xl text-kaavi">Saved {savedName}s</h3>
-                                <div className="flex gap-3 text-sm font-semibold">
-                                    <button className="text-kaavi disabled:text-muted/50" onClick={save} disabled={!scan && !dots.length}>Save</button>
-                                    <button className="text-kaavi disabled:text-muted/50" onClick={() => downloadKolamFile(currentFile())} disabled={!scan && !dots.length}>Export</button>
-                                    <button className="text-kaavi" onClick={() => jsonInputRef.current?.click()}>Import</button>
+                                <div className="flex gap-1 text-sm font-semibold">
+                                    <button className="min-h-10 min-w-10 px-2 text-kaavi disabled:text-muted/50" onClick={save} disabled={!scan && !dots.length}>Save</button>
+                                    <button className="min-h-10 min-w-10 px-2 text-kaavi disabled:text-muted/50" onClick={() => downloadKolamFile(currentFile())} disabled={!scan && !dots.length}>Export</button>
+                                    <button className="min-h-10 min-w-10 px-2 text-kaavi" onClick={() => jsonInputRef.current?.click()}>Import</button>
                                 </div>
                             </div>
                             <input ref={jsonInputRef} type="file" accept=".json,application/json" onChange={openFile} className="hidden" />

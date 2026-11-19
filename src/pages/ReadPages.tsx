@@ -90,7 +90,7 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
                 <div className={`relative container mx-auto max-w-4xl px-4 ${kit.doorway === 'toran' ? 'pt-44' : 'pt-36'} pb-12 text-center`}>
                     <Greeting className="mb-4" />
                     <nav aria-label="Breadcrumb" className="text-sm text-rice/85">
-                        <Link to={`/${t.slug}`} className={linkClass}>{t.name}</Link>
+                        <Link to={`/${t.slug}`} className={`${linkClass} inline-block min-w-10 py-3 -my-3`}>{t.name}</Link>
                         <span aria-hidden> › </span>
                         <span aria-current="page">Read a photo</span>
                     </nav>
@@ -99,8 +99,8 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
                     <div className="brass-rule max-w-sm mx-auto my-6" aria-hidden><Ornament id={kit.ornament} className="h-9 w-9 shrink-0" /></div>
                     <p className="text-lg text-rice/90">It finds {guide.finds}, so you can draw it again.</p>
                     <ul className="mt-6 grid gap-3 md:grid-cols-2 text-left">
-                        {guide.tips.map(tip => (
-                            <li key={tip} className="rounded-xl border border-brass/40 bg-floor/60 px-4 py-3 text-rice/90">{tip}</li>
+                        {guide.tips.map((tip, i) => (
+                            <li key={`${i}-${tip}`} className="rounded-xl border border-brass/40 bg-floor/60 px-4 py-3 text-rice/90">{tip}</li>
                         ))}
                     </ul>
                     <p className="mt-6 text-sm text-rice/85">

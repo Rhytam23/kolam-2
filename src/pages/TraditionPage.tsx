@@ -130,7 +130,7 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
                             <Fact title="Motifs" delay={200}>{t.motifs}</Fact>
                         </div>
                         <Reveal className="mt-10 max-w-3xl mx-auto space-y-4 text-lg leading-relaxed text-rice/90">
-                            {t.about.slice(1).map(p => <p key={p}>{p}</p>)}
+                            {t.about.slice(1).map((p, i) => <p key={`${i}-${p}`}>{p}</p>)}
                             {related && (
                                 <p className="rounded-xl border border-brass/40 px-4 py-3 text-base">
                                     <strong className="text-brass-light">Not to be confused: </strong>

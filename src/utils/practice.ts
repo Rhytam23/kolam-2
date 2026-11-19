@@ -249,3 +249,70 @@ export const finishGroup = (plan: PracticePlan, state: PracticeState): PracticeS
     // A half-drawn stroke's pieces are drawn twice; that is harmless.
     return next;
 };
+
+// ---------------------------------------------------------------- keyboard
+
+/** What a key does on the practice drawing: choose another valid dot, or tap the chosen one. */
+export type PracticeKey = 'next' | 'previous' | 'tap';
+
+/**
+ * Maps a key to an action. Arrow keys cycle through the valid dots, Enter and Space tap the chosen one.
+ * Tab also moves between the valid dots while there is another one in that direction; at either end it is
+ * left alone, so the browser moves on and the drawing never traps the keyboard.
+ */
+export const practiceKey = (key: string, shift: boolean, cursor: number, count: number): PracticeKey | null => {
+    if (key === 'Enter' || key === ' ' || key === 'Spacebar') return 'tap';
+    if (key === 'ArrowRight' || key === 'ArrowDown') return 'next';
+    if (key === 'ArrowLeft' || key === 'ArrowUp') return 'previous';
+    if (key === 'Tab') {
+        if (!shift && cursor < count - 1) return 'next';
+        if (shift && cursor > 0) return 'previous';
+    }
+    return null;
+};
+
+/** Where a dot is on the drawing, in words a screen reader can say: "top left", "centre", "bottom". */
+export const dotPlace = (plan: PracticePlan, dot: number): string => {
+    const [vx, vy, vw, vh] = plan.viewBox.split(' ').map(Number);
+    const third = (v: number, from: number, size: number, names: [string, string, string]) => names[Math.min(2, Math.max(0, Math.floor(((v - from) / size) * 3)))];
+    const row = third(plan.dots[dot].y, vy, vh, ['top', 'middle', 'bottom']);
+    const col = third(plan.dots[dot].x, vx, vw, ['left', 'middle', 'right']);
+    if (row === 'middle' && col === 'middle') return 'centre';
+    if (row === 'middle') return col;
+    if (col === 'middle') return row;
+    return `${row} ${col}`;
+};
+
+/** What to say when a valid dot is chosen with the keyboard. */
+export const focusMessage = (plan: PracticePlan, state: PracticeState, cursor: number): string => {
+    const dots = isFinished(state) ? [] : expectedDots(plan, state);
+    if (!dots.length) return 'The design is finished.';
+    const at = Math.min(cursor, dots.length - 1);
+    const choice = dots.length > 1 ? ` Choice ${at + 1} of ${dots.length}; use the arrow keys to choose another.` : '';
+    return `${state.active ? 'Next dot' : 'Start at the dot'} at the ${dotPlace(plan, dots[at])}.${choice} Press Enter or Space to tap it.`;
+};
+
+export interface KeyboardOutcome {
+    state: PracticeState;
+    cursor: number;
+    /** Set when Enter or Space tapped a dot: the same result as a tap with a finger. */
+    tap?: { dot: number; result: ReturnType<typeof tapDot> };
+    /** The key was used, so the page should not also scroll or move focus. */
+    handled: boolean;
+}
+
+/** One key press on the drawing. Only valid dots can be chosen, so the keyboard can never tap a wrong dot. */
+export const keyboardStep = (plan: PracticePlan, state: PracticeState, cursor: number, key: string, shift = false): KeyboardOutcome => {
+    const dots = isFinished(state) ? [] : expectedDots(plan, state);
+    const at = Math.min(Math.max(cursor, 0), Math.max(dots.length - 1, 0));
+    const action = dots.length ? practiceKey(key, shift, at, dots.length) : null;
+    if (!action) return { state, cursor: at, handled: false };
+    if (action === 'tap') {
+        const dot = dots[at];
+        const result = tapDot(plan, state, dot);
+        return { state: result.state, cursor: 0, tap: { dot, result }, handled: true };
+    }
+    const step = action === 'next' ? 1 : -1;
+    // Arrow keys wrap round; Tab only gets here while there is a dot in its direction.
+    return { state, cursor: (at + step + dots.length) % dots.length, handled: true };
+};

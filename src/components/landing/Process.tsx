@@ -86,8 +86,8 @@ const Process: React.FC = () => {
                         <FloorTile frame="plaque" label="Recreated rangoli with its colours listed">
                             <div className={`${inner} glow`}><RangoliFrame design={rangoli} stage="colour" showDots={false} /></div>
                             <ul className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-1.5 justify-center">
-                                {RANGOLI_COLOURS.map(c => (
-                                    <li key={c} className="flex items-center gap-1 rounded-full bg-rice/90 px-2 py-0.5 text-[11px] text-ink">
+                                {RANGOLI_COLOURS.map((c, i) => (
+                                    <li key={`${i}-${c}`} className="flex items-center gap-1 rounded-full bg-rice/90 px-2 py-0.5 text-[11px] text-ink">
                                         <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c }} />{nearestTraditional(c).name}
                                     </li>
                                 ))}
