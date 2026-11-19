@@ -45,4 +45,4 @@ No database, email, analytics, payment or API-key accounts exist.
 - Better handling of photos taken at a steep angle without a visible sheet.
 
 ## Support
-Issues: https://github.com/Rhytam23/kolam-2/issues. Licence: proprietary, all rights reserved (`LICENSE`); reuse needs the owner's written permission, see `/legal.html`.
+Issues: https://github.com/Rhytam23/kolam-2/issues. Licence: code under MIT (`LICENSE`); the Chittara name and logo are reserved (`LICENSE-ASSETS.md`), see `/legal.html`.

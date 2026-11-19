@@ -9,7 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags 
 - The guide no longer says "0 guide points" for a design with only a centre dot.
 
 ### Changed
-- Licence changed from MIT to proprietary, all rights reserved. Reuse, deployment or entry in a hackathon needs the owner's written permission.
+- Licence: the code is open source under the MIT License. The Chittara name, logo and brand assets are reserved to the owner (`LICENSE-ASSETS.md`). Removed the proprietary headers from the source files.
 - Footer redesigned: centred brand and greetings, four columns (art forms, tools, app and privacy, legal), and a copyright strip.
 
 ### Added

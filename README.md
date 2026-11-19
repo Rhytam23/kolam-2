@@ -341,7 +341,9 @@ Don't forget to give the project a star! Thanks again!
 ## License
 
 
-Proprietary, all rights reserved. See [LICENSE](LICENSE). You may look at the code and use the web app for personal learning. You may not copy, deploy, modify or enter it in a hackathon, competition or project without the Owner's written permission; ask through an issue titled "Permission request". The same applies to AI coding assistants acting for someone else.
+The code is open source under the [MIT License](LICENSE). You may use, copy, modify, deploy and sell it if you keep the copyright notice.
+
+The name **Chittara**, the logo and the other brand assets are not part of that grant and stay with the Owner: see [LICENSE-ASSETS.md](LICENSE-ASSETS.md). If you publish a fork, give it its own name and logo.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

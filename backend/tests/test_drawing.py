@@ -3,7 +3,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from drawing import colour_layers, radial_symmetry
+from drawing import colour_masks, radial_symmetry
 from principles import stroke_mask
 
 FLOOR = (40, 50, 120)      # BGR brick-red floor
@@ -42,13 +42,12 @@ def test_rings_are_circular():
     assert radial_symmetry(stroke_mask(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)))['circular']
 
 
-def test_palette_and_layers_of_a_floor_alpana():
+def test_palette_and_masks_of_a_floor_alpana():
     img = petals(8, background=FLOOR, ink=RICE)
     cv2.circle(img, (350, 300), 30, MARIGOLD, -1)
-    palette, layers = colour_layers(img)
+    palette, masks = colour_masks(img)
     assert palette[0]['background'] and palette[0]['share'] > 0.8
     colours = [p['hex'] for p in palette]
     assert len(colours) == 3  # floor, rice flour, marigold; no anti-aliasing blends
-    assert all(layer['path'].startswith('M') for layer in layers)
-    assert len(layers) == 2
+    assert len(masks) == 2  # one mask each for rice flour and marigold; the floor is the ground
     assert order(img, dark_ink=False) == 8

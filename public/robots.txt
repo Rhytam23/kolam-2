@@ -1,5 +1,5 @@
-# Chittara is copyrighted and proprietary. See /legal.html.
-# AI training and AI-assistant crawlers are not permitted to use this site or its code without written permission.
+# The Chittara code is open source (MIT); the name and logo are reserved. See /legal.html.
+# AI training crawlers are asked not to crawl the hosted site.
 User-agent: GPTBot
 Disallow: /
 User-agent: ChatGPT-User
