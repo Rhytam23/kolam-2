@@ -39,8 +39,10 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
 
     useEffect(() => {
         const onScroll = () => {
-            const paper = document.querySelector('[data-paper]')?.getBoundingClientRect().top ?? Infinity;
-            setLook(paper <= 72 ? 'paper' : window.scrollY > 20 ? 'floor' : 'top');
+            // The cream bar is only for while the tools are under it; below them (the footer) it is dark again.
+            const paper = document.querySelector('[data-paper]')?.getBoundingClientRect();
+            const overPaper = !!paper && paper.top <= 72 && paper.bottom > 72;
+            setLook(overPaper ? 'paper' : window.scrollY > 20 ? 'floor' : 'top');
         };
         onScroll();
         window.addEventListener('scroll', onScroll, { passive: true });

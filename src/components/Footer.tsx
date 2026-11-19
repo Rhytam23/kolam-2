@@ -22,9 +22,10 @@ const Footer: React.FC = () => {
     const pages: Array<[string, string]> = [['/', 'Home'], [READ_A_PHOTO, 'Read a photo'], ['/studio', 'Design Studio'], ['/about', 'About and research']];
     return (
         <footer className="floor-bg text-rice px-4 pb-8">
-            <FrameBar className="-mx-4 mb-12" />
+            <FrameBar className="-mx-4" />
 
-            <div className="container mx-auto max-w-6xl">
+            {/* Padding, not margin: a margin would show the cream page behind the dark footer. */}
+            <div className="container mx-auto max-w-6xl pt-14">
                 <div className="grid gap-12 lg:grid-cols-[1.15fr_1.4fr_0.8fr_1fr] lg:gap-10">
                     {/* Who we are, and the app */}
                     <div>
