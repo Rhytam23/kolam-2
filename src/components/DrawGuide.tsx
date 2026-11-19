@@ -7,6 +7,7 @@ import { SYMMETRY_LABELS, designDots, loopPaths, rowPattern, type SymmetryName }
 import { DOT_RADIUS, centreRadius, guideDotColour, radialGuideDots, ringPath, ringStyle, type Motif } from '../utils/radial';
 import { layerTransform, tracedBackground, tracedDots, tracedSize, tracedStrokes } from '../utils/traced';
 import { geometricPoint, shapePath } from '../utils/geometric';
+import { MEHENDI_LINE_WIDTH, MEHENDI_VIEWBOX, dotRadius, handSvg, mehendiGuidePoints, mehendiSurround, strokePath, type MehendiStroke } from '../utils/mehendi';
 import { artworkColours, kolamDotColour } from '../lib/artwork';
 import { nearestGround, nearestTraditional } from '../lib/colours';
 import { SectionHeading } from './ui/SectionHeading';
@@ -119,6 +120,63 @@ const DrawGuide: React.FC = () => {
                         tip: general ? (radial.rings.some(r => !r.filled) ? 'For alpana, trace the lines with rice paste (pithali) using a fingertip or a small piece of cloth.' : 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.') : voice.finish,
                         colours: true,
                         picture: <>{bg}{radial.rings.map((r, i) => { const st = ringStyle(radial, r); return <path key={i} d={ringPath(r)} fill={st.fill} stroke={st.stroke} strokeWidth={st.strokeWidth} strokeLinejoin="round" />; })}<circle r={centreRadius(radial)} fill={radial.centre} stroke={radial.dotsInColour ? 'none' : radial.outline} strokeWidth={0.012} /></>,
+                    },
+                ],
+            };
+        }
+
+        if (mode === 'mehendi') {
+            const m = k.mehendi;
+            const bg = <><rect x={-20} width={540} height={540} fill={mehendiSurround(m.skin)} /><g dangerouslySetInnerHTML={{ __html: handSvg(m.skin, m.side) }} /></>;
+            const piece = (s: MehendiStroke, colour: string, animate = false, key?: string | number) => s.kind === 'dot'
+                ? <circle key={key} cx={s.points[0].x} cy={s.points[0].y} r={dotRadius(s)} fill={colour} />
+                : <path key={key} d={strokePath(s)} fill="none" stroke={colour} strokeWidth={s.kind === 'petal' ? MEHENDI_LINE_WIDTH * 0.8 : MEHENDI_LINE_WIDTH} strokeLinecap="round" strokeLinejoin="round" pathLength={1} className={animate ? 'kolam-draw' : undefined} />;
+            const inGroup = (g: number) => m.strokes.filter(s => s.group === g);
+            const describe = (g: number) => {
+                const own = inGroup(g);
+                const count = (kind: MehendiStroke['kind']) => own.filter(s => s.kind === kind).length;
+                const outlines = own.filter(s => s.kind === 'line' && s.closed).length;
+                const lines = count('line') - outlines;
+                const parts = [
+                    count('petal') ? `${count('petal')} ${count('petal') === 1 ? 'petal or leaf' : 'petals and leaves'}` : '',
+                    outlines ? `${outlines} ${outlines === 1 ? 'outline' : 'outlines'}` : '',
+                    lines ? `${lines} ${lines === 1 ? 'line' : 'lines'}` : '',
+                    count('dot') ? `${count('dot')} ${count('dot') === 1 ? 'dot' : 'dots'}` : '',
+                ].filter(Boolean);
+                return parts.join(', ');
+            };
+            const hasFill = (g: number) => inGroup(g).some(s => s.filled && s.kind !== 'dot');
+            const marks = (
+                <g fill="#FFFFFF" stroke={m.ink} strokeWidth={0.8}>{mehendiGuidePoints(m).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={1.9} />)}</g>
+            );
+            const upTo = (g: number) => m.strokes.filter(s => s.group < g).map((s, i) => piece(s, m.ink, false, i));
+            return {
+                viewBox: MEHENDI_VIEWBOX,
+                list: [
+                    {
+                        title: '1. Prepare the skin',
+                        text: `${voice.ground} This design is for the ${m.side} hand.`,
+                        tip: 'Try a little of the paste on a small patch of skin first, in case of an allergy. Choose natural henna: so-called black henna can contain a dye that burns the skin.',
+                        picture: bg,
+                    },
+                    {
+                        title: '2. Know the order',
+                        text: `The design is piped in ${m.groups.length} stages: ${m.groups.join(', then ')}. Start at the centre of the palm and finish at the wrist, so your hand never rests on wet paste.${aid ? ' The small marks show where each line passes; they are only a help for learning.' : ''}`,
+                        tip: 'Rest the hand flat and steady, for example on a cushion. Wet henna smudges easily.',
+                        picture: <>{bg}{marks}</>,
+                    },
+                    ...m.groups.map((name, g) => ({
+                        title: `${3 + g}. Pipe ${name}`,
+                        text: `Pipe ${name}: ${describe(g)}.${g === 0 ? ' Start at the middle of the palm.' : ''}`,
+                        tip: g === 0 ? voice.apply : hasFill(g) ? 'Squeeze a little more paste into the filled petals and leaves and let it pool, so they dry solid.' : 'Check the new shapes against the ones already drawn: the pattern is even on every side.',
+                        picture: <>{bg}{upTo(g)}<g key={`${step}-${g}`}>{inGroup(g).map((s, i) => piece(s, HIGHLIGHT, true, i))}</g></>,
+                    })),
+                    {
+                        title: `${3 + m.groups.length}. Let it dry and stain`,
+                        text: voice.finish,
+                        tip: 'Keep the hand warm and still while the paste dries. A little lemon juice and sugar dabbed on is a common way to keep it moist.',
+                        colours: true,
+                        picture: <>{bg}{m.strokes.map((s, i) => <g key={i}>{s.kind !== 'dot' && s.filled ? <path d={strokePath(s)} fill={m.ink} stroke={m.ink} strokeWidth={MEHENDI_LINE_WIDTH * 0.8} strokeLinejoin="round" /> : piece(s, m.ink)}</g>)}</>,
                     },
                 ],
             };
@@ -320,9 +378,9 @@ const DrawGuide: React.FC = () => {
                 },
             ].map((s, i) => ({ ...s, title: s.title.match(/^\d/) ? s.title : `${i + 1}. ${s.title}` })),
         };
-    }, [mode, design, loops, symmetry, radial, traced, colours, step, k.geometric, slug]);
+    }, [mode, design, loops, symmetry, radial, traced, colours, step, k.geometric, k.mehendi, slug]);
 
-    const signature = `${mode}|${JSON.stringify(design)}|${radial.rings.length}|${radial.rings[0]?.count}|${traced?.layers.length}|${k.geometric.pattern}${k.geometric.size}`;
+    const signature = `${mode}|${JSON.stringify(design)}|${radial.rings.length}|${radial.rings[0]?.count}|${traced?.layers.length}|${k.geometric.pattern}${k.geometric.size}|${k.mehendi.layout}${k.mehendi.density}${k.mehendi.side}${k.mehendi.ink}`;
     useEffect(() => { setStep(0); setPlaying(false); }, [signature]);
 
     const last = steps.list.length - 1;
@@ -369,7 +427,7 @@ const DrawGuide: React.FC = () => {
                                 <h3 className="font-heading text-2xl text-kaavi">{current.title}</h3>
                                 <p className="text-ink leading-relaxed">{current.text}</p>
                                 {current.tip && <p className="text-sm text-muted border-l-4 border-marigold pl-3">{current.tip}</p>}
-                                {current.colours && <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam' || mode === 'geometric'} />}
+                                {current.colours && <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam' || mode === 'geometric'} henna={mode === 'mehendi'} />}
                             </Card>
                             <div className="flex justify-center gap-3">
                                 <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}>Previous</Button>

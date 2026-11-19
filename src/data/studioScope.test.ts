@@ -2,18 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { STUDIO_PRESETS, specToFit } from './designs';
 import { TRADITIONS } from './traditions';
 
-const scopeOf = (t: (typeof TRADITIONS)[number]) => ({ modes: t.modes, radialStyles: t.radialStyles, patterns: t.patterns, presets: t.designs });
+const scopeOf = (t: (typeof TRADITIONS)[number]) => ({ modes: t.modes, radialStyles: t.radialStyles, patterns: t.patterns, layouts: t.layouts, presets: t.designs });
 const FOREIGN = [
   { mode: 'kolam', radialStyle: 'lotus', geoPattern: 'star' },
   { mode: 'radial', radialStyle: 'festival', geoPattern: 'star' },
   { mode: 'geometric', radialStyle: 'lotus', geoPattern: 'bands' },
+  { mode: 'mehendi', radialStyle: 'lotus', geoPattern: 'star', mehendiLayout: 'bridal' },
 ] as const;
 
 describe('keeping a studio inside its own art form', () => {
   it('leaves a studio alone when everything on show is its own', () => {
     for (const t of TRADITIONS) {
       const first = t.designs[0].spec;
-      const state = { mode: first.mode, radialStyle: first.mode === 'radial' ? first.style : 'lotus', geoPattern: first.mode === 'geometric' ? first.pattern : 'star' } as const;
+      const state = { mode: first.mode, radialStyle: first.mode === 'radial' ? first.style : 'lotus', geoPattern: first.mode === 'geometric' ? first.pattern : 'star', mehendiLayout: first.mode === 'mehendi' ? first.layout : undefined } as const;
       expect(specToFit(state, scopeOf(t)), t.slug).toBeNull();
     }
   });
@@ -25,12 +26,14 @@ describe('keeping a studio inside its own art form', () => {
         const spec = specToFit(state, scope);
         const offered = scope.modes.includes(state.mode)
           && (state.mode !== 'radial' || scope.radialStyles.includes(state.radialStyle))
-          && (state.mode !== 'geometric' || scope.patterns.includes(state.geoPattern));
+          && (state.mode !== 'geometric' || scope.patterns.includes(state.geoPattern))
+          && (state.mode !== 'mehendi' || !!scope.layouts?.includes(state.mehendiLayout));
         if (offered) { expect(spec, `${t.slug} ${state.mode}`).toBeNull(); continue; }
         expect(spec, `${t.slug} ${state.mode}`).not.toBeNull();
         expect(scope.modes, t.slug).toContain(spec!.mode);
         if (spec!.mode === 'radial') expect(scope.radialStyles, t.slug).toContain(spec!.style);
         if (spec!.mode === 'geometric') expect(scope.patterns, t.slug).toContain(spec!.pattern);
+        if (spec!.mode === 'mehendi') expect(scope.layouts, t.slug).toContain(spec!.layout);
       }
     }
   });
@@ -46,7 +49,7 @@ describe('keeping a studio inside its own art form', () => {
   });
 
   it('lets the full studio show anything', () => {
-    const everything = { modes: ['kolam', 'radial', 'geometric'], radialStyles: ['lotus', 'festival', 'alpana'] as const, patterns: ['star', 'bands'] as const, presets: STUDIO_PRESETS };
+    const everything = { modes: ['kolam', 'radial', 'geometric', 'mehendi'], radialStyles: ['lotus', 'festival', 'alpana'] as const, patterns: ['star', 'bands'] as const, layouts: ['mandala', 'bridal', 'fingers'] as const, presets: STUDIO_PRESETS };
     for (const state of FOREIGN) expect(specToFit(state, everything)).toBeNull();
   });
 });

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, tracedPlan, startPractice, tapDot, currentGroup, type PracticePlan, type PracticeState } from './practice';
+import { expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, mehendiPlan, radialPlan, tracedPlan, startPractice, tapDot, currentGroup, type PracticePlan, type PracticeState } from './practice';
 import { diamondDesign, makeSingleLine, squareDesign } from './kolamLogic';
 import { makeRadial } from './radial';
 import { makeGeometric, GEOMETRIC_PATTERNS, type GeometricPattern } from './geometric';
 import { PALETTES } from '../lib/colours';
+import { MEHENDI_LAYOUTS, makeMehendi, type MehendiLayout } from './mehendi';
 
 /** Plays the whole design by always tapping the first expected dot. */
 const playThrough = (plan: PracticePlan) => {
@@ -180,13 +181,14 @@ describe('practice with the keyboard', () => {
         return state;
     };
 
-    it('completes a full practice pass using only keys, on every kind of design', () => {
+    it('completes a full practice pass using only keys, on every kind of design, henna included', () => {
         const plans = [
             kolamPlan(makeSingleLine(diamondDesign(5))),
             kolamPlan(squareDesign(3)),
             radialPlan(makeRadial({ petals: 8, layers: 2, style: 'lotus', ...PALETTES.pongal })),
             radialPlan(makeRadial({ petals: 8, layers: 3, style: 'curls', ...PALETTES.darkFloor })),
             ...(Object.keys(GEOMETRIC_PATTERNS) as GeometricPattern[]).map(p => geometricPlan(makeGeometric({ pattern: p, size: 9, ...PALETTES.sankranti }))),
+            ...(Object.keys(MEHENDI_LAYOUTS) as MehendiLayout[]).flatMap(layout => [1, 3].map(density => mehendiPlan(makeMehendi({ layout, density, side: 'left', ...PALETTES.henna })))),
         ];
         for (const plan of plans) {
             const state = keyboardPass(plan);

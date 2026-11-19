@@ -11,7 +11,7 @@ import Reveal from '../components/landing/Reveal';
 import { SectionHeading } from '../components/ui/SectionHeading';
 import { Button } from '../components/ui/Button';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { READ_A_PHOTO, TRADITIONS, readerPath, withArticle, type Tradition } from '../data/traditions';
+import { READ_A_PHOTO, TRADITIONS, hasReader, readerPath, withArticle, type Tradition } from '../data/traditions';
 import { readingGuide } from '../data/reading';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
 import { headingFont } from '../lib/fonts';
@@ -66,8 +66,8 @@ export const ReadGuidePage: React.FC = () => (
         <CultureDivider tone="rice" spacing={40} index={6} />
         <section id="choose" className="scroll-mt-16 py-16 px-4">
             <div className="container mx-auto max-w-6xl">
-                <SectionHeading dark title="Choose your art form" kicker="Each opens its own reader" className="mb-10" />
-                <TraditionGallery to={t => readerPath(t.slug)} action="Read a photo" />
+                <SectionHeading dark title="Choose your art form" kicker="Each opens its own reader; henna opens its drawing page" className="mb-10" />
+                <TraditionGallery to={t => (hasReader(t) ? readerPath(t.slug) : `/${t.slug}`)} action={t => (hasReader(t) ? 'Read a photo' : 'Draw it (no photo reader yet)')} />
             </div>
         </section>
     </div>
@@ -122,7 +122,7 @@ export const TraditionReadPage: React.FC<{ tradition: Tradition }> = ({ traditio
                     </p>
                     <p className="mt-8 text-sm uppercase tracking-widest text-brass-light">Read a photo of another art form</p>
                     <ul className="mt-4 flex flex-wrap justify-center gap-2">
-                        {TRADITIONS.filter(o => o.slug !== t.slug).map(o => (
+                        {TRADITIONS.filter(o => o.slug !== t.slug && hasReader(o)).map(o => (
                             <li key={o.slug}>
                                 <Link to={readerPath(o.slug)} className="inline-flex items-center gap-2 rounded-full border border-brass/40 px-4 py-2 hover:border-brass-light hover:text-brass-light">
                                     <span className="h-3 w-3 rounded-full ring-1 ring-rice/40" style={{ background: o.theme.brass }} aria-hidden />

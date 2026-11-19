@@ -15,7 +15,7 @@ interface TraditionVoice {
   /** What its dots are called. */
   dotWord: string;
   /** Names of the studio tabs for the kinds of design it offers. */
-  modeLabels: { kolam: string; radial: string; geometric: string };
+  modeLabels: { kolam: string; radial: string; geometric: string; mehendi: string };
   /** Step 1 of the guide, before the name of the ground. */
   ground: string;
   /** How the material is applied: the tip on the line and ring steps. */
@@ -38,7 +38,7 @@ interface TraditionVoice {
 
 const GENERAL: TraditionVoice = {
   art: 'a design', plural: 'designs', dotWord: 'dots',
-  modeLabels: { kolam: 'Dot kolam', radial: 'Round designs', geometric: 'Straight lines' },
+  modeLabels: { kolam: 'Dot kolam', radial: 'Round designs', geometric: 'Straight lines', mehendi: 'Henna on a hand' },
   ground: 'Sweep the floor and sprinkle water so the powder sticks.',
   apply: 'Take a pinch of powder between thumb and finger and let it run in a steady line.',
   finish: 'Pour powder into a paper cone or pinch it between thumb and fingers to fill evenly.',
@@ -51,7 +51,7 @@ const GENERAL: TraditionVoice = {
 const make = (v: Partial<Omit<TraditionVoice, 'modeLabels'>> & Pick<TraditionVoice, 'art' | 'plural'> & { modeLabels?: Partial<TraditionVoice['modeLabels']> }): TraditionVoice => ({
   ...GENERAL, singleLine: 'One continuous line', file: 'Design file (.kolam.json)', dots: 'aid', ...v,
   // Kinds of design an art form does not offer get a neutral name, never another art form's.
-  modeLabels: { kolam: 'Dot designs', radial: 'Round designs', geometric: 'Straight lines', ...v.modeLabels },
+  modeLabels: { kolam: 'Dot designs', radial: 'Round designs', geometric: 'Straight lines', mehendi: 'Henna designs', ...v.modeLabels },
 });
 
 /** Art forms made by painting: their steps say "Paint", not "Join the dots". */
@@ -138,6 +138,14 @@ export const VOICES: Record<string, TraditionVoice> = {
     ground: 'Mark a square (chowk) on the swept floor; the design fills it.',
     apply: 'Let the flour or rice powder run in a thin line from between your thumb and finger.',
     finish: 'Fill the square with colours: turmeric, kumkum and other powders.',
+  }),
+  mehendi: make({
+    art: 'a mehendi', plural: 'mehendi designs',
+    modeLabels: { mehendi: 'Henna on a hand' },
+    ground: 'Mehendi is applied to clean, dry skin. Do not oil the skin or put on lotion first, so the henna can take.',
+    apply: 'Fill a cone with henna paste and squeeze it out in a thin, steady line, touching the skin lightly.',
+    finish: 'Leave the paste on for several hours, then scrape it off rather than washing it. The stain deepens from orange to reddish-brown over a day or two.',
+    ring: 'Pipe this stage as', ringTitle: 'Pipe', start: 'centre-out', singleLine: 'One continuous line', file: 'Design file',
   }),
   chittara: make({
     art: 'a chittara', ...PAINTED, plural: 'chittaras',

@@ -2,6 +2,7 @@ import { designToSvg, diamondDesign, makeSingleLine, squareDesign } from '../uti
 import { makeRadial, radialToSvg, type RadialDesign, type RadialStyle } from '../utils/radial';
 import { geometricToSvg, makeGeometric, type GeometricDesign, type GeometricPattern } from '../utils/geometric';
 import { guideDotColour } from '../utils/radial';
+import { makeMehendi, mehendiSurround, mehendiToSvg, type HandSide, type MehendiDesign, type MehendiLayout } from '../utils/mehendi';
 import { PALETTES, type PaletteName } from '../lib/colours';
 import { kolamDotColour } from '../lib/artwork';
 import type { Design } from '../types/kolam';
@@ -11,7 +12,8 @@ import type { useKolam } from '../components/KolamContext';
 export type DesignSpec =
   | { mode: 'kolam'; shape: 'square' | 'diamond'; size: number; singleLine: boolean; palette: PaletteName }
   | { mode: 'radial'; style: RadialStyle; petals: number; layers: number; palette: PaletteName }
-  | { mode: 'geometric'; pattern: GeometricPattern; size: number; palette: PaletteName };
+  | { mode: 'geometric'; pattern: GeometricPattern; size: number; palette: PaletteName }
+  | { mode: 'mehendi'; layout: MehendiLayout; density: number; side: HandSide; palette: PaletteName };
 
 export interface DesignPreset {
   title: string;
@@ -24,7 +26,8 @@ export interface DesignPreset {
 type BuiltDesign =
   | { mode: 'kolam'; design: Design; spec: Extract<DesignSpec, { mode: 'kolam' }> }
   | { mode: 'radial'; design: RadialDesign; spec: Extract<DesignSpec, { mode: 'radial' }> }
-  | { mode: 'geometric'; design: GeometricDesign; spec: Extract<DesignSpec, { mode: 'geometric' }> };
+  | { mode: 'geometric'; design: GeometricDesign; spec: Extract<DesignSpec, { mode: 'geometric' }> }
+  | { mode: 'mehendi'; design: MehendiDesign; spec: Extract<DesignSpec, { mode: 'mehendi' }> };
 
 export const buildDesign = (spec: DesignSpec): BuiltDesign => {
   if (spec.mode === 'kolam') {
@@ -34,10 +37,14 @@ export const buildDesign = (spec: DesignSpec): BuiltDesign => {
   if (spec.mode === 'radial') {
     return { mode: 'radial', design: makeRadial({ style: spec.style, petals: spec.petals, layers: spec.layers, ...PALETTES[spec.palette] }), spec };
   }
+  if (spec.mode === 'mehendi') {
+    return { mode: 'mehendi', design: makeMehendi({ layout: spec.layout, density: spec.density, side: spec.side, ...PALETTES[spec.palette] }), spec };
+  }
   return { mode: 'geometric', design: makeGeometric({ pattern: spec.pattern, size: spec.size, ...PALETTES[spec.palette] }), spec };
 };
 
-export const presetBackground = (spec: DesignSpec) => PALETTES[spec.palette].background;
+/** The colour behind a design's picture. Henna is shown on a hand, so what surrounds the hand. */
+export const presetBackground = (spec: DesignSpec) => (spec.mode === 'mehendi' ? mehendiSurround(PALETTES[spec.palette].background) : PALETTES[spec.palette].background);
 
 export const presetSvg = (spec: DesignSpec) => {
   const built = buildDesign(spec);
@@ -46,6 +53,7 @@ export const presetSvg = (spec: DesignSpec) => {
     return designToSvg(built.design, { background, stroke: colors, dot: kolamDotColour(background) });
   }
   if (built.mode === 'radial') return radialToSvg(built.design);
+  if (built.mode === 'mehendi') return mehendiToSvg(built.design);
   return geometricToSvg(built.design, { dotColour: guideDotColour(built.design.background) });
 };
 
@@ -62,6 +70,11 @@ export const applyPreset = (k: ReturnType<typeof useKolam>, spec: DesignSpec) =>
     k.setPetals(spec.petals);
     k.setLayers(spec.layers);
     k.setRadialPalette(spec.palette);
+  } else if (spec.mode === 'mehendi') {
+    k.setMehendiLayout(spec.layout);
+    k.setMehendiDensity(spec.density);
+    k.setHandSide(spec.side);
+    k.setMehendiPalette(spec.palette);
   } else {
     k.setGeoPattern(spec.pattern);
     k.setGeoSize(spec.size);
@@ -75,6 +88,8 @@ interface ScopeLimits {
   modes: readonly string[];
   radialStyles: readonly RadialStyle[];
   patterns: readonly GeometricPattern[];
+  /** The hand layouts offered, for a studio that offers mehendi. */
+  layouts?: readonly MehendiLayout[];
   presets: readonly DesignPreset[];
 }
 
@@ -84,17 +99,19 @@ interface ScopeLimits {
  * It is the first of the art form's own designs of an offered kind, so its signature design when possible.
  */
 export const specToFit = (
-  state: { mode: string; radialStyle: RadialStyle; geoPattern: GeometricPattern },
+  state: { mode: string; radialStyle: RadialStyle; geoPattern: GeometricPattern; mehendiLayout?: MehendiLayout },
   scope: ScopeLimits,
 ): DesignSpec | null => {
   if (state.mode === 'traced') return null;
   const allowed = (spec: DesignSpec) =>
     scope.modes.includes(spec.mode)
     && (spec.mode !== 'radial' || scope.radialStyles.includes(spec.style))
-    && (spec.mode !== 'geometric' || scope.patterns.includes(spec.pattern));
+    && (spec.mode !== 'geometric' || scope.patterns.includes(spec.pattern))
+    && (spec.mode !== 'mehendi' || !!scope.layouts?.includes(spec.layout));
   const foreign = !scope.modes.includes(state.mode)
     || (state.mode === 'radial' && !scope.radialStyles.includes(state.radialStyle))
-    || (state.mode === 'geometric' && !scope.patterns.includes(state.geoPattern));
+    || (state.mode === 'geometric' && !scope.patterns.includes(state.geoPattern))
+    || (state.mode === 'mehendi' && !scope.layouts?.includes(state.mehendiLayout ?? 'mandala'));
   if (!foreign) return null;
   return scope.presets.map(p => p.spec).find(allowed) ?? null;
 };
@@ -107,4 +124,6 @@ export const STUDIO_PRESETS: DesignPreset[] = [
   { title: 'Muggu star', kind: 'Muggulu', detail: 'Straight lines from dot to dot', spec: { mode: 'geometric', pattern: 'star', size: 9, palette: 'sankranti' } },
   { title: 'Alpana', kind: 'Alpana', detail: 'Rice paste on red earth', spec: { mode: 'radial', style: 'alpana', petals: 8, layers: 3, palette: 'alpana' } },
   { title: 'Chittara bands', kind: 'Chittara', detail: 'Triangles and diamonds in bands', spec: { mode: 'geometric', pattern: 'bands', size: 9, palette: 'chittara' } },
+  { title: 'Mandala palm', kind: 'Mehendi', detail: 'Henna petals on the palm, a vine on each finger', spec: { mode: 'mehendi', layout: 'mandala', density: 2, side: 'right', palette: 'henna' } },
+  { title: 'Bridal vine', kind: 'Mehendi', detail: 'A long vine with paisleys and finger lattice', spec: { mode: 'mehendi', layout: 'bridal', density: 2, side: 'left', palette: 'hennaStain' } },
 ];

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BRAND } from '../lib/brand';
 import { Link } from '../lib/router';
-import { READ_A_PHOTO, TRADITIONS, readerPath, traditionBySlug } from '../data/traditions';
+import { READ_A_PHOTO, TRADITIONS, hasReader, readerPath, traditionBySlug } from '../data/traditions';
 import { LANGUAGES, isLang, useI18n, type LabelKey } from '../lib/i18n';
 import { Ornament } from './culture/Ornaments';
 import { useCulture } from './culture/CultureContext';
@@ -11,7 +11,7 @@ import { kitFor } from '../lib/culture';
 const pagesFor = (path: string): Array<{ label: LabelKey; to: string }> => {
     const tradition = traditionBySlug(path.split('/')[1]);
     return [
-        { label: 'nav.read', to: tradition ? readerPath(tradition.slug) : READ_A_PHOTO },
+        { label: 'nav.read', to: tradition && hasReader(tradition) ? readerPath(tradition.slug) : READ_A_PHOTO },
         { label: 'nav.studio', to: '/studio' },
         { label: 'nav.about', to: '/about' },
     ];

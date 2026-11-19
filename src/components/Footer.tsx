@@ -34,7 +34,7 @@ const Footer: React.FC = () => {
                             <p className="font-heading text-3xl brass-text">{BRAND}</p>
                         </div>
                         <p className="mt-4 max-w-sm text-sm leading-relaxed text-rice/80">
-                            Reading, teaching and drawing the floor art of India, from kolam and rangoli to alpana, pookalam and mandana.
+                            Reading, teaching and drawing the floor art of India, from kolam and rangoli to alpana, pookalam and mandana, and the henna of the hand.
                         </p>
                         <div id="install" className="mt-6 max-w-sm rounded-2xl border border-brass/30 bg-black/10 p-4 text-sm">
                             <p className="mb-2 font-semibold text-brass-light">Use it as an app</p>

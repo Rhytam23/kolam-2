@@ -39,6 +39,19 @@ const distance = (a: string, b: string) => {
   return Math.sqrt((2 + rm / 256) * (r1 - r2) ** 2 + 4 * (g1 - g2) ** 2 + (2 + (255 - rm) / 256) * (b1 - b2) ** 2);
 };
 
+/** Colours of henna and of the skin it is applied to. Kept apart from the floor colours, so a brown floor is never called henna. */
+const HENNA_COLOURS: TraditionalColour[] = [
+  { name: 'Fresh henna paste', hex: '#3F4A1F', material: 'Paste of dried, powdered henna leaves, dark green-brown when first piped' },
+  { name: 'Henna stain', hex: '#7A2E12', material: 'The reddish-brown the henna leaves on the skin after a day or two' },
+  { name: 'Deep maroon stain', hex: '#4A1410', material: 'Henna on warm skin, darkened over two days' },
+  { name: 'White henna paste', hex: '#FFF6EA', material: 'A cosmetic body-art paste that stays white on the skin for a few hours' },
+  { name: 'Light skin', hex: '#E8BE98', material: 'Clean, dry skin is the ground for henna; the hand is washed and not oiled first' },
+  { name: 'Warm skin', hex: '#B8805C', material: 'Clean, dry skin; henna and white henna both show well on it' },
+];
+
+export const nearestHenna = (hex: string): TraditionalColour =>
+  HENNA_COLOURS.reduce((best, c) => (distance(hex, c.hex) < distance(hex, best.hex) ? c : best));
+
 export const nearestTraditional = (hex: string): TraditionalColour =>
   TRADITIONAL_COLOURS.reduce((best, c) => (distance(hex, c.hex) < distance(hex, best.hex) ? c : best));
 
@@ -76,9 +89,17 @@ export const PALETTES = {
   pitau: { label: 'Pitau white on mud', background: '#5A4130', colors: ['#FFFDF6'] },
   chowk: { label: 'Flour, kumkum and haldi', background: '#F8EBC8', colors: ['#7A1F1F', '#C8102E', '#E1AD01', '#2E7D32'] },
   chittara: { label: 'White, yellow and black on red earth', background: '#6A2A1A', colors: ['#FFFBF2', '#FFFBF2', '#E3B23C', '#141010'] },
+  henna: { label: 'Fresh henna paste', background: '#E8BE98', colors: ['#3F4A1F'] },
+  hennaStain: { label: 'Henna stain, a day later', background: '#E8BE98', colors: ['#7A2E12'] },
+  hennaMaroon: { label: 'Deep maroon stain', background: '#D9A47E', colors: ['#4A1410'] },
+  whiteHenna: { label: 'White henna on warm skin', background: '#B8805C', colors: ['#FFF6EA'] },
 } as const;
 
 export type PaletteName = keyof typeof PALETTES;
+
+/** The colour sets for henna on skin. Floor-art studios do not offer them, and the henna studio offers only these. */
+export const HENNA_PALETTES: readonly PaletteName[] = ['henna', 'hennaStain', 'hennaMaroon', 'whiteHenna'];
+export const isHennaPalette = (name: PaletteName) => HENNA_PALETTES.includes(name);
 
 export const isDark = (hex: string) => {
   const [r, g, b] = rgb(hex);

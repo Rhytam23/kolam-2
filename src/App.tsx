@@ -7,7 +7,7 @@ import Landing from './pages/Landing';
 import TraditionPage from './pages/TraditionPage';
 import { AboutPage, NotFoundPage, StudioPage } from './pages/Pages';
 import { ReadGuidePage, TraditionReadPage } from './pages/ReadPages';
-import { READ_A_PHOTO, ROUTES, traditionBySlug } from './data/traditions';
+import { READ_A_PHOTO, ROUTES, hasReader, traditionBySlug } from './data/traditions';
 import { usePath } from './lib/router';
 import { I18nProvider } from './lib/i18n';
 import { CultureProvider } from './components/culture/CultureContext';
@@ -22,7 +22,7 @@ export const page = (path: string) => {
     const [, slug, sub] = path.split('/');
     const tradition = traditionBySlug(slug);
     if (tradition && sub === undefined) return <TraditionPage key={tradition.slug} tradition={tradition} />;
-    if (tradition && `/${sub}` === READ_A_PHOTO) return <TraditionReadPage key={tradition.slug} tradition={tradition} />;
+    if (tradition && hasReader(tradition) && `/${sub}` === READ_A_PHOTO) return <TraditionReadPage key={tradition.slug} tradition={tradition} />;
     return <NotFoundPage />;
 };
 

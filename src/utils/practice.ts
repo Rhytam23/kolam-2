@@ -3,6 +3,7 @@ import { designDots, loopBends } from './kolamLogic';
 import { radialGuideDots, ringStrokes, type RadialDesign } from './radial';
 import { geometricPoint, outlineDots, type GeometricDesign } from './geometric';
 import { tracedSize, tracedStrokes, type TracedArt } from './traced';
+import { MEHENDI_LINE_WIDTH, MEHENDI_VIEWBOX, curvePieces, dotPath, dotRadius, type MehendiDesign } from './mehendi';
 
 /*
  * Practice: the visitor draws a design by tapping its dots in order. A design is a list of strokes
@@ -26,7 +27,7 @@ interface Stroke {
 }
 
 export interface PracticePlan {
-    kind: 'kolam' | 'radial' | 'geometric' | 'traced';
+    kind: 'kolam' | 'radial' | 'geometric' | 'mehendi' | 'traced';
     /** Ring the dot where the next line starts, when its start is not obvious. */
     showStart: boolean;
     viewBox: string;
@@ -140,6 +141,37 @@ export const geometricPlan = (design: GeometricDesign): PracticePlan => {
         groups: design.groups,
         anyOrder: true,
         shapes: design.groups.map(() => 'shapes'),
+    };
+};
+
+/** Henna: each vine, petal or paisley is drawn waypoint to waypoint, and each drop of paste is one tap. Stages go in the order they are piped. */
+export const mehendiPlan = (design: MehendiDesign): PracticePlan => {
+    const dots: Point[] = [];
+    const strokes: Stroke[] = design.strokes.map(s => {
+        const base = dots.length;
+        dots.push(...s.points);
+        const ids = s.points.map((_, i) => base + i);
+        if (s.kind === 'dot') return { dots: ids, pieces: [], start: dotPath(s.points[0], dotRadius(s)), closed: false, group: s.group };
+        return { dots: s.closed ? [...ids, base] : ids, pieces: curvePieces(s.points, s.closed), closed: s.closed, group: s.group };
+    });
+    const shapes = design.groups.map((_, g) => {
+        const own = design.strokes.filter(s => s.group === g);
+        const dotsOnly = own.every(s => s.kind === 'dot');
+        return dotsOnly ? 'dots' : own.every(s => s.kind === 'petal') ? 'petals' : 'strokes';
+    });
+    return {
+        kind: 'mehendi',
+        showStart: true,
+        viewBox: MEHENDI_VIEWBOX,
+        dots,
+        dotColours: dots.map(() => undefined),
+        dotSizes: dots.map(() => undefined),
+        dotRadius: 3.6,
+        lineWidth: MEHENDI_LINE_WIDTH,
+        strokes,
+        groups: design.groups,
+        anyOrder: true,
+        shapes,
     };
 };
 

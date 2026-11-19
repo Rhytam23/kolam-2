@@ -5,15 +5,17 @@ import { useKolam } from './KolamContext';
 import { loopPaths } from '../utils/kolamLogic';
 import { guideDotColour, ringPath, ringStyle } from '../utils/radial';
 import { kolamDotColour } from '../lib/artwork';
-import { KOLAM_UNIT, currentGroup, dotPlace, expectedDots, finishGroup, focusMessage, geometricPlan, isFinished, keyboardStep, kolamPlan, radialPlan, startPractice, tapDot, tracedPlan, type PracticePlan, type PracticeState } from '../utils/practice';
+import { KOLAM_UNIT, currentGroup, dotPlace, expectedDots, finishGroup, focusMessage, geometricPlan, isFinished, keyboardStep, kolamPlan, mehendiPlan, radialPlan, startPractice, tapDot, tracedPlan, type PracticePlan, type PracticeState } from '../utils/practice';
 import { layerTransform, tracedBackground } from '../utils/traced';
 import { shapePath } from '../utils/geometric';
+import { handSvg, mehendiSurround, strokePath } from '../utils/mehendi';
 
 const HINT = '#C62839';
-const SINGULAR: Record<string, string> = { petals: 'petal', leaves: 'leaf', curls: 'curl', circle: 'circle', 'centre circle': 'circle', bends: 'bend', shapes: 'shape' };
+const SINGULAR: Record<string, string> = { dots: 'dot', strokes: 'stroke', petals: 'petal', leaves: 'leaf', curls: 'curl', circle: 'circle', 'centre circle': 'circle', bends: 'bend', shapes: 'shape' };
 
 const instructions = (plan: PracticePlan, group: number) => {
     const shape = plan.shapes[group];
+    if (plan.kind === 'mehendi') return shape === 'dots' ? 'Tap each dot to put down a drop of paste.' : `Tap the point where a ${shape === 'petals' ? 'petal' : 'line'} starts, then each point along it in order. A closed shape comes back to where it began, and either way round is fine.`;
     if (plan.kind === 'traced') return 'Tap the dot where the ringed line starts, then each dot along the outline in order, back to the start. The line follows the real curve between dots. Either way round is fine.';
     if (plan.kind === 'geometric') return `Now draw ${plan.groups[group]}. Lines run straight from dot to dot: tap a ringed corner to start, then every dot the line passes through, back to the corner.`;
     if (plan.kind === 'kolam') return 'The line never touches a dot: it bends round one dot, then the next. Start at the ringed dot and tap each dot in the order the line goes round it.';
@@ -27,8 +29,8 @@ const instructions = (plan: PracticePlan, group: number) => {
 const Practice: React.FC = () => {
     const k = useKolam();
     const plan = useMemo(
-        () => (k.mode === 'kolam' ? kolamPlan(k.design) : k.mode === 'radial' ? radialPlan(k.radial) : k.mode === 'geometric' ? geometricPlan(k.geometric) : k.mode === 'traced' && k.traced ? tracedPlan(k.traced) : null),
-        [k.mode, k.design, k.radial, k.geometric, k.traced],
+        () => (k.mode === 'kolam' ? kolamPlan(k.design) : k.mode === 'radial' ? radialPlan(k.radial) : k.mode === 'geometric' ? geometricPlan(k.geometric) : k.mode === 'mehendi' ? mehendiPlan(k.mehendi) : k.mode === 'traced' && k.traced ? tracedPlan(k.traced) : null),
+        [k.mode, k.design, k.radial, k.geometric, k.mehendi, k.traced],
     );
     const [state, setState] = useState(() => (plan ? startPractice(plan) : null));
     const [misses, setMisses] = useState(0);
@@ -60,20 +62,25 @@ const Practice: React.FC = () => {
         return <Card><p className="text-ink">Practice works with the designs from the studio and with designs read from your photos. Choose one above, then come back here.</p></Card>;
     }
 
-    const background = plan.kind === 'traced' && k.traced ? tracedBackground(k.traced)
+    const background = plan.kind === 'mehendi' ? mehendiSurround(k.mehendi.skin)
+        : plan.kind === 'traced' && k.traced ? tracedBackground(k.traced)
         : plan.kind === 'kolam' ? k.kolamColours.background : plan.kind === 'geometric' ? k.geometric.background : k.radial.background;
-    const line = plan.kind === 'kolam' ? k.kolamColours.colors[0] : plan.kind === 'geometric' ? k.geometric.line : guideDotColour(background);
-    const dotColour = plan.kind === 'radial' || plan.kind === 'traced' ? line : kolamDotColour(background);
+    const line = plan.kind === 'mehendi' ? k.mehendi.ink : plan.kind === 'kolam' ? k.kolamColours.colors[0] : plan.kind === 'geometric' ? k.geometric.line : guideDotColour(background);
+    const dotColour = plan.kind === 'radial' || plan.kind === 'traced' || plan.kind === 'mehendi' ? line : kolamDotColour(background);
     const finished = isFinished(state);
     const group = currentGroup(plan, state);
     const expected = finished ? [] : expectedDots(plan, state);
     const showHint = hint || misses >= 2;
+    // Henna has many waypoints, so only those of the stage being drawn are shown.
+    const shown = plan.kind === 'mehendi' && !finished ? new Set(plan.strokes.filter(s => s.group === group).flatMap(s => s.dots)) : null;
     const [vx, vy, vw, vh] = plan.viewBox.split(' ').map(Number);
     const strokesDone = state.done.filter(Boolean).length;
     const inGroup = plan.strokes.filter(s => s.group === group);
     const groupDone = inGroup.filter(s => state.done[plan.strokes.indexOf(s)]).length;
 
-    const ghostPaths = plan.kind === 'traced'
+    const ghostPaths = plan.kind === 'mehendi'
+        ? k.mehendi.strokes.map(strokePath)
+        : plan.kind === 'traced'
         ? plan.strokes.map(st => st.pieces.join(''))
         : plan.kind === 'kolam'
         ? loopPaths(k.design, KOLAM_UNIT, 1)
@@ -98,7 +105,7 @@ const Practice: React.FC = () => {
             return bestDistance <= Math.max(reach, plan.dotRadius * 3) ? best : -1;
         };
         let best = near(expected);
-        if (best < 0) best = near(plan.dots.map((_, i) => i));
+        if (best < 0) best = near(plan.dots.map((_, i) => i).filter(i => !shown || shown.has(i)));
         // Ignore taps far from any dot.
         if (best < 0) return;
         commit(best);
@@ -144,7 +151,9 @@ const Practice: React.FC = () => {
     };
 
     const colourFinal = finished && (
-        plan.kind === 'traced' && k.traced
+        plan.kind === 'mehendi'
+            ? k.mehendi.strokes.map((s, i) => <path key={i} d={strokePath(s)} fill={s.filled ? k.mehendi.ink : 'none'} stroke={s.kind === 'dot' ? 'none' : k.mehendi.ink} strokeWidth={plan.lineWidth} strokeLinecap="round" strokeLinejoin="round" className="fade-in" />)
+            : plan.kind === 'traced' && k.traced
             ? <g transform={layerTransform(k.traced)}>{k.traced.layers.map((l, i) => <path key={i} d={l.path} fill={l.color} fillRule="evenodd" className="fade-in" />)}</g>
             : plan.kind === 'geometric'
             ? k.geometric.shapes.map((shape, i) => <path key={i} d={shapePath(k.geometric, shape, KOLAM_UNIT)} fill={shape.fill ?? 'none'} stroke={line} strokeWidth={plan.lineWidth} strokeLinejoin="round" className="fade-in" />)
@@ -174,13 +183,14 @@ const Practice: React.FC = () => {
                         aria-describedby="practice-keys"
                     >
                         <rect x={vx} y={vy} width={vw} height={vh} fill={background} />
+                        {plan.kind === 'mehendi' && <g dangerouslySetInnerHTML={{ __html: handSvg(k.mehendi.skin, k.mehendi.side) }} />}
                         {ghost && !finished && <g fill="none" stroke={line} strokeOpacity={0.16} strokeWidth={plan.lineWidth}>{ghostPaths.map((d, i) => <path key={i} d={d} />)}</g>}
                         {colourFinal || (
                             <g fill="none" stroke={line} strokeWidth={plan.lineWidth} strokeLinecap="round" strokeLinejoin="round">
                                 {state.drawn.map((d, i) => <path key={i} d={d} />)}
                             </g>
                         )}
-                        <g fill={dotColour}>{plan.dots.map((d, i) => <circle key={i} cx={d.x} cy={d.y} r={plan.dotSizes[i] ?? plan.dotRadius} fill={plan.dotColours[i]} />)}</g>
+                        <g fill={dotColour}>{plan.dots.map((d, i) => (shown && !shown.has(i) ? null : <circle key={i} cx={d.x} cy={d.y} r={plan.dotSizes[i] ?? plan.dotRadius} fill={plan.dotColours[i]} />))}</g>
                         {!finished && (plan.showStart && !state.active || showHint) && expected.map(i => (
                             <circle key={`h${i}`} cx={plan.dots[i].x} cy={plan.dots[i].y} r={plan.dotRadius * 2.6} fill="none" stroke={HINT} strokeWidth={plan.dotRadius * 0.7} className={showHint ? 'animate-pulse' : undefined} />
                         ))}
@@ -203,7 +213,7 @@ const Practice: React.FC = () => {
                 <p id="practice-keys" className="text-xs text-center text-muted">With a keyboard: Tab to the drawing, arrow keys to choose a dot, Enter or Space to tap it. The buttons below do it for you.</p>
                 <div className="flex flex-wrap justify-center gap-3">
                     {!finished && <Button variant="secondary" size="sm" onClick={() => { setHint(true); setMessage(`The red ring marks ${state.active ? 'the next dot' : 'where to start'}, at the ${dotPlace(plan, expected[0])}.`); }}>Show me where</Button>}
-                    {!finished && <Button variant="secondary" size="sm" onClick={() => { setState(finishGroup(plan, state)); setMessage(`${plan.groups[group][0].toUpperCase()}${plan.groups[group].slice(1)} drawn for you.`); }}>Finish this {plan.kind === 'kolam' ? 'line' : plan.kind === 'geometric' ? 'part' : plan.kind === 'traced' ? 'colour' : 'ring'} for me</Button>}
+                    {!finished && <Button variant="secondary" size="sm" onClick={() => { setState(finishGroup(plan, state)); setMessage(`${plan.groups[group][0].toUpperCase()}${plan.groups[group].slice(1)} drawn for you.`); }}>Finish this {plan.kind === 'mehendi' ? 'stage' : plan.kind === 'kolam' ? 'line' : plan.kind === 'geometric' ? 'part' : plan.kind === 'traced' ? 'colour' : 'ring'} for me</Button>}
                     <Button size="sm" onClick={restart}>Start again</Button>
                 </div>
                 <label className="flex min-h-10 items-center justify-center gap-2 text-sm text-ink">
@@ -215,7 +225,7 @@ const Practice: React.FC = () => {
             <div className="order-first md:order-none">
                 <Card className="space-y-3">
                     <p className="text-xs uppercase tracking-widest text-muted">
-                        {finished ? 'Finished' : plan.kind === 'geometric' ? `Part ${group + 1} of ${plan.groups.length}` : plan.kind === 'traced' ? `Colour ${group + 1} of ${plan.groups.length}` : `Drawing ${plan.groups[group]} of ${plan.groups.length}`}
+                        {finished ? 'Finished' : plan.kind === 'mehendi' ? `Stage ${group + 1} of ${plan.groups.length}: ${plan.groups[group]}` : plan.kind === 'geometric' ? `Part ${group + 1} of ${plan.groups.length}` : plan.kind === 'traced' ? `Colour ${group + 1} of ${plan.groups.length}` : `Drawing ${plan.groups[group]} of ${plan.groups.length}`}
                     </p>
                     <h3 className="font-heading text-2xl text-kaavi">{finished ? 'You drew it!' : 'Draw it yourself'}</h3>
                     <p className="text-ink leading-relaxed">{finished ? 'Every line is in place, in the order it is drawn by hand. Try it on paper or on the floor next, or pick another design in the studio.' : instructions(plan, group)}</p>
@@ -223,7 +233,7 @@ const Practice: React.FC = () => {
                         <div className="h-2 rounded-full bg-kaavi/15 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={plan.strokes.length} aria-valuenow={strokesDone}>
                             <div className="h-full bg-kaavi transition-all" style={{ width: `${(100 * strokesDone) / plan.strokes.length}%` }} />
                         </div>
-                        {!finished && <p className="mt-1 text-sm text-muted">{groupDone} of {inGroup.length} {inGroup.length === 1 ? SINGULAR[plan.shapes[group]] ?? 'shape' : plan.shapes[group]} in {plan.groups[group]}</p>}
+                        {!finished && <p className="mt-1 text-sm text-muted">{plan.kind === 'mehendi' ? `${groupDone} of ${inGroup.length} drawn in ${plan.groups[group]}` : `${groupDone} of ${inGroup.length} ${inGroup.length === 1 ? SINGULAR[plan.shapes[group]] ?? 'shape' : plan.shapes[group]} in ${plan.groups[group]}`}</p>}
                     </div>
                 </Card>
             </div>

@@ -2,10 +2,11 @@ import type { Theme } from '../lib/theme';
 import type { PaletteName } from '../lib/colours';
 import type { RadialStyle } from '../utils/radial';
 import type { GeometricPattern } from '../utils/geometric';
+import type { MehendiLayout } from '../utils/mehendi';
 import type { DesignPreset } from './designs';
 
 /*
- * The floor-art traditions of India that each have their own page. Only widely known traditions
+ * The floor-art traditions of India that each have their own page, and mehendi, the henna art of the hand. Only widely known traditions
  * are included, and no two with near-identical names (rangavalli is covered under rangoli). The
  * facts are kept to what is well documented.
  */
@@ -25,9 +26,13 @@ export interface Tradition {
   related?: { slug: string; note: string };
   theme: Theme;
   palettes: PaletteName[];
-  modes: Array<'kolam' | 'radial' | 'geometric'>;
+  modes: Array<'kolam' | 'radial' | 'geometric' | 'mehendi'>;
   radialStyles: RadialStyle[];
   patterns: GeometricPattern[];
+  /** The hand layouts of a tradition that offers henna on a hand. */
+  layouts?: MehendiLayout[];
+  /** false: there is no photo reader yet. The readers look for dots and floor colours, which henna on skin does not have. */
+  reader?: boolean;
   /** The first is the signature design, drawn at the top of the page. */
   designs: DesignPreset[];
 }
@@ -286,7 +291,36 @@ export const TRADITIONS: Tradition[] = [
       { title: 'Large chittara', kind: 'Chittara', detail: 'More bands on a larger grid', spec: { mode: 'geometric', pattern: 'bands', size: 11, palette: 'chittara' } },
     ],
   },
+  {
+    slug: 'mehendi',
+    name: 'Mehendi',
+    script: { word: 'मेहंदी', lang: 'hi' },
+    region: 'India and across South Asia',
+    occasion: 'The mehendi night before a wedding; also Karva Chauth, Teej, Diwali and Eid.',
+    materials: 'A paste of dried, powdered henna leaves (Lawsonia inermis), piped from a cone. It is dark green when applied and stains the skin orange, then reddish-brown over a day or two.',
+    motifs: 'Paisley (kairi), vines and leaves, flowers, peacocks, mandalas, lattice (jaali) and fine bands on the fingers.',
+    about: [
+      'Mehendi is drawn on the hands and feet with a paste of henna, a plant whose dried leaves are ground to a powder. The word comes from the Sanskrit mendhika. It is part of weddings, where the hands of the bride are covered in intricate patterns, and of festivals such as Karva Chauth, Teej, Diwali and Eid.',
+      'Unlike a floor design, a mehendi is not built on a grid of dots. The artist works from the centre of the palm outwards, piping vines, petals and paisleys in a thin, steady line, then adds the fingers and the wrist last. Choose natural henna: so-called black henna can contain a dye that burns the skin.',
+    ],
+    theme: { floor: '#4A2A12', floor2: '#5C3719', rice: '#FBF1E2', brass: '#D98A3D', brassLight: '#F2BE85', kaavi: '#8A3A12', paper: '#FDF6EC', ink: '#2E1A0E', muted: '#5F4632' },
+    palettes: ['henna', 'hennaStain', 'hennaMaroon', 'whiteHenna'],
+    modes: ['mehendi'],
+    radialStyles: [],
+    patterns: [],
+    layouts: ['mandala', 'bridal', 'fingers'],
+    reader: false,
+    designs: [
+      { title: 'Mandala palm', kind: 'Mehendi', detail: 'A flower of petals on the palm, a vine up each finger', spec: { mode: 'mehendi', layout: 'mandala', density: 2, side: 'right', palette: 'henna' } },
+      { title: 'Bridal vine', kind: 'Mehendi', detail: 'A long vine with leaves, paisleys and finger lattice', spec: { mode: 'mehendi', layout: 'bridal', density: 2, side: 'left', palette: 'hennaStain' } },
+      { title: 'Finger bands', kind: 'Mehendi', detail: 'A paisley on the palm, diamonds and dots on every finger', spec: { mode: 'mehendi', layout: 'fingers', density: 2, side: 'right', palette: 'hennaMaroon' } },
+      { title: 'White henna', kind: 'Mehendi', detail: 'The mandala in a white paste on warm skin', spec: { mode: 'mehendi', layout: 'mandala', density: 3, side: 'left', palette: 'whiteHenna' } },
+    ],
+  },
 ];
+
+/** Whether an art form has its own photo reader. */
+export const hasReader = (t: Tradition) => t.reader !== false;
 
 export const traditionBySlug = (slug: string) => TRADITIONS.find(t => t.slug === slug);
 
@@ -308,7 +342,7 @@ export const ROUTES: Array<{ path: string; title: string; description: string }>
     title: `${t.name} (${t.script.word}) · Chittara`,
     description: `${t.name} from ${t.region}: ${t.about[0]}`,
   })),
-  ...TRADITIONS.map(t => ({
+  ...TRADITIONS.filter(hasReader).map(t => ({
     path: readerPath(t.slug),
     title: `Read a photo of ${withArticle(t.name)} · Chittara`,
     description: `Photograph ${withArticle(t.name)} and Chittara finds its dots, symmetry and colours, then helps you draw it again.`,

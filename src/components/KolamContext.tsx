@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { countLoops, diamondDesign, makeSingleLine, squareDesign, symmetries, type SymmetryName } from '../utils/kolamLogic';
 import { makeRadial, type RadialDesign, type RadialStyle } from '../utils/radial';
 import { makeGeometric, type GeometricDesign, type GeometricPattern } from '../utils/geometric';
+import { makeMehendi, type HandSide, type MehendiDesign, type MehendiLayout } from '../utils/mehendi';
 import { PALETTES, type PaletteName } from '../lib/colours';
 import type { Design, KolamFile, Lattice, PaletteEntry, Point, SavedKolam } from '../types/kolam';
 import type { TracedArt } from '../utils/traced';
@@ -9,7 +10,7 @@ import { loadSaved, persistSaved, toKolamFile } from '../lib/kolamFile';
 
 export type Shape = 'square' | 'diamond';
 /** What the generator and the drawing guide are showing. */
-export type Mode = 'kolam' | 'radial' | 'geometric' | 'traced';
+export type Mode = 'kolam' | 'radial' | 'geometric' | 'mehendi' | 'traced';
 export type GuideView = 'steps' | 'practice';
 
 /** A kolam read from a photo (or loaded from a file): the design plus where its dots sit in the image. */
@@ -72,6 +73,18 @@ interface KolamContextValue {
   setGeoPalette: (name: PaletteName) => void;
   geometric: GeometricDesign;
 
+  // henna on a hand
+  mehendiLayout: MehendiLayout;
+  setMehendiLayout: (layout: MehendiLayout) => void;
+  mehendiDensity: number;
+  setMehendiDensity: (density: number) => void;
+  handSide: HandSide;
+  setHandSide: (side: HandSide) => void;
+  mehendiColours: Colours;
+  mehendiPalette: PaletteName;
+  setMehendiPalette: (name: PaletteName) => void;
+  mehendi: MehendiDesign;
+
   /** Whether the drawing guide shows the steps or lets the visitor practise. */
   guideView: GuideView;
   setGuideView: (view: GuideView) => void;
@@ -111,6 +124,10 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [geoPattern, setGeoPattern] = useState<GeometricPattern>('star');
   const [geoSize, setGeoSize] = useState(9);
   const [geoColours, setGeoColours] = useState<Colours>(PALETTES.sankranti);
+  const [mehendiLayout, setMehendiLayout] = useState<MehendiLayout>('mandala');
+  const [mehendiDensity, setMehendiDensity] = useState(2);
+  const [handSide, setHandSide] = useState<HandSide>('right');
+  const [mehendiPalette, setMehendiPalette] = useState<PaletteName>('henna');
   const [saved, setSaved] = useState<SavedKolam[]>(loadSaved);
 
   useEffect(() => persistSaved(saved), [saved]);
@@ -156,6 +173,11 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [geoPattern, geoSize, geoColours],
   );
 
+  const mehendi = useMemo(
+    () => makeMehendi({ layout: mehendiLayout, density: mehendiDensity, side: handSide, ...PALETTES[mehendiPalette] }),
+    [mehendiLayout, mehendiDensity, handSide, mehendiPalette],
+  );
+
   const currentFile = useCallback(() => toKolamFile(design, dots, useScan ? scan?.lattice ?? null : null), [design, dots, useScan, scan]);
 
   const value = useMemo<KolamContextValue>(() => ({
@@ -167,6 +189,8 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     petals, setPetals, layers, setLayers, radialStyle, setRadialStyle,
     radialColours, setRadialPalette: name => setRadialColours(PALETTES[name]), radial, makeSimilar,
     geoPattern, setGeoPattern, geoSize, setGeoSize, geoColours, setGeoPalette: name => setGeoColours(PALETTES[name]), geometric,
+    mehendiLayout, setMehendiLayout, mehendiDensity, setMehendiDensity, handSide, setHandSide,
+    mehendiColours: PALETTES[mehendiPalette], mehendiPalette, setMehendiPalette, mehendi,
     guideView, setGuideView,
     traced, setTraced,
     saved,
@@ -178,7 +202,8 @@ export const KolamProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     },
     currentFile,
   }), [mode, size, shape, singleLine, scan, setScan, useScan, dots, design, loops, symmetry, kolamPalette,
-    petals, layers, radialStyle, radialColours, radial, makeSimilar, geoPattern, geoSize, geoColours, geometric, guideView, traced, setTraced, saved, currentFile]);
+    petals, layers, radialStyle, radialColours, radial, makeSimilar, geoPattern, geoSize, geoColours, geometric,
+    mehendiLayout, mehendiDensity, handSide, mehendiPalette, mehendi, guideView, traced, setTraced, saved, currentFile]);
 
   return <KolamContext.Provider value={value}>{children}</KolamContext.Provider>;
 };

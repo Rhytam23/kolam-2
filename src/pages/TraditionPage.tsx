@@ -16,7 +16,7 @@ import { useCulture } from '../components/culture/CultureContext';
 import Reveal from '../components/landing/Reveal';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { applyPreset, presetBackground } from '../data/designs';
-import { readerPath, traditionBySlug, type Tradition } from '../data/traditions';
+import { hasReader, readerPath, traditionBySlug, type Tradition } from '../data/traditions';
 import { DEFAULT_THEME, applyTheme } from '../lib/theme';
 import { headingFont } from '../lib/fonts';
 import { culturePatterns, kitFor } from '../lib/culture';
@@ -84,6 +84,7 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
         modes: t.modes,
         radialStyles: t.radialStyles,
         patterns: t.patterns,
+        layouts: t.layouts,
         palettes: t.palettes,
         presets: t.designs,
     }), [t]);
@@ -111,7 +112,7 @@ const TraditionPage: React.FC<{ tradition: Tradition }> = ({ tradition: t }) => 
                             <Button variant="brass" onClick={() => openGuide('steps')}>Learn to {kit.verb} it</Button>
                             <Button variant="outline-light" onClick={() => openGuide('practice')}>Practise it</Button>
                             <Button variant="outline-light" onClick={() => navigate(`/${t.slug}#generator`)}>Make your own</Button>
-                            <Button variant="outline-light" onClick={() => navigate(readerPath(t.slug))}>Read a photo</Button>
+                            {hasReader(t) && <Button variant="outline-light" onClick={() => navigate(readerPath(t.slug))}>Read a photo</Button>}
                         </div>
                     </div>
                     <LiveDesign tradition={t} />

@@ -48,6 +48,7 @@ export const KITS: Record<string, CultureKit> = {
   aripan: { slug: 'aripan', greeting: { word: 'प्रणाम', lang: 'mai', meaning: 'Greetings' }, ornament: 'fish', band: { icons: ['fish', 'lotus'], connector: 'wave' }, doorway: 'none', ground: 'creeper', paper: 'creeper', hero: 'centred', verb: 'paint' },
   'jhoti-chita': { slug: 'jhoti-chita', greeting: { word: 'ନମସ୍କାର', lang: 'or', meaning: 'Welcome' }, ornament: 'paddy', band: { icons: ['paddy', 'footprints'], connector: 'wave' }, doorway: 'leaves', ground: 'creeper', paper: 'creeper', hero: 'centred', verb: 'paint' },
   'chowk-purana': { slug: 'chowk-purana', greeting: { word: 'नमस्ते', lang: 'hi', meaning: 'Welcome' }, ornament: 'chowk', band: { icons: ['chowk', 'lotus'], connector: 'line' }, doorway: 'toran', ground: 'chowk', paper: 'chowk', hero: 'split', verb: 'draw', suggestedLang: 'hi' },
+  mehendi: { slug: 'mehendi', greeting: { word: 'स्वागत है', lang: 'hi', meaning: 'Welcome' }, ornament: 'peacock', band: { icons: ['peacock', 'lotus'], connector: 'wave' }, doorway: 'leaves', ground: 'creeper', paper: 'creeper', hero: 'centred', verb: 'draw', suggestedLang: 'hi' },
   chittara: { slug: 'chittara', greeting: { word: 'ನಮಸ್ಕಾರ', lang: 'kn', meaning: 'Welcome' }, ornament: 'diamond', band: { icons: ['diamond'], connector: 'zigzag' }, doorway: 'none', ground: 'diamond', paper: 'diamond', hero: 'split', verb: 'paint' },
 };
 

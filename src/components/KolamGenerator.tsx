@@ -8,7 +8,8 @@ import { useKolam, type Mode, type Shape } from './KolamContext';
 import { SYMMETRY_LABELS } from '../utils/kolamLogic';
 import { RADIAL_STYLES, type RadialStyle } from '../utils/radial';
 import { GEOMETRIC_PATTERNS, geometricSize, type GeometricPattern } from '../utils/geometric';
-import { PALETTES, type PaletteName } from '../lib/colours';
+import { MEHENDI_LAYOUTS, type MehendiLayout } from '../utils/mehendi';
+import { PALETTES, isHennaPalette, type PaletteName } from '../lib/colours';
 import { artworkColours, artworkSvg } from '../lib/artwork';
 import { STUDIO_PRESETS, applyPreset, presetBackground, presetSvg, specToFit, type DesignPreset } from '../data/designs';
 import { GENERAL_VOICE, artName, voiceFor } from '../data/voice';
@@ -59,6 +60,8 @@ export interface StudioScope {
     modes: Array<Exclude<Mode, 'traced'>>;
     radialStyles: readonly RadialStyle[];
     patterns: readonly GeometricPattern[];
+    /** The hand layouts offered, when the studio offers henna. */
+    layouts?: readonly MehendiLayout[];
     palettes: readonly PaletteName[];
     presets: readonly DesignPreset[];
 }
@@ -66,9 +69,10 @@ export interface StudioScope {
 const FULL_STUDIO: StudioScope = {
     title: 'Design Studio',
     intro: 'Make your own floor design, or a similar one to a photo you analysed. Then follow the step-by-step guide below to draw it on your doorstep.',
-    modes: ['kolam', 'radial', 'geometric'],
+    modes: ['kolam', 'radial', 'geometric', 'mehendi'],
     radialStyles: Object.keys(RADIAL_STYLES) as RadialStyle[],
     patterns: Object.keys(GEOMETRIC_PATTERNS) as GeometricPattern[],
+    layouts: Object.keys(MEHENDI_LAYOUTS) as MehendiLayout[],
     palettes: Object.keys(PALETTES) as PaletteName[],
     presets: STUDIO_PRESETS,
 };
@@ -88,17 +92,20 @@ const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ 
     // The studio, guide and practice share one state. Whatever another page left in it that this art form
     // does not offer (a kind of design, a round style, a line pattern) is replaced by the art form's own design.
     useLayoutEffect(() => {
-        const spec = specToFit({ mode, radialStyle: k.radialStyle, geoPattern: k.geoPattern }, scope);
+        const spec = specToFit({ mode, radialStyle: k.radialStyle, geoPattern: k.geoPattern, mehendiLayout: k.mehendiLayout }, scope);
         if (spec) applyPreset(k, spec);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [scope, mode, k.radialStyle, k.geoPattern]);
+    }, [scope, mode, k.radialStyle, k.geoPattern, k.mehendiLayout]);
 
     const [showDots, setShowDots] = useState(true);
     const svg = useMemo(() => artworkSvg(k, { dots: showDots }), [k, showDots]);
     const colours = useMemo(() => artworkColours(k), [k]);
-    const name = mode === 'kolam' ? `kolam-${design.rows}x${design.cols}` : mode === 'radial' ? `${k.radialStyle}-${k.petals}-fold` : mode === 'geometric' ? `${k.geoPattern}-${k.geometric.size}x${k.geometric.size}` : 'traced-drawing';
+    const name = mode === 'kolam' ? `kolam-${design.rows}x${design.cols}` : mode === 'radial' ? `${k.radialStyle}-${k.petals}-fold` : mode === 'geometric' ? `${k.geoPattern}-${k.geometric.size}x${k.geometric.size}` : mode === 'mehendi' ? `mehendi-${k.mehendiLayout}-${k.handSide}` : 'traced-drawing';
     const radialPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.radialColours) ?? null;
     const geoPalette = (Object.keys(PALETTES) as PaletteName[]).find(n => PALETTES[n] === k.geoColours) ?? null;
+    // Floor colours and henna colours are offered each in their own studio.
+    const floorPalettes = scope.palettes.filter(n => !isHennaPalette(n));
+    const hennaPalettes = scope.palettes.filter(isHennaPalette);
 
     const cards = useMemo(() => scope.presets.map(p => ({ ...p, svg: presetSvg(p.spec), background: presetBackground(p.spec) })), [scope.presets]);
     const tabs: Array<[Mode, string]> = scope.modes.map(m => [m, modeLabels[m]]);
@@ -152,7 +159,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ 
                                     <input type="checkbox" checked={k.singleLine} onChange={e => k.setSingleLine(e.target.checked)} className="accent-kaavi w-4 h-4" />
                                     {voice.singleLine}
                                 </label>
-                                <PaletteChoice value={k.kolamPalette} onChange={k.setKolamPalette} names={scope.palettes} />
+                                <PaletteChoice value={k.kolamPalette} onChange={k.setKolamPalette} names={floorPalettes} />
                                 <dl className="grid grid-cols-2 gap-3 text-sm">
                                     <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">{voice.dotWord === 'dots' ? 'Dots' : `${voice.dotWord[0].toUpperCase() + voice.dotWord.slice(1)} (dots)`}</dt><dd className="text-xl">{design.mask.join('').split('1').length - 1}</dd></div>
                                     <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Separate lines</dt><dd className="text-xl">{loops}</dd></div>
@@ -182,7 +189,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ 
                                     <Label htmlFor="layers">Rings of petals: {k.layers}</Label>
                                     <input id="layers" type="range" min={1} max={4} value={k.layers} onChange={e => k.setLayers(Number(e.target.value))} className="w-full accent-kaavi h-10 -my-3" />
                                 </div>
-                                <PaletteChoice value={radialPalette} onChange={k.setRadialPalette} names={scope.palettes} />
+                                <PaletteChoice value={radialPalette} onChange={k.setRadialPalette} names={floorPalettes} />
                                 {!radialPalette && <p className="text-xs text-leaf">Using the colours from your photo.</p>}
                             </>
                         )}
@@ -206,7 +213,37 @@ const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ 
                                         className="w-full accent-kaavi h-10 -my-3"
                                     />
                                 </div>
-                                <PaletteChoice value={geoPalette} onChange={k.setGeoPalette} names={scope.palettes} />
+                                <PaletteChoice value={geoPalette} onChange={k.setGeoPalette} names={floorPalettes} />
+                            </>
+                        )}
+
+                        {mode === 'mehendi' && (
+                            <>
+                                <div>
+                                    <Label>Design</Label>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {(scope.layouts ?? []).map(l => (
+                                            <Toggle key={l} active={k.mehendiLayout === l} onClick={() => k.setMehendiLayout(l)}>{MEHENDI_LAYOUTS[l].label}</Toggle>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-muted mt-2">{MEHENDI_LAYOUTS[k.mehendiLayout].hint}</p>
+                                </div>
+                                <div>
+                                    <Label htmlFor="mehendi-density">How rich: {['light', 'medium', 'rich'][k.mehendiDensity - 1]}</Label>
+                                    <input id="mehendi-density" type="range" min={1} max={3} value={k.mehendiDensity} onChange={e => k.setMehendiDensity(Number(e.target.value))} className="w-full accent-kaavi" />
+                                </div>
+                                <div>
+                                    <Label>Hand</Label>
+                                    <div className="flex gap-2">
+                                        <Toggle active={k.handSide === 'right'} onClick={() => k.setHandSide('right')}>Right hand</Toggle>
+                                        <Toggle active={k.handSide === 'left'} onClick={() => k.setHandSide('left')}>Left hand</Toggle>
+                                    </div>
+                                </div>
+                                <PaletteChoice value={k.mehendiPalette} onChange={k.setMehendiPalette} names={hennaPalettes} />
+                                <dl className="grid grid-cols-2 gap-3 text-sm">
+                                    <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Stages</dt><dd className="text-xl">{k.mehendi.groups.length}</dd></div>
+                                    <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Strokes and dots</dt><dd className="text-xl">{k.mehendi.strokes.length}</dd></div>
+                                </dl>
                             </>
                         )}
 
@@ -217,7 +254,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ 
                             </p>
                         )}
 
-                        {(mode === 'radial' || mode === 'traced') && (
+                        {(mode === 'radial' || mode === 'traced' || mode === 'mehendi') && (
                             <label className="flex min-h-10 items-start gap-3 text-ink">
                                 <input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} className="accent-kaavi w-4 h-4 mt-1" />
                                 <span>
@@ -231,7 +268,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ 
                             </label>
                         )}
 
-                        <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam' || mode === 'geometric'} />
+                        <ColourGuide colours={colours.colors} background={colours.background} shares={colours.shares} firstIsLine={mode === 'kolam' || mode === 'geometric'} henna={mode === 'mehendi'} />
 
                         <div className="flex flex-wrap gap-2">
                             <Button size="sm" variant="secondary" onClick={() => downloadBlob(new Blob([svg], { type: 'image/svg+xml' }), `${name}.svg`)}>SVG</Button>

@@ -10,7 +10,7 @@ import { kitFor } from '../lib/culture';
 interface CardLink {
     /** Where each card leads: the art form's page unless given. */
     to?: (t: Tradition) => string;
-    action?: string;
+    action?: string | ((t: Tradition) => string);
 }
 
 /** A card for each art form, in its own colours, with its signature design. */
@@ -34,7 +34,7 @@ const TraditionCard: React.FC<{ tradition: Tradition; delay?: number } & CardLin
                     <span lang={t.script.lang} className="font-script text-lg" style={{ color: t.theme.brassLight }}>{t.script.word}</span>
                 </p>
                 <p className="text-sm opacity-90">{t.region}</p>
-                <p className="mt-2 text-sm font-semibold group-hover:underline underline-offset-4" style={{ color: t.theme.brassLight }}>{action} →</p>
+                <p className="mt-2 text-sm font-semibold group-hover:underline underline-offset-4" style={{ color: t.theme.brassLight }}>{typeof action === 'function' ? action(t) : action} →</p>
             </div>
         </Link>
     </Reveal>

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { READ_A_PHOTO, ROUTES, TRADITIONS, readerPath, withArticle } from './traditions';
+import { READ_A_PHOTO, ROUTES, TRADITIONS, hasReader, readerPath, withArticle } from './traditions';
 import { COLOUR_STORY } from './colourStory';
 import { buildDesign } from './designs';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_THEME, blend, contrast, type Theme } from '../lib/theme';
-import { PALETTES } from '../lib/colours';
+import { HENNA_PALETTES, PALETTES, isHennaPalette } from '../lib/colours';
 
 /** How alike two names are (0 = same), ignoring case, spaces and hyphens. */
 const distance = (a: string, b: string) => {
@@ -111,6 +111,7 @@ describe('traditions', () => {
         expect(t.palettes).toContain(d.spec.palette);
         if (d.spec.mode === 'radial') expect(t.radialStyles).toContain(d.spec.style);
         if (d.spec.mode === 'geometric') expect(t.patterns).toContain(d.spec.pattern);
+        if (d.spec.mode === 'mehendi') expect(t.layouts).toContain(d.spec.layout);
         expect(buildDesign(d.spec).design).toBeTruthy();
       }
     }
@@ -125,11 +126,38 @@ describe('traditions', () => {
   it('each have their own photo reader, and one page explains them all', () => {
     const paths = ROUTES.map(r => r.path);
     expect(paths).toContain(READ_A_PHOTO);
-    for (const t of TRADITIONS) {
+    for (const t of TRADITIONS.filter(hasReader)) {
       expect(paths).toContain(readerPath(t.slug));
       expect(ROUTES.find(r => r.path === readerPath(t.slug))!.title).toContain(t.name.toLowerCase());
     }
     expect(withArticle('Alpana')).toBe('an alpana');
     expect(withArticle('Kolam')).toBe('a kolam');
+  });
+});
+
+describe('mehendi', () => {
+  const mehendi = TRADITIONS.find(t => t.slug === 'mehendi')!;
+
+  it('is a tradition of its own, drawn on a hand', () => {
+    expect(mehendi).toBeTruthy();
+    expect(mehendi.modes).toEqual(['mehendi']);
+    expect(mehendi.layouts?.length).toBeGreaterThanOrEqual(3);
+    expect(mehendi.designs.every(d => d.spec.mode === 'mehendi')).toBe(true);
+  });
+
+  it('has no photo reader yet, since the readers look for dots and floor colours', () => {
+    expect(hasReader(mehendi)).toBe(false);
+    expect(ROUTES.map(r => r.path)).toContain('/mehendi');
+    expect(ROUTES.map(r => r.path)).not.toContain(readerPath('mehendi'));
+    expect(TRADITIONS.filter(t => t.slug !== 'mehendi').every(hasReader)).toBe(true);
+  });
+
+  it('offers its own colours, and floor art does not offer them', () => {
+    expect(mehendi.palettes.every(name => HENNA_PALETTES.includes(name))).toBe(true);
+    for (const t of TRADITIONS.filter(x => x.slug !== 'mehendi')) expect(t.palettes.some(isHennaPalette), t.slug).toBe(false);
+  });
+
+  it('warns against black henna', () => {
+    expect(mehendi.about.join(' ')).toMatch(/black henna/i);
   });
 });

@@ -246,6 +246,12 @@ pattern .step-in, pattern .flicker { animation: none; }
   --bar-height: 12px; --bar-size: 18px 12px;
   --bar-image: linear-gradient(90deg, rgb(var(--brass)) 0 14px, transparent 14px 18px);
 }
+[data-culture="mehendi"] {
+  --radius-card: 1.5rem 1.5rem 0.25rem 1.5rem; --card-border: 1px solid rgb(var(--brass) / 0.4); --radius-media: 9999px 9999px 0.75rem 0.75rem; --radius-button: 9999px;
+  /* a vine of henna leaves */
+  --bar-height: 20px; --bar-size: 60px 20px;
+  --bar-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='20' fill='none' stroke='%23F2BE85' stroke-width='1.6'%3E%3Cpath d='M0 10C10 2 20 18 30 10S50 2 60 10'/%3E%3Cpath d='M12 6C14 1 18 1 19 4C16 6 14 7 12 6ZM42 14C44 19 48 19 49 16C46 14 44 13 42 14Z'/%3E%3C/svg%3E");
+}
 [data-culture="chittara"] {
   --radius-card: 0.125rem; --card-border: 2px solid rgb(var(--kaavi) / 0.8); --radius-media: 0; --radius-button: 0.125rem;
   --bar-height: 20px; --bar-size: 20px 20px;

@@ -3,6 +3,7 @@ import { designDots, loopPaths } from '../../utils/kolamLogic';
 import { radialGuideDots, ringPath, ringStyle, type RadialDesign } from '../../utils/radial';
 import type { Design } from '../../types/kolam';
 import { geometricPoint, shapePath, type GeometricDesign } from '../../utils/geometric';
+import { MEHENDI_LINE_WIDTH, MEHENDI_VIEWBOX, dotRadius, handSvg, mehendiGuidePoints, mehendiSurround, strokePath, type MehendiDesign } from '../../utils/mehendi';
 import { buildDesign, type DesignSpec } from '../../data/designs';
 import { PALETTES } from '../../lib/colours';
 
@@ -278,6 +279,36 @@ const GeometricFrame: React.FC<{ design: GeometricDesign; progress?: DrawProgres
     );
 };
 
+// ---------------------------------------------------------------- henna frames
+
+/** A hand with henna, drawn as by hand: small guide marks, then each stage of the design, then the filled shapes. */
+const MehendiFrame: React.FC<{ design: MehendiDesign; progress?: DrawProgress }> = ({ design, progress = { dots: 1, lines: 1, colour: 1 } }) => {
+    const groups = design.groups.length;
+    const marks = useMemo(() => mehendiGuidePoints(design), [design]);
+    const shownMarks = Math.round(clamp01(progress.dots) * marks.length);
+    const colour = clamp01(progress.colour);
+    const hand = useMemo(() => handSvg(design.skin, design.side), [design.skin, design.side]);
+    return (
+        <svg viewBox={MEHENDI_VIEWBOX} className="absolute inset-0 w-full h-full">
+            <rect x={-20} width={540} height={540} fill={mehendiSurround(design.skin)} />
+            <g dangerouslySetInnerHTML={{ __html: hand }} />
+            <g fill="none" stroke={design.ink} strokeLinecap="round" strokeLinejoin="round">
+                {design.strokes.map((s, i) => {
+                    const drawn = clamp01(progress.lines * groups - s.group);
+                    if (drawn <= 0) return null;
+                    if (s.kind === 'dot') return <circle key={i} cx={s.points[0].x} cy={s.points[0].y} r={dotRadius(s)} fill={design.ink} stroke="none" />;
+                    return <path key={i} d={strokePath(s)} strokeWidth={s.kind === 'petal' ? MEHENDI_LINE_WIDTH * 0.8 : MEHENDI_LINE_WIDTH} fill={s.filled ? design.ink : 'none'} fillOpacity={s.filled ? colour : 0} {...dashTo(drawn)} />;
+                })}
+            </g>
+            {progress.lines < 1 && (
+                <g fill="#FFFFFF" stroke={design.ink} strokeWidth={0.8}>
+                    {marks.slice(0, shownMarks).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={1.9} />)}
+                </g>
+            )}
+        </svg>
+    );
+};
+
 const isDarkGround = (hex: string) => {
     const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
     return 0.299 * r + 0.587 * g + 0.114 * b < 140;
@@ -289,6 +320,7 @@ export const DesignFrame: React.FC<{ spec: DesignSpec; progress?: DrawProgress; 
     const full = progress ?? { dots: 1, lines: 1, colour: 1 };
     if (built.mode === 'radial') return <RangoliFrame design={built.design} progress={full} rough={rough} />;
     if (built.mode === 'geometric') return <GeometricFrame design={built.design} progress={full} />;
+    if (built.mode === 'mehendi') return <MehendiFrame design={built.design} progress={full} />;
     const colours = PALETTES[spec.palette].colors;
     return (
         <div className="absolute inset-[6%]">

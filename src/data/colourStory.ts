@@ -56,6 +56,10 @@ export const COLOUR_STORY: Record<string, ColourStory> = {
     looks: 'Banarasi brocade', names: ['Wine purple', 'Cream', 'Zari gold', 'Brocade plum'],
     reason: 'A chowk is filled with flour, turmeric and kumkum at weddings and pujas. Banaras is known for rich-coloured brocade woven with gold zari.',
   },
+  mehendi: {
+    looks: 'Henna darkening on the skin', names: ['Henna brown', 'Cream', 'Stain orange', 'Deep henna'],
+    reason: 'Henna is a paste of dried leaves, dark green when first piped. It stains the skin orange, then reddish-brown over a day or two, so the page is that deep brown with the orange of the new stain.',
+  },
   chittara: {
     looks: 'Arishina and kumkuma', names: ['Turmeric yellow', 'Dark brown-black', 'Kumkum red', 'Kumkum red'],
     reason: 'Chittara is white rice paste with yellow and black natural colours on red-earth walls. In Karnataka, yellow and red are arishina (turmeric) and kumkuma, the colours of the threshold.',
