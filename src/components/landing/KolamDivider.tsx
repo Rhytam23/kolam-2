@@ -42,7 +42,7 @@ const KolamDivider: React.FC<{ spacing?: number; tone?: 'rice' | 'kaavi'; classN
                     style={{ height: (2 * UNIT * width) / ((dots + 1) * UNIT) || undefined }}
                 >
                     {paths.map((d, i) => <path key={i} d={d} fill="none" style={{ stroke: colour }} strokeWidth={1.8} strokeLinecap="round" />)}
-                    {points.map(p => <circle key={p.x} cx={(p.x + 1) * UNIT} cy={UNIT} r={1.9} style={{ fill: colour }} />)}
+                    {points.map((p, i) => <circle key={`${i}-${p.x}`} cx={(p.x + 1) * UNIT} cy={UNIT} r={1.9} style={{ fill: colour }} />)}
                 </svg>
             </div>
         </div>

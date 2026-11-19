@@ -52,8 +52,8 @@ const Heading: React.FC<HeroProps> = ({ onStart, onGenerate }) => (
             <Button variant="outline-light" onClick={onGenerate}>Design your own</Button>
         </div>
         <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 justify-center lg:justify-start text-sm text-rice/80">
-            {TRUST.map(t => (
-                <li key={t} className="flex items-center gap-2">
+            {TRUST.map((t, i) => (
+                <li key={`${i}-${t}`} className="flex items-center gap-2">
                     <svg viewBox="0 0 16 16" className="h-4 w-4 text-brass-light" aria-hidden><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     {t}
                 </li>
@@ -176,7 +176,7 @@ const Hero: React.FC<HeroProps> = props => {
                             const active = i === story.step && !story.done;
                             return (
                                 <li
-                                    key={s}
+                                    key={`${i}-${s}`}
                                     aria-current={active ? 'step' : undefined}
                                     className={`rounded-full border px-3 py-1 transition-colors ${active ? 'bg-brass-light border-brass-light text-floor font-semibold' : finished ? 'border-brass/70 text-brass-light' : 'border-rice/25 text-rice/75'}`}
                                 >
@@ -192,7 +192,7 @@ const Hero: React.FC<HeroProps> = props => {
                     </div>
                     <button
                         type="button"
-                        className="mt-1 text-xs text-rice/75 underline decoration-brass/60 underline-offset-4 hover:text-brass-light"
+                        className="-mt-1 -mb-2 inline-flex min-h-10 items-center px-2 text-xs text-rice/75 underline decoration-brass/60 underline-offset-4 hover:text-brass-light"
                         onClick={() => document.getElementById('traditions')?.scrollIntoView({ behavior: 'smooth' })}
                     >
                         Skip the drawing

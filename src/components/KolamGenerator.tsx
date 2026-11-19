@@ -21,13 +21,13 @@ const Toggle: React.FC<{ active: boolean; onClick: () => void; children: React.R
         type="button"
         onClick={onClick}
         aria-pressed={active}
-        className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${active ? 'bg-kaavi text-paper border-kaavi' : 'border-kaavi/30 text-muted hover:border-kaavi hover:text-kaavi bg-white/70'}`}
+        className={`px-3 py-1.5 min-h-10 md:min-h-0 rounded-full text-sm border transition-colors ${active ? 'bg-kaavi text-paper border-kaavi' : 'border-kaavi/30 text-muted hover:border-kaavi hover:text-kaavi bg-white/70'}`}
     >
         {children}
     </button>
 );
 
-const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteName) => void; names: readonly PaletteName[] }> = ({ value, onChange, names }) => (
+export const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteName) => void; names: readonly PaletteName[] }> = ({ value, onChange, names }) => (
     <div>
         <Label>Colours</Label>
         <div className="grid grid-cols-2 gap-2">
@@ -42,7 +42,7 @@ const PaletteChoice: React.FC<{ value: string | null; onChange: (name: PaletteNa
                         className={`flex items-center gap-2 rounded-xl border p-2 text-left text-xs ${value === name ? 'border-kaavi ring-1 ring-kaavi' : 'border-kaavi/20 hover:border-kaavi/60'}`}
                     >
                         <span className="flex h-6 w-10 shrink-0 overflow-hidden rounded-md border border-ink/10" style={{ backgroundColor: p.background }}>
-                            {p.colors.slice(0, 4).map(c => <span key={c} className="m-auto h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c }} />)}
+                            {p.colors.slice(0, 4).map((c, i) => <span key={`${i}-${c}`} className="m-auto h-2.5 w-2.5 rounded-full" style={{ backgroundColor: c }} />)}
                         </span>
                         <span className="text-ink">{p.label}</span>
                     </button>
@@ -78,7 +78,8 @@ const TRACED_LABEL = 'Traced from your photo';
 const scrollToGuide = () => document.getElementById('walkthrough')?.scrollIntoView({ behavior: 'smooth' });
 const scrollToStudio = () => document.getElementById('generator')?.scrollIntoView({ behavior: 'smooth' });
 
-const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO }) => {
+/** `primary`: this studio is the page's main content, so its title is the page's h1. */
+const KolamGenerator: React.FC<{ scope?: StudioScope; primary?: boolean }> = ({ scope = FULL_STUDIO, primary = false }) => {
     const k = useKolam();
     const { mode, setMode, design, loops, symmetry, scan, useScan, setUseScan, traced } = k;
     const voice = voiceFor(useCulture().slug);
@@ -107,7 +108,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
     return (
         <section className="py-20 px-4">
             <div className="container mx-auto">
-                <SectionHeading title={scope.title} className="mb-4" />
+                <SectionHeading title={scope.title} level={primary ? 1 : 2} className="mb-4" />
                 <p className="text-center text-muted mb-8 max-w-2xl mx-auto">{scope.intro}</p>
                 <div className={`flex justify-center gap-2 mb-10 flex-wrap ${tabs.length < 2 ? 'hidden' : ''}`} role="tablist">
                     {tabs.map(([id, label]) => (
@@ -142,12 +143,12 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                                             <input
                                                 id="grid-size" type="range" min={k.shape === 'square' ? 2 : 3} max={13} step={k.shape === 'square' ? 1 : 2}
                                                 value={design.rows} onChange={e => k.setSize(Number(e.target.value))}
-                                                className="w-full accent-kaavi"
+                                                className="w-full accent-kaavi h-10 -my-3"
                                             />
                                         </div>
                                     </>
                                 )}
-                                <label className="flex items-center gap-3 text-ink">
+                                <label className="flex min-h-10 items-center gap-3 text-ink">
                                     <input type="checkbox" checked={k.singleLine} onChange={e => k.setSingleLine(e.target.checked)} className="accent-kaavi w-4 h-4" />
                                     {voice.singleLine}
                                 </label>
@@ -157,7 +158,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                                     <div className="bg-sand/60 rounded-xl p-3"><dt className="text-muted">Separate lines</dt><dd className="text-xl">{loops}</dd></div>
                                 </dl>
                                 <div className="flex flex-wrap gap-2">
-                                    {symmetry.map(s => <span key={s} className="text-xs px-2 py-1 rounded-full bg-leaf/10 text-leaf">{SYMMETRY_LABELS[s]}</span>)}
+                                    {symmetry.map((s, i) => <span key={`${i}-${s}`} className="text-xs px-2 py-1 rounded-full bg-leaf/10 text-leaf">{SYMMETRY_LABELS[s]}</span>)}
                                 </div>
                             </>
                         )}
@@ -175,11 +176,11 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                                 </div>
                                 <div>
                                     <Label htmlFor="petals">Petals (symmetry): {k.petals}-fold</Label>
-                                    <input id="petals" type="range" min={3} max={16} value={k.petals} onChange={e => k.setPetals(Number(e.target.value))} className="w-full accent-kaavi" />
+                                    <input id="petals" type="range" min={3} max={16} value={k.petals} onChange={e => k.setPetals(Number(e.target.value))} className="w-full accent-kaavi h-10 -my-3" />
                                 </div>
                                 <div>
                                     <Label htmlFor="layers">Rings of petals: {k.layers}</Label>
-                                    <input id="layers" type="range" min={1} max={4} value={k.layers} onChange={e => k.setLayers(Number(e.target.value))} className="w-full accent-kaavi" />
+                                    <input id="layers" type="range" min={1} max={4} value={k.layers} onChange={e => k.setLayers(Number(e.target.value))} className="w-full accent-kaavi h-10 -my-3" />
                                 </div>
                                 <PaletteChoice value={radialPalette} onChange={k.setRadialPalette} names={scope.palettes} />
                                 {!radialPalette && <p className="text-xs text-leaf">Using the colours from your photo.</p>}
@@ -202,7 +203,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                                     <input
                                         id="geo-size" type="range" min={geometricSize(k.geoPattern, 1)} max={13} step={k.geoPattern === 'chowk' ? 4 : 2}
                                         value={k.geometric.size} onChange={e => k.setGeoSize(Number(e.target.value))}
-                                        className="w-full accent-kaavi"
+                                        className="w-full accent-kaavi h-10 -my-3"
                                     />
                                 </div>
                                 <PaletteChoice value={geoPalette} onChange={k.setGeoPalette} names={scope.palettes} />
@@ -217,7 +218,7 @@ const KolamGenerator: React.FC<{ scope?: StudioScope }> = ({ scope = FULL_STUDIO
                         )}
 
                         {(mode === 'radial' || mode === 'traced') && (
-                            <label className="flex items-start gap-3 text-ink">
+                            <label className="flex min-h-10 items-start gap-3 text-ink">
                                 <input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} className="accent-kaavi w-4 h-4 mt-1" />
                                 <span>
                                     {voice.dots === 'aid' && voice.art !== GENERAL_VOICE.art ? 'Show the light guide marks' : 'Show the small guide dots'}

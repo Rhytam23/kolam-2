@@ -13,7 +13,7 @@ import { I18nProvider } from './lib/i18n';
 import { CultureProvider } from './components/culture/CultureContext';
 import { kitFor } from './lib/culture';
 
-const page = (path: string) => {
+export const page = (path: string) => {
     if (path === '/') return <Landing />;
     if (path === READ_A_PHOTO) return <ReadGuidePage />;
     if (path === '/studio') return <StudioPage />;

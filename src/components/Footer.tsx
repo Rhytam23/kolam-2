@@ -9,7 +9,8 @@ import { READ_A_PHOTO, TRADITIONS } from '../data/traditions';
 import { BRAND } from '../lib/brand';
 
 const REPO = 'https://github.com/Rhytam23/kolam-2';
-const link = 'text-rice/90 transition-colors hover:text-brass-light focus:outline-none focus-visible:text-brass-light focus-visible:underline underline-offset-4';
+// inline-block with padding and an equal negative margin: a 44px tap target, the same spacing on the page.
+const link = 'inline-block min-w-10 py-3 -my-3 text-rice/90 transition-colors hover:text-brass-light focus:outline-none focus-visible:text-brass-light focus-visible:underline underline-offset-4';
 
 const Heading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <p className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-brass-light">{children}</p>
@@ -74,7 +75,7 @@ const Footer: React.FC = () => {
                     </nav>
                 </div>
 
-                <p className="mt-12 flex flex-wrap justify-center gap-x-5 gap-y-1 border-t border-brass/25 pt-8 font-script text-lg text-brass-light/80" aria-label="Greetings in the languages of the art forms">
+                <p className="mt-12 flex flex-wrap justify-center gap-x-5 gap-y-1 border-t border-brass/25 pt-8 font-script text-lg text-brass-light/90" aria-label="Greetings in the languages of the art forms">
                     {greetings.map(g => <span key={g.word} lang={g.lang}>{g.word}</span>)}
                 </p>
 

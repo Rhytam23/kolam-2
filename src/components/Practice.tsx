@@ -5,7 +5,7 @@ import { useKolam } from './KolamContext';
 import { loopPaths } from '../utils/kolamLogic';
 import { guideDotColour, ringPath, ringStyle } from '../utils/radial';
 import { kolamDotColour } from '../lib/artwork';
-import { KOLAM_UNIT, currentGroup, expectedDots, finishGroup, geometricPlan, isFinished, kolamPlan, radialPlan, startPractice, tapDot, tracedPlan, type PracticePlan } from '../utils/practice';
+import { KOLAM_UNIT, currentGroup, dotPlace, expectedDots, finishGroup, focusMessage, geometricPlan, isFinished, keyboardStep, kolamPlan, radialPlan, startPractice, tapDot, tracedPlan, type PracticePlan, type PracticeState } from '../utils/practice';
 import { layerTransform, tracedBackground } from '../utils/traced';
 import { shapePath } from '../utils/geometric';
 
@@ -37,12 +37,16 @@ const Practice: React.FC = () => {
     const [message, setMessage] = useState('');
     const [flash, setFlash] = useState<{ dot: number; ok: boolean; at: number } | null>(null);
     const svg = useRef<SVGSVGElement>(null);
+    // The valid dot the keyboard has chosen (an index into expectedDots), and whether the drawing has focus.
+    const [cursor, setCursor] = useState(0);
+    const [focused, setFocused] = useState(false);
 
     const restart = () => {
         if (plan) setState(startPractice(plan));
         setMisses(0);
         setHint(false);
         setMessage('');
+        setCursor(0);
     };
     useEffect(restart, [plan]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -97,21 +101,46 @@ const Practice: React.FC = () => {
         if (best < 0) best = near(plan.dots.map((_, i) => i));
         // Ignore taps far from any dot.
         if (best < 0) return;
-        const result = tapDot(plan, state, best);
-        setFlash({ dot: best, ok: result.ok, at: Date.now() });
+        commit(best);
+    };
+
+    /** A tap on a dot, by finger or by key: draws the line when the dot is right, and says what happened. */
+    const commit = (dot: number, viaKeyboard = false, outcome?: ReturnType<typeof tapDot>) => {
+        const result = outcome ?? tapDot(plan, state, dot);
+        const p = plan;
+        const st = state;
+        setFlash({ dot, ok: result.ok, at: Date.now() });
+        // With the keyboard, each message ends by saying where to go next.
+        const next = (after: PracticeState) => (viaKeyboard ? ` ${focusMessage(p, after, 0)}` : '');
         if (result.ok) {
             setState(result.state);
             setMisses(0);
             setHint(false);
+            setCursor(0);
             if (isFinished(result.state)) setMessage(k.mode === 'radial' && k.radial.dotsInColour ? 'Well done! Every dot is inside its curl, and the design is finished.' : 'Well done! You have drawn the whole design. Now it is ready for colour.');
-            else if (currentGroup(plan, result.state) !== group) setMessage(`Well done, that finishes ${plan.groups[group]}. On to the next.`);
-            else setMessage(result.finishedStroke ? 'Good. Next one.' : '');
+            else if (currentGroup(p, result.state) !== group) setMessage(`Well done, that finishes ${p.groups[group]}. On to the next.${next(result.state)}`);
+            else setMessage(`${result.finishedStroke ? 'Good. Next one.' : viaKeyboard ? 'Good.' : ''}${next(result.state)}`.trim());
         } else {
             setMisses(m => m + 1);
-            setMessage(state.active
+            setMessage(st.active
                 ? 'Not that dot. The line goes on to a dot close to the last one; the red ring shows where.'
-                : plan.showStart ? 'Start at a ringed dot.' : `Start a ${SINGULAR[plan.shapes[group]] ?? 'shape'} of ${plan.groups[group]}: the red rings show where you can begin.`);
+                : p.showStart ? 'Start at a ringed dot.' : `Start a ${SINGULAR[p.shapes[group]] ?? 'shape'} of ${p.groups[group]}: the red rings show where you can begin.`);
         }
+    };
+
+    const onKeyDown = (e: React.KeyboardEvent<SVGSVGElement>) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        const out = keyboardStep(plan, state, cursor, e.key, e.shiftKey);
+        if (!out.handled) return;
+        e.preventDefault();
+        if (out.tap) { commit(out.tap.dot, true, out.tap.result); return; }
+        setCursor(out.cursor);
+        setMessage(focusMessage(plan, state, out.cursor));
+    };
+
+    const onFocus = () => {
+        setFocused(true);
+        setMessage(m => (m ? m : focusMessage(plan, state, cursor)));
     };
 
     const colourFinal = finished && (
@@ -134,10 +163,15 @@ const Practice: React.FC = () => {
                     <svg
                         ref={svg}
                         viewBox={plan.viewBox}
-                        className="w-full aspect-square touch-manipulation cursor-pointer select-none"
+                        className="w-full aspect-square touch-manipulation cursor-pointer select-none rounded-lg focus:outline-none focus-visible:ring-4 focus-visible:ring-kaavi focus-visible:ring-offset-2"
                         onPointerDown={onPointerDown}
+                        onKeyDown={onKeyDown}
+                        onFocus={onFocus}
+                        onBlur={() => setFocused(false)}
+                        tabIndex={0}
                         role="application"
-                        aria-label="Practice drawing: tap the dots in order"
+                        aria-label={`Practice drawing: ${finished ? 'finished' : `${plan.groups[group]}, ${groupDone} of ${inGroup.length} ${inGroup.length === 1 ? SINGULAR[plan.shapes[group]] ?? 'shape' : plan.shapes[group]} drawn`}. Use the arrow keys to choose a dot and Enter or Space to tap it.`}
+                        aria-describedby="practice-keys"
                     >
                         <rect x={vx} y={vy} width={vw} height={vh} fill={background} />
                         {ghost && !finished && <g fill="none" stroke={line} strokeOpacity={0.16} strokeWidth={plan.lineWidth}>{ghostPaths.map((d, i) => <path key={i} d={d} />)}</g>}
@@ -150,18 +184,29 @@ const Practice: React.FC = () => {
                         {!finished && (plan.showStart && !state.active || showHint) && expected.map(i => (
                             <circle key={`h${i}`} cx={plan.dots[i].x} cy={plan.dots[i].y} r={plan.dotRadius * 2.6} fill="none" stroke={HINT} strokeWidth={plan.dotRadius * 0.7} className={showHint ? 'animate-pulse' : undefined} />
                         ))}
+                        {focused && !finished && expected[Math.min(cursor, expected.length - 1)] !== undefined && (() => {
+                            // The dot the keyboard has chosen: a white ring under a dark one, so it shows on any ground.
+                            const d = plan.dots[expected[Math.min(cursor, expected.length - 1)]];
+                            return (
+                                <g fill="none" data-testid="keyboard-focus">
+                                    <circle cx={d.x} cy={d.y} r={plan.dotRadius * 4.2} stroke="#fff" strokeWidth={plan.dotRadius * 1.8} />
+                                    <circle cx={d.x} cy={d.y} r={plan.dotRadius * 4.2} stroke="#1B1B1B" strokeWidth={plan.dotRadius * 0.8} strokeDasharray={`${plan.dotRadius * 1.6} ${plan.dotRadius * 1.2}`} />
+                                </g>
+                            );
+                        })()}
                         {flash && (
                             <circle key={flash.at} cx={plan.dots[flash.dot].x} cy={plan.dots[flash.dot].y} r={plan.dotRadius * 3.2} fill="none" stroke={flash.ok ? '#2E7D32' : HINT} strokeWidth={plan.dotRadius * 0.6} className="fade-in" />
                         )}
                     </svg>
                 </div>
                 <p className="text-sm min-h-[1.25rem] text-center text-ink" aria-live="polite">{message}</p>
+                <p id="practice-keys" className="text-xs text-center text-muted">With a keyboard: Tab to the drawing, arrow keys to choose a dot, Enter or Space to tap it. The buttons below do it for you.</p>
                 <div className="flex flex-wrap justify-center gap-3">
-                    {!finished && <Button variant="secondary" size="sm" onClick={() => setHint(true)}>Show me where</Button>}
+                    {!finished && <Button variant="secondary" size="sm" onClick={() => { setHint(true); setMessage(`The red ring marks ${state.active ? 'the next dot' : 'where to start'}, at the ${dotPlace(plan, expected[0])}.`); }}>Show me where</Button>}
                     {!finished && <Button variant="secondary" size="sm" onClick={() => { setState(finishGroup(plan, state)); setMessage(`${plan.groups[group][0].toUpperCase()}${plan.groups[group].slice(1)} drawn for you.`); }}>Finish this {plan.kind === 'kolam' ? 'line' : plan.kind === 'geometric' ? 'part' : plan.kind === 'traced' ? 'colour' : 'ring'} for me</Button>}
                     <Button size="sm" onClick={restart}>Start again</Button>
                 </div>
-                <label className="flex items-center justify-center gap-2 text-sm text-ink">
+                <label className="flex min-h-10 items-center justify-center gap-2 text-sm text-ink">
                     <input type="checkbox" checked={ghost} onChange={e => setGhost(e.target.checked)} className="accent-kaavi w-4 h-4" />
                     Show the design faintly underneath
                 </label>

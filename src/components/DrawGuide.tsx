@@ -308,7 +308,7 @@ const DrawGuide: React.FC = () => {
                     text: symmetry.length
                         ? `The design looks the same after a ${symmetry.map(s => SYMMETRY_LABELS[s].toLowerCase()).join(', ')}. Use this to check your lines as you go.`
                         : 'This design has no mirror or rotational symmetry, so follow each line carefully.',
-                    picture: <>{bg}<g stroke={HIGHLIGHT} strokeWidth={2} strokeDasharray="6 6">{symmetry.map(s => axes[s] && <line key={s} x1={axes[s]![0]} y1={axes[s]![1]} x2={axes[s]![2]} y2={axes[s]![3]} />)}</g>{pulli}</>,
+                    picture: <>{bg}<g stroke={HIGHLIGHT} strokeWidth={2} strokeDasharray="6 6">{symmetry.map((s, i) => axes[s] && <line key={`${i}-${s}`} x1={axes[s]![0]} y1={axes[s]![1]} x2={axes[s]![2]} y2={axes[s]![3]} />)}</g>{pulli}</>,
                 },
                 ...lineSteps,
                 {
@@ -352,7 +352,7 @@ const DrawGuide: React.FC = () => {
                             role="tab"
                             aria-selected={guideView === id}
                             onClick={() => setGuideView(id)}
-                            className={`px-5 py-2 rounded-full text-sm font-semibold border transition-colors ${guideView === id ? 'bg-kaavi text-paper border-kaavi' : 'border-kaavi/30 text-kaavi bg-white/70 hover:border-kaavi'}`}
+                            className={`px-5 py-2 min-h-10 rounded-full text-sm font-semibold border transition-colors ${guideView === id ? 'bg-kaavi text-paper border-kaavi' : 'border-kaavi/30 text-kaavi bg-white/70 hover:border-kaavi'}`}
                         >
                             {label}
                         </button>
@@ -378,9 +378,10 @@ const DrawGuide: React.FC = () => {
                                 </Button>
                                 <Button variant="secondary" size="sm" onClick={() => setStep(s => Math.min(last, s + 1))} disabled={step >= last}>Next</Button>
                             </div>
-                            <div className="flex justify-center flex-wrap gap-1.5">
+                            <div className="flex justify-center flex-wrap">
                                 {steps.list.map((s, i) => (
-                                    <button key={s.title} aria-label={`Go to ${s.title}`} onClick={() => setStep(i)} className={`h-2.5 w-2.5 rounded-full ${i === step ? 'bg-kaavi' : 'bg-kaavi/20'}`} />
+                                    // The dot stays small; the padding around it makes the tap area 40px (24px on larger screens).
+                                    <button key={`${i}-${s.title}`} aria-label={`Go to ${s.title}`} aria-current={i === step ? 'step' : undefined} onClick={() => setStep(i)} className={`h-10 w-10 p-[15px] md:h-6 md:w-6 md:p-[7px] bg-clip-content rounded-full ${i === step ? 'bg-kaavi' : 'bg-kaavi/20'}`} />
                                 ))}
                             </div>
                         </div>

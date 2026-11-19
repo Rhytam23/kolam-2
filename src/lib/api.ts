@@ -19,6 +19,44 @@ interface AnalyzeOptions {
   onBusy?: (seconds: number, attempt: number) => void;
 }
 
+export type AnalysisErrorKind = 'network' | 'busy' | 'rate-limit' | 'file-too-large' | 'file-type' | 'file-unreadable' | 'server' | 'unknown';
+
+/** Plain, friendly wording for each way reading a photo can fail. Never shows status codes or server text. */
+export const ANALYSIS_MESSAGES: Record<AnalysisErrorKind, string> = {
+  network: 'We could not reach the photo reader. Check your internet connection, then try again.',
+  busy: 'The photo reader is very busy right now. Please wait a minute, then try again.',
+  'rate-limit': 'That is a lot of photos in a short time. Please wait a minute, then try again.',
+  'file-too-large': `That photo is too large. Try a smaller one (under ${MAX_UPLOAD_MB} MB), or take it again at a lower quality.`,
+  'file-type': 'That file type cannot be read. Please use a PNG, JPEG or WebP photo.',
+  'file-unreadable': 'We could not read that photo. Try another one, with the design in good light and filling most of the picture.',
+  server: 'Something went wrong on our side while reading your photo. Please try again in a moment.',
+  unknown: 'Something went wrong while reading your photo. Please try again.',
+};
+
+/** Which kind of failure an HTTP status is (null: the request never got an answer). */
+export const analysisErrorKind = (status: number | null): AnalysisErrorKind => {
+  if (status === null) return 'network';
+  if (status === 429) return 'rate-limit';
+  if (status === 503) return 'busy';
+  if (status === 413) return 'file-too-large';
+  if (status === 415) return 'file-type';
+  if (status >= 400 && status < 500) return 'file-unreadable';
+  if (status >= 500) return 'server';
+  return 'unknown';
+};
+
+export const analysisErrorMessage = (status: number | null) => ANALYSIS_MESSAGES[analysisErrorKind(status)];
+
+/** A failed reading, with a message that is safe to show and a kind the screen can act on. */
+export class AnalysisError extends Error {
+  readonly kind: AnalysisErrorKind;
+  constructor(status: number | null) {
+    super(analysisErrorMessage(status));
+    this.name = 'AnalysisError';
+    this.kind = analysisErrorKind(status);
+  }
+}
+
 const wait = (ms: number, signal?: AbortSignal) => new Promise<void>((resolve, reject) => {
   const timer = setTimeout(resolve, ms);
   signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
@@ -41,7 +79,7 @@ export async function analyzeKolam(file: File, { preset, deskew, dots, grid, sig
       response = await fetch(`${API_BASE_URL}/api/analyze`, { method: 'POST', body: form, signal });
     } catch (err) {
       if ((err as Error).name === 'AbortError') throw err;
-      throw new Error('Could not reach the analysis server. Check your connection and try again.');
+      throw new AnalysisError(null);
     }
     if (response.status === 503 && attempt < BUSY_RETRIES) {
       // Many people are reading photos at once: wait a little, then ask again.
@@ -51,10 +89,13 @@ export async function analyzeKolam(file: File, { preset, deskew, dots, grid, sig
       continue;
     }
     if (!response.ok) {
-      const body = await response.json().catch(() => null) as { detail?: unknown } | null;
-      throw new Error(typeof body?.detail === 'string' ? body.detail : `Analysis failed (HTTP ${response.status}).`);
+      throw new AnalysisError(response.status);
     }
-    return sanitize(await response.json() as AnalysisResponse);
+    try {
+      return sanitize(await response.json() as AnalysisResponse);
+    } catch {
+      throw new AnalysisError(500); // a reply that is not the expected data is a server fault
+    }
   }
 }
 

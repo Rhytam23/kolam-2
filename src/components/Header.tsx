@@ -22,7 +22,7 @@ const LanguagePicker: React.FC<{ lang: string; setLang: (l: (typeof LANGUAGES)[n
         aria-label={label}
         value={lang}
         onChange={e => isLang(e.target.value) && setLang(e.target.value)}
-        className={`rounded-full border px-3 py-1 text-sm bg-transparent ${dark ? 'border-brass/50 text-rice' : 'border-kaavi/30 text-ink'}`}
+        className={`rounded-full border px-3 py-1 min-h-10 lg:min-h-0 text-sm bg-transparent ${dark ? 'border-brass/50 text-rice' : 'border-kaavi/30 text-ink'}`}
     >
         {LANGUAGES.map(l => <option key={l.code} value={l.code} className="text-ink">{l.name}</option>)}
     </select>
@@ -74,7 +74,7 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
         <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${(menuOpen || formsOpen) && look === 'top' ? 'bg-floor/95' : bar}`}>
             <nav className="container mx-auto px-6 py-4 flex justify-between items-center" aria-label="Main">
                 <span className="flex items-baseline gap-3">
-                    <Link to="/" className={`font-heading text-3xl font-bold ${dark ? 'brass-text' : 'gradient-text'}`}>{BRAND}</Link>
+                    <Link to="/" className={`inline-block py-1 -my-1 font-heading text-3xl font-bold ${dark ? 'brass-text' : 'gradient-text'}`}>{BRAND}</Link>
                     {kit.slug !== 'home' && <span lang={kit.greeting.lang} className={`hidden xl:inline font-script text-lg ${dark ? 'text-brass-light' : 'text-kaavi'}`}>{kit.greeting.word}</span>}
                 </span>
                 <div className="hidden lg:flex items-center space-x-8">
@@ -109,22 +109,22 @@ const Header: React.FC<{ path: string }> = ({ path }) => {
                     ))}
                     <LanguagePicker lang={lang} setLang={setLang} label={t('nav.language')} dark={dark} />
                 </div>
-                <button className={`lg:hidden ${dark ? 'text-rice' : 'text-ink'}`} onClick={() => setMenuOpen(o => !o)} aria-label={t('nav.menu')} aria-expanded={menuOpen}>
+                <button className={`lg:hidden -m-2.5 p-2.5 ${dark ? 'text-rice' : 'text-ink'}`} onClick={() => setMenuOpen(o => !o)} aria-label={t('nav.menu')} aria-expanded={menuOpen}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" /></svg>
                 </button>
             </nav>
             {menuOpen && (
                 <div className={`lg:hidden max-h-[80vh] overflow-y-auto px-6 pb-6 pt-2 border-t ${dark ? 'border-brass/25' : 'border-kaavi/10'}`}>
                     <p className={`text-xs uppercase tracking-widest mb-2 ${dark ? 'text-brass-light' : 'text-muted'}`}>{t('nav.artForms')}</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+                    <div className="grid grid-cols-2 gap-x-4 mb-4">
                         {TRADITIONS.map(t => (
-                            <Link key={t.slug} to={`/${t.slug}`} {...current(`/${t.slug}`)} className={`block ${linkClass}`}>{t.name}</Link>
+                            <Link key={t.slug} to={`/${t.slug}`} {...current(`/${t.slug}`)} className={`block py-2 ${linkClass}`}>{t.name}</Link>
                         ))}
                     </div>
-                    <div className={`space-y-3 border-t pt-3 ${dark ? 'border-brass/25' : 'border-kaavi/10'}`}>
-                        <Link to="/" className={`block ${linkClass}`}>{t('nav.home')}</Link>
-                        {PAGES.map(p => <Link key={p.to} to={p.to} {...current(p.to)} className={`block ${linkClass}`}>{t(p.label)}</Link>)}
-                        <LanguagePicker lang={lang} setLang={setLang} label={t('nav.language')} dark={dark} />
+                    <div className={`border-t pt-3 ${dark ? 'border-brass/25' : 'border-kaavi/10'}`}>
+                        <Link to="/" className={`block py-2 ${linkClass}`}>{t('nav.home')}</Link>
+                        {PAGES.map(p => <Link key={p.to} to={p.to} {...current(p.to)} className={`block py-2 ${linkClass}`}>{t(p.label)}</Link>)}
+                        <div className="pt-2"><LanguagePicker lang={lang} setLang={setLang} label={t('nav.language')} dark={dark} /></div>
                     </div>
                 </div>
             )}

@@ -5,6 +5,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). No version tags 
 ## Unreleased
 
 ### Fixed
+- Accessibility and robustness audit: palette swatches and other lists no longer reuse a key (React key warnings); `/studio`, `/about` and the not-found page each have one `h1`; touch targets are at least 40px on phones (menu button and links, footer links, language offer, guide step dots, sliders, toggles, small buttons); the practice drawing works with the keyboard (Tab or arrows to choose a dot, Enter or Space to tap, progress read out through the live message); photo reader failures show friendly messages with a "Try again" button instead of status codes; translucent brass-light footer text now meets 4.5:1 on every theme.
 - Turning-symmetry reading could read uninitialised memory when a design reached the edge of the picture.
 - The guide no longer says "0 guide points" for a design with only a centre dot.
 

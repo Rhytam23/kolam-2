@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { READ_A_PHOTO, ROUTES, TRADITIONS, readerPath, withArticle } from './traditions';
 import { COLOUR_STORY } from './colourStory';
 import { buildDesign } from './designs';
-import { DEFAULT_THEME, contrast, type Theme } from '../lib/theme';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { DEFAULT_THEME, blend, contrast, type Theme } from '../lib/theme';
 import { PALETTES } from '../lib/colours';
 
 /** How alike two names are (0 = same), ignoring case, spaces and hyphens. */
@@ -50,6 +52,30 @@ describe('traditions', () => {
     const looks = TRADITIONS.map(t => `${t.theme.floor}|${t.theme.brass}`);
     expect(new Set(looks).size).toBe(TRADITIONS.length);
     expect(TRADITIONS.every(t => t.theme.floor !== DEFAULT_THEME.floor)).toBe(true);
+  });
+
+  it('keeps translucent text readable (4.5:1) on every theme\'s floor', () => {
+    // Which opacities of rice and brassLight are used as text anywhere in the app (text-rice/80, text-brass-light/90 ...).
+    const used = { rice: new Set<number>(), brassLight: new Set<number>() };
+    const walk = (dir: string) => readdirSync(dir).forEach(f => {
+      const path = join(dir, f);
+      if (statSync(path).isDirectory()) return walk(path);
+      if (!/\.tsx?$/.test(f) || /\.test\./.test(f)) return;
+      for (const m of readFileSync(path, 'utf8').matchAll(/(?<![\w-])(?:[a-z-]+:)*text-(rice|brass-light)\/(\d+)/g)) {
+        used[m[1] === 'rice' ? 'rice' : 'brassLight'].add(Number(m[2]));
+      }
+    });
+    walk(join(__dirname, '..'));
+    // The ones the audit named must be among them, so the scan cannot silently find nothing.
+    expect([...used.rice]).toEqual(expect.arrayContaining([70, 80]));
+    expect([...used.brassLight].length).toBeGreaterThan(0);
+    for (const t of [DEFAULT_THEME, ...TRADITIONS.map(x => x.theme)]) {
+      for (const [name, colour] of [['rice', t.rice], ['brassLight', t.brassLight]] as const) {
+        for (const percent of used[name]) {
+          expect(contrast(blend(colour, t.floor, percent / 100), t.floor), `${name} at ${percent}% on ${t.floor}`).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
   });
 
   it('gives every art form a ground of its own, clearly apart from the others', () => {
